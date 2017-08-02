@@ -15,7 +15,7 @@ func main() {
 	variableName := os.Args[1]
 
 	config := conjurapi.Config{
-		Account:    os.Getenv("CONJUR_ACCOUNT"),
+		Account:      os.Getenv("CONJUR_ACCOUNT"),
 		APIKey:       os.Getenv("CONJUR_API_KEY"),
 		ApplianceUrl: os.Getenv("CONJUR_APPLIANCE_URL"),
 		Username:     os.Getenv("CONJUR_LOGIN"),
@@ -28,8 +28,8 @@ func main() {
 	}
 
 	fmt.Printf("Operating as %s.\n", config.Username)
-	fmt.Printf("Retrieved the following:" +
-		"\n\n" +
+	fmt.Printf("Retrieved the following:"+
+		"\n\n"+
 		"%s = %s\n", variableName, variableValue)
 }
 
