@@ -17,30 +17,24 @@ type Config struct {
 }
 
 type Client struct {
-	Account      string
-	APIKey       string
-	ApplianceUrl string
-	AuthToken    string
-	Username     string
-	httpClient   *http.Client
+	config     Config
+	AuthToken  string
+	httpClient *http.Client
 }
 
 func NewClient(c Config) *Client {
 	return &Client{
-		Account:      c.Account,
-		APIKey:       c.APIKey,
-		ApplianceUrl: c.ApplianceUrl,
-		Username:     c.Username,
-		httpClient:   &http.Client{},
+		config:     c,
+		httpClient: &http.Client{},
 	}
 }
 
 func (c *Client) getAuthToken() (string, error) {
-	authUrl := fmt.Sprintf("%s/authn/%s/%s/authenticate", c.ApplianceUrl, c.Account, url.QueryEscape(c.Username))
+	authUrl := fmt.Sprintf("%s/authn/%s/%s/authenticate", c.config.ApplianceUrl, c.config.Account, url.QueryEscape(c.config.Username))
 	resp, err := c.httpClient.Post(
 		authUrl,
 		"text/plain",
-		strings.NewReader(c.APIKey),
+		strings.NewReader(c.config.APIKey),
 	)
 	if err != nil {
 		return "", err
@@ -59,7 +53,7 @@ func (c *Client) getAuthToken() (string, error) {
 
 func (c *Client) generateVariableUrl(varId string) string {
 	escapedVarId := url.QueryEscape(varId)
-	return fmt.Sprintf("%s/secrets/%s/variable/%s", c.ApplianceUrl, c.Account, escapedVarId)
+	return fmt.Sprintf("%s/secrets/%s/variable/%s", c.config.ApplianceUrl, c.config.Account, escapedVarId)
 }
 
 func (c *Client) createAuthRequest(req *http.Request) (error) {
