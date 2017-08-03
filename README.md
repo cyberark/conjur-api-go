@@ -23,7 +23,7 @@ You can load the Conjur configuration from your environemnt using the following 
 ```go
 import "github.com/conjurinc/api-go/conjurapi"
 
-config := Config{
+config := conjurapi.Config{
             Account:      os.Getenv("CONJUR_ACCOUNT"),
             APIKey:       os.Getenv("CONJUR_API_KEY"),
             ApplianceUrl: os.Getenv("CONJUR_APPLIANCE_URL"),
