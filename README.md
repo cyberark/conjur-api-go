@@ -41,11 +41,14 @@ secretValue, err := conjur.RetrieveVariable(variableName)
 
 # Development (docker-compose)
 
-Kick off the TDD (i.e. goconvey) development environment as follows:
+Kick off your TDD (i.e. goconvey powered) development environment as follows:
 
-```
+```bash
+# goconvey will run as a background process
 ./run-dev
 ```
+
+Visit localhost:8080 to see the test results in real time.
 
 # Contributing
 
