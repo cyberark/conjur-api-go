@@ -1,34 +1,56 @@
-# api-go
+# conjurapi
 
-Conjur API for Golang.
+Programmatic Golang access to the Conjur API.
 
-## Install
+# Installation
 
 Clone or use Golang dependency manage of choice
 
-## Usage
+# Usage
 
-Provide a configuration to start a new instance of the api client -> Client authenticates using configuration -> Authenticated client retrieves variables
+Connecting to Conjur is a two-step process:
 
-```
-import "github.com/conjurinc/api-go"
-
-conjur = conjurapi.NewClient(config)
-variableValue, err := conjur.RetrieveVariable(variableName)
-```
+* **Configuration** Instruct the API where to find the Conjur endpoint and how to secure the connection.
+* **Authentication** Provide the API with credentials that it can use to authenticate.
 
 ## Configuration
 
 This client does not use a configuration pattern to connect to Conjur.
 Configuration must be specified explicitly.
 
-## Development (Docker)
+You can load the Conjur configuration from your environemnt using the following Go code:
 
-Build and run the development environment as follows:
+```go
+config := Config{
+            Account:      os.Getenv("CONJUR_ACCOUNT"),
+            APIKey:       os.Getenv("CONJUR_API_KEY"),
+            ApplianceUrl: os.Getenv("CONJUR_APPLIANCE_URL"),
+            Username:     "admin",
+        }
+        
+conjur := NewClient(config)
+```
+
+## Read secret
+
+Authenticated clients are able to retrieves variables:
+
+```go
+secretValue, err := conjur.RetrieveVariable(variableName)
+```
+
+## Development (docker-compose)
+
+Kick off the TDD (i.e. goconvey) development environment as follows:
 
 ```
-./scripts/build-container
-./scripts/run-container
+./run-dev
 ```
 
-An executable example project is available at `./example`. The bash script `./run-example` is useful for testing the package as an import to the example project. Modify `./example/main.go` to suite your experimental needs.
+## Contributing
+
+1. Fork it
+2. Create your feature branch (`git checkout -b my-new-feature`)
+3. Commit your changes (`git commit -am 'Added some feature'`)
+4. Push to the branch (`git push origin my-new-feature`)
+5. Create new Pull Request
