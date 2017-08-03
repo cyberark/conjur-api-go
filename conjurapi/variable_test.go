@@ -63,5 +63,19 @@ echo -n "set_db_password"
 			So(err.Error(), ShouldContainSubstring, "404")
 		})
 
+		Convey("When the configuration has invalid credentials", func() {
+			config.Username = "invalid-user"
+
+			Convey("Variable fetching returns 401", func() {
+				conjur := NewClient(config)
+				variableValue, err := conjur.RetrieveVariable("existent-or-non-existent-secret")
+
+				So(err, ShouldNotBeNil)
+				So(variableValue, ShouldEqual, "")
+				So(err.Error(), ShouldContainSubstring, "401")
+			})
+
+		})
 	})
+
 }

@@ -21,6 +21,8 @@ Configuration must be specified explicitly.
 You can load the Conjur configuration from your environemnt using the following Go code:
 
 ```go
+import "github.com/conjurinc/api-go/conjurapi"
+
 config := Config{
             Account:      os.Getenv("CONJUR_ACCOUNT"),
             APIKey:       os.Getenv("CONJUR_API_KEY"),
@@ -28,7 +30,7 @@ config := Config{
             Username:     "admin",
         }
         
-conjur := NewClient(config)
+conjur := conjurapi.NewClient(config)
 ```
 
 ## Read secret
