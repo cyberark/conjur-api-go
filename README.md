@@ -39,7 +39,7 @@ Authenticated clients are able to retrieves variables:
 secretValue, err := conjur.RetrieveVariable(variableName)
 ```
 
-## Development (docker-compose)
+# Development (docker-compose)
 
 Kick off the TDD (i.e. goconvey) development environment as follows:
 
@@ -47,7 +47,7 @@ Kick off the TDD (i.e. goconvey) development environment as follows:
 ./run-dev
 ```
 
-## Contributing
+# Contributing
 
 1. Fork it
 2. Create your feature branch (`git checkout -b my-new-feature`)
