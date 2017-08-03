@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-func TestTokenGeneration(t *testing.T) {
+func TestClient_getAuthToken(t *testing.T) {
 	Convey("Given a valid configuration", t, func() {
 		config := Config{
 			Account:      os.Getenv("CONJUR_ACCOUNT"),
@@ -24,7 +24,7 @@ func TestTokenGeneration(t *testing.T) {
 			So(token, ShouldNotBeBlank)
 		})
 
-		Convey("When a non-existent username is configured", func() {
+		Convey("When a non-existent username is set", func() {
 			conjur := NewClient(config)
 			conjur.config.Username = "test-username"
 
