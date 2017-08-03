@@ -40,15 +40,20 @@ func (c *Client) getAuthToken() (string, error) {
 		return "", err
 	}
 
-	defer resp.Body.Close()
+	switch resp.StatusCode {
+	case 200:
+		defer resp.Body.Close()
 
-	var token []byte
-	token, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
+		var token []byte
+		token, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", err
+		}
+
+		return base64.StdEncoding.EncodeToString(token), err
+	default:
+		return "", fmt.Errorf("%v: %s\n", authUrl, resp.Status)
 	}
-
-	return base64.StdEncoding.EncodeToString(token), err
 }
 
 func (c *Client) generateVariableUrl(varId string) string {

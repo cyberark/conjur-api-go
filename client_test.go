@@ -3,23 +3,34 @@ package conjurapi
 import (
 	"testing"
 	. "github.com/smartystreets/goconvey/convey"
+	"os"
 )
 
-func TestIntegerStuff(t *testing.T) {
-	Convey("Given some configuration", t, func() {
+func TestTokenGeneration(t *testing.T) {
+	Convey("Given a valid configuration", t, func() {
 		config := Config{
-			Account:      "test-account",
-			APIKey:       "test-api-key",
-			ApplianceUrl: "test-appliance-url",
-			Username:     "test-username",
+			Account:      os.Getenv("CONJUR_ACCOUNT"),
+			APIKey:       os.Getenv("CONJUR_API_KEY"),
+			ApplianceUrl: os.Getenv("CONJUR_APPLIANCE_URL"),
+			Username:     "admin",
 		}
 
-		Convey("When an API client is created using the configuration", func() {
-
+		Convey("The API client should return a non-empty token", func() {
 			conjur := NewClient(config)
 
-			Convey("The configuration should be accessible as a field on the API instance", func() {
-				So(conjur.config, ShouldResemble, config)
+			token, err := conjur.getAuthToken()
+
+			So(err, ShouldBeNil)
+			So(token, ShouldNotBeBlank)
+		})
+
+		Convey("When a non-existent username is configured", func() {
+			conjur := NewClient(config)
+			conjur.config.Username = "test-username"
+
+			Convey("Token fetching should return a 401 error", func() {
+				_, err := conjur.getAuthToken()
+				So(err.Error(), ShouldContainSubstring, "401")
 			})
 		})
 	})
