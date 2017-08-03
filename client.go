@@ -52,7 +52,7 @@ func (c *Client) getAuthToken() (string, error) {
 
 		return base64.StdEncoding.EncodeToString(token), err
 	default:
-		return "", fmt.Errorf("%v: %s\n", authUrl, resp.Status)
+		return "", fmt.Errorf("%v: %s\n", resp.StatusCode, resp.Status)
 	}
 }
 

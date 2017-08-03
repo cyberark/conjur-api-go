@@ -11,8 +11,8 @@ docker-compose up -d
 docker-compose run --rm test ./wait_for_server.sh
 
 api_key=$(docker-compose exec -T possum rails r "print Credentials['cucumber:user:admin'].api_key")
+
 # Execute tests
 docker-compose run --rm \
-  -p 8080:8080 \
   -e CONJUR_API_KEY="$api_key" \
   test bash -c "./convey.sh"
