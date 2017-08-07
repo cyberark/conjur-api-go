@@ -18,7 +18,7 @@ Connecting to Conjur is a two-step process:
 This client does not use a configuration pattern to connect to Conjur.
 Configuration must be specified explicitly.
 
-You can load the Conjur configuration from your environemnt using the following Go code:
+You can load the Conjur configuration from your environment using the following Go code:
 
 ```go
 import "github.com/conjurinc/api-go/conjurapi"
@@ -38,7 +38,11 @@ conjur := conjurapi.NewClient(config)
 Authenticated clients are able to retrieves variables:
 
 ```go
-secretValue, err := conjur.RetrieveVariable(variableName)
+secretValue, err := conjur.RetrieveSecret(variableIdentifier)
+if err != nil {
+// error handling
+}
+// do something with the secretValue
 ```
 
 # Development (docker-compose)
