@@ -8,7 +8,7 @@ services:
     command: server -a cucumber
     environment:
       DATABASE_URL: postgres://postgres@postgres/postgres
-      POSSUM_DATA_KEY: 'WMfApcDBtocRWV+ZSUP3Tjr5XNU+Z2FdBb6BEezejIs='
+      CONJUR_DATA_KEY: 'WMfApcDBtocRWV+ZSUP3Tjr5XNU+Z2FdBb6BEezejIs='
     depends_on:
       - postgres
 
