@@ -24,13 +24,13 @@ func (c *Client) getAuthToken() (string, error) {
 	case 200:
 		defer resp.Body.Close()
 
-		var token []byte
-		token, err = ioutil.ReadAll(resp.Body)
+		var tokenPayload []byte
+		tokenPayload, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return "", err
 		}
 
-		return base64.StdEncoding.EncodeToString(token), err
+		return base64.StdEncoding.EncodeToString(tokenPayload), err
 	default:
 		return "", fmt.Errorf("%v: %s\n", resp.StatusCode, resp.Status)
 	}

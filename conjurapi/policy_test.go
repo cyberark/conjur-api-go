@@ -5,11 +5,10 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"os"
 	"fmt"
-	"math/rand"
 	"strings"
 )
 
-func TestClient_RetrieveSecret(t *testing.T) {
+func TestClient_LoadPolicy(t *testing.T) {
 	Convey("Given a valid configuration", t, func() {
 		config := Config{
 			Account:      os.Getenv("CONJUR_ACCOUNT"),
@@ -19,42 +18,28 @@ func TestClient_RetrieveSecret(t *testing.T) {
 		}
 
 		Convey("Existent and assigned variable is retrieved", func() {
-			variable_identifier := "db/password"
-			secret_value := fmt.Sprintf("secret-value-%v", rand.Intn(123456))
+			variable_identifier := "alice"
 			policy := fmt.Sprintf(`
-- !variable %s
+- !user %s
 `, variable_identifier)
-
 
 			conjur := NewClient(config)
 
-			conjur.LoadPolicy(
+			resp, err := conjur.LoadPolicy(
 				"root",
 				strings.NewReader(policy),
 			)
-			conjur.AddSecret(variable_identifier, secret_value)
-
-			secretValue, err := conjur.RetrieveSecret(variable_identifier)
 
 			So(err, ShouldBeNil)
-			So(secretValue, ShouldEqual, secret_value)
-		})
-
-		Convey("Fetching a secret on a non-existent variable returns 404", func() {
-			conjur := NewClient(config)
-			secretValue, err := conjur.RetrieveSecret("not-existent-variable")
-
-			So(err, ShouldNotBeNil)
-			So(secretValue, ShouldEqual, "")
-			So(err.Error(), ShouldContainSubstring, "404")
+			So(resp, ShouldContainSubstring, `{"created_roles":{"cucumber:user:alice":`)
 		})
 
 		Convey("When the configuration has invalid credentials", func() {
 			config.Username = "invalid-user"
 
-			Convey("Secret fetching returns 401", func() {
+			Convey("Loading a policy returns 401", func() {
 				conjur := NewClient(config)
-				secretValue, err := conjur.RetrieveSecret("existent-or-non-existent-variable")
+				secretValue, err := conjur.LoadPolicy("root", strings.NewReader(""))
 
 				So(err, ShouldNotBeNil)
 				So(secretValue, ShouldEqual, "")
