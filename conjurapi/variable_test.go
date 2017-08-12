@@ -14,7 +14,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 		config := Config{
 			Account:      os.Getenv("CONJUR_ACCOUNT"),
 			APIKey:       os.Getenv("CONJUR_API_KEY"),
-			ApplianceUrl: os.Getenv("CONJUR_APPLIANCE_URL"),
+			ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL"),
 			Username:     "admin",
 		}
 
@@ -26,7 +26,8 @@ func TestClient_RetrieveSecret(t *testing.T) {
 `, variable_identifier)
 
 
-			conjur := NewClient(config)
+			conjur, err := NewClient(config)
+			So(err, ShouldBeNil)
 
 			conjur.LoadPolicy(
 				"root",
@@ -41,7 +42,9 @@ func TestClient_RetrieveSecret(t *testing.T) {
 		})
 
 		Convey("Fetching a secret on a non-existent variable returns 404", func() {
-			conjur := NewClient(config)
+			conjur, err := NewClient(config)
+			So(err, ShouldBeNil)
+
 			secretValue, err := conjur.RetrieveSecret("not-existent-variable")
 
 			So(err, ShouldNotBeNil)
@@ -53,7 +56,9 @@ func TestClient_RetrieveSecret(t *testing.T) {
 			config.Username = "invalid-user"
 
 			Convey("Secret fetching returns 401", func() {
-				conjur := NewClient(config)
+				conjur, err := NewClient(config)
+				So(err, ShouldBeNil)
+
 				secretValue, err := conjur.RetrieveSecret("existent-or-non-existent-variable")
 
 				So(err, ShouldNotBeNil)

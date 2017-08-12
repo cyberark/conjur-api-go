@@ -2,24 +2,26 @@ package conjurapi
 
 import (
 	"net/http"
+	"time"
 )
 
-type Config struct {
-	Account      string
-	APIKey       string
-	ApplianceUrl string
-	Username     string
-}
-
-type Client struct {
+type client struct {
 	config     Config
 	AuthToken  string
-	httpClient *http.Client
+	httpclient *http.Client
 }
 
-func NewClient(c Config) *Client {
-	return &Client{
-		config:     c,
-		httpClient: &http.Client{},
+func NewClient(c Config) (*client, error) {
+	valid, error := c.IsValid()
+
+	if !valid {
+		return nil, error
 	}
+
+	return &client{
+		config:     c,
+		httpclient: &http.Client{
+			Timeout: time.Second * 10,
+		},
+	}, nil
 }

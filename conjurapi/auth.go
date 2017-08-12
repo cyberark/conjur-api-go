@@ -7,12 +7,27 @@ import (
 	"io/ioutil"
 	"net/http"
 	"encoding/base64"
+	"time"
 )
 
-func (c *Client) getAuthToken() (string, error) {
-	authUrl := fmt.Sprintf("%s/authn/%s/%s/authenticate", c.config.ApplianceUrl, c.config.Account, url.QueryEscape(c.config.Username))
-	resp, err := c.httpClient.Post(
-		authUrl,
+func (c *client) authUrl() (string) {
+	return fmt.Sprintf("%s/authn/%s/%s/authenticate", c.config.ApplianceURL, c.config.Account, url.QueryEscape(c.config.Username))
+}
+
+func (c *client) getAuthToken() (string, error) {
+	switch {
+	case len(c.config.AuthnTokenFile) > 0:
+		return waitForTextFile(c.config.AuthnTokenFile, time.After(time.Second * 10))
+	case len(c.config.Username) > 0 && len(c.config.APIKey) > 0:
+		return c.getAuthTokenByLogin()
+	default:
+		return "", fmt.Errorf("Missing at least 1 means of authentication.")
+	}
+}
+
+func (c *client) getAuthTokenByLogin() (string, error) {
+	resp, err := c.httpclient.Post(
+		c.authUrl(),
 		"text/plain",
 		strings.NewReader(c.config.APIKey),
 	)
@@ -30,13 +45,14 @@ func (c *Client) getAuthToken() (string, error) {
 			return "", err
 		}
 
-		return base64.StdEncoding.EncodeToString(tokenPayload), err
+		return string(tokenPayload), err
 	default:
 		return "", fmt.Errorf("%v: %s\n", resp.StatusCode, resp.Status)
 	}
 }
 
-func (c *Client) createAuthRequest(req *http.Request) (error) {
+
+func (c *client) createAuthRequest(req *http.Request) (error) {
 	token, err := c.getAuthToken()
 	if err != nil {
 		return err
@@ -44,7 +60,7 @@ func (c *Client) createAuthRequest(req *http.Request) (error) {
 
 	req.Header.Set(
 		"Authorization",
-		fmt.Sprintf("Token token=\"%s\"", token),
+		fmt.Sprintf("Token token=\"%s\"",  base64.StdEncoding.EncodeToString([]byte(token))),
 	)
 
 	return nil

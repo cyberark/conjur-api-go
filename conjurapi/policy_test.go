@@ -13,7 +13,7 @@ func TestClient_LoadPolicy(t *testing.T) {
 		config := Config{
 			Account:      os.Getenv("CONJUR_ACCOUNT"),
 			APIKey:       os.Getenv("CONJUR_API_KEY"),
-			ApplianceUrl: os.Getenv("CONJUR_APPLIANCE_URL"),
+			ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL"),
 			Username:     "admin",
 		}
 
@@ -23,7 +23,8 @@ func TestClient_LoadPolicy(t *testing.T) {
 - !user %s
 `, variable_identifier)
 
-			conjur := NewClient(config)
+			conjur, err := NewClient(config)
+			So(err, ShouldBeNil)
 
 			resp, err := conjur.LoadPolicy(
 				"root",
@@ -38,7 +39,9 @@ func TestClient_LoadPolicy(t *testing.T) {
 			config.Username = "invalid-user"
 
 			Convey("Loading a policy returns 401", func() {
-				conjur := NewClient(config)
+				conjur, err := NewClient(config)
+				So(err, ShouldBeNil)
+
 				secretValue, err := conjur.LoadPolicy("root", strings.NewReader(""))
 
 				So(err, ShouldNotBeNil)

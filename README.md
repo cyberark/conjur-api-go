@@ -4,7 +4,7 @@ Programmatic Golang access to the Conjur API.
 
 # Installation
 
-Clone or use Golang dependency manage of choice
+Clone or use Golang dependency manager of choice
 
 # Usage
 
@@ -26,7 +26,7 @@ import "github.com/conjurinc/api-go/conjurapi"
 config := conjurapi.Config{
             Account:      os.Getenv("CONJUR_ACCOUNT"),
             APIKey:       os.Getenv("CONJUR_API_KEY"),
-            ApplianceUrl: os.Getenv("CONJUR_APPLIANCE_URL"),
+            ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL"),
             Username:     "admin",
         }
         
@@ -35,7 +35,7 @@ conjur := conjurapi.NewClient(config)
 
 ## Read secret
 
-Authenticated clients are able to retrieves variables:
+Authenticated clients are able to retrieve secrets:
 
 ```go
 secretValue, err := conjur.RetrieveSecret(variableIdentifier)
