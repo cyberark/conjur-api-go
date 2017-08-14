@@ -27,7 +27,7 @@ config := conjurapi.Config{
             Account:      os.Getenv("CONJUR_ACCOUNT"),
             APIKey:       os.Getenv("CONJUR_AUTHN_API_KEY"),
             ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL"),
-            Login:     os.Getenv("CONJUR_AUTHN_LOGIN"),
+            Login:        os.Getenv("CONJUR_AUTHN_LOGIN"),
         }
         
 conjur := conjurapi.NewClient(config)
@@ -51,7 +51,7 @@ Kick off your TDD (i.e. goconvey powered) development environment as follows:
 
 ```bash
 # goconvey will run as a background process
-./run-dev
+./dev
 ```
 
 Visit localhost:8080 to see the test results in real time.
