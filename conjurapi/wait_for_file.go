@@ -7,18 +7,26 @@ import (
 	"io/ioutil"
 )
 
-func waitForTextFile(fileName string, timeout <-chan time.Time) (string, error) {
-	for  {
+func waitForTextFile(fileName string, timeout <-chan time.Time) ([]byte, error) {
+	var (
+		fileBytes []byte
+		err error
+	)
+
+	waiting_loop: for  {
 		select {
 		case <-timeout:
-			return "", fmt.Errorf("Operation WaitForTextFile timed out.")
+			err = fmt.Errorf("Operation waitForTextFile timed out.")
+			break waiting_loop
 		default:
 			if _, err := os.Stat(fileName); os.IsNotExist(err) {
 				time.Sleep(1 * time.Second)
 			} else {
-				b, err := ioutil.ReadFile(fileName)
-				return string(b), err
+				fileBytes, err = ioutil.ReadFile(fileName)
+				break waiting_loop
 			}
 		}
 	}
+
+	return fileBytes, err
 }

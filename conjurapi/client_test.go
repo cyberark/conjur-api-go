@@ -12,7 +12,7 @@ func TestNewClient(t *testing.T) {
 			Account: "account",
 		}
 
-		Convey("returns a client without error", func() {
+		Convey("Return Conjur Client without error", func() {
 			conjur, err := NewClient(config)
 			So(err, ShouldBeNil)
 			So(conjur, ShouldNotBeNil)
@@ -21,7 +21,7 @@ func TestNewClient(t *testing.T) {
 		Convey("Invalidate the configuration", func() {
 			config.Account = ""
 
-			Convey("returns nil with error", func() {
+			Convey("Return nil with error", func() {
 				conjur, err := NewClient(config)
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldContainSubstring, "is required.")

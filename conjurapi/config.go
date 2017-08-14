@@ -16,7 +16,7 @@ type Config struct {
 
 const tagName = "validate"
 
-func (c Config) IsValid() (bool, error) {
+func (c Config) validate() (error) {
 	v := reflect.ValueOf(c)
 	errors := []string{}
 
@@ -35,8 +35,8 @@ func (c Config) IsValid() (bool, error) {
 	}
 
 	if len(errors) == 0 {
-		return true, nil
+		return nil
 	}
-	return false, fmt.Errorf("%s", strings.Join(errors, "\n"))
+	return fmt.Errorf("%s", strings.Join(errors, "\n"))
 }
 

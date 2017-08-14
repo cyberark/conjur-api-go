@@ -9,15 +9,15 @@ import (
 )
 
 func TestClient_LoadPolicy(t *testing.T) {
-	Convey("Given a valid configuration", t, func() {
+	Convey("Given valid configuration and login credentials", t, func() {
 		config := Config{
 			Account:      os.Getenv("CONJUR_ACCOUNT"),
-			APIKey:       os.Getenv("CONJUR_API_KEY"),
+			APIKey:       os.Getenv("CONJUR_AUTHN_API_KEY"),
 			ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL"),
 			Username:     "admin",
 		}
 
-		Convey("Existent and assigned variable is retrieved", func() {
+		Convey("Successfully load policy", func() {
 			variable_identifier := "alice"
 			policy := fmt.Sprintf(`
 - !user %s
@@ -35,10 +35,10 @@ func TestClient_LoadPolicy(t *testing.T) {
 			So(resp, ShouldContainSubstring, `{"created_roles":{"cucumber:user:alice":`)
 		})
 
-		Convey("When the configuration has invalid credentials", func() {
+		Convey("Given invalid login credentials", func() {
 			config.Username = "invalid-user"
 
-			Convey("Loading a policy returns 401", func() {
+			Convey("Returns 401", func() {
 				conjur, err := NewClient(config)
 				So(err, ShouldBeNil)
 

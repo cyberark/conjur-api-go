@@ -7,15 +7,19 @@ import (
 
 type client struct {
 	config     Config
-	AuthToken  string
+	authToken  AuthnToken
 	httpclient *http.Client
 }
 
 func NewClient(c Config) (*client, error) {
-	valid, error := c.IsValid()
+	var (
+		err error
+	)
 
-	if !valid {
-		return nil, error
+	err = c.validate()
+
+	if err != nil {
+		return nil, err
 	}
 
 	return &client{

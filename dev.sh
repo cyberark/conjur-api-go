@@ -15,7 +15,6 @@ api_key=$(docker-compose exec -T possum rails r "print Credentials['cucumber:use
 # Run development environment
 docker-compose run --rm \
   -p 8080:8080 \
-  -p 8081:8081 \
-  -e CONJUR_API_KEY="$api_key" \
+  -e CONJUR_AUTHN_API_KEY="$api_key" \
   test bash -c "./convey.sh& \
                 bash"

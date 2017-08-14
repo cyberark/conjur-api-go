@@ -14,38 +14,38 @@ func TestClient_getAuthToken(t *testing.T) {
 			ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL"),
 		}
 
-		Convey("Given no auth information", func() {
-			Convey("The API client should return an error", func() {
+		Convey("Given no authentication information", func() {
+			Convey("Return with error containing failed validations", func() {
 				conjur, err := NewClient(config)
 				So(err, ShouldBeNil)
 
-				token, err := conjur.getAuthToken()
+				tokenBytes, err := conjur.getAuthToken()
 
 				So(err.Error(), ShouldContainSubstring, "Missing")
-				So(token, ShouldBeBlank)
+				So(tokenBytes, ShouldBeNil)
 			})
 		})
 
 		Convey("Given valid Login credentials", func() {
-			config.APIKey =	os.Getenv("CONJUR_API_KEY")
+			config.APIKey =	os.Getenv("CONJUR_AUTHN_API_KEY")
 			config.Username = "admin"
 
-			Convey("The API client should return a non-empty token", func() {
+			Convey("Returns token bytes", func() {
 				conjur, err := NewClient(config)
 				So(err, ShouldBeNil)
 
-				token, err := conjur.getAuthToken()
+				tokenBytes, err := conjur.getAuthToken()
 
 				So(err, ShouldBeNil)
-				So(token, ShouldNotBeBlank)
+				So(tokenBytes, ShouldNotBeNil)
 			})
 
-			Convey("Set username to non-existent value", func() {
+			Convey("Given non-existent username", func() {
 				config.Username = "non-existent-username"
 				conjur, err := NewClient(config)
 				So(err, ShouldBeNil)
 
-				Convey("Token fetching should return a 401 error", func() {
+				Convey("Returns nil token and 401 error", func() {
 					_, err := conjur.getAuthToken()
 					So(err.Error(), ShouldContainSubstring, "401")
 				})
@@ -54,7 +54,7 @@ func TestClient_getAuthToken(t *testing.T) {
 
 		Convey("Given existent token filename and valid Login credentials", func() {
 			config.AuthnTokenFile =	"/tmp/valid-token-file"
-			config.APIKey =	os.Getenv("CONJUR_API_KEY")
+			config.APIKey =	os.Getenv("CONJUR_AUTHN_API_KEY")
 			config.Username = "admin"
 
 			os.Remove("/tmp/valid-token-file")
@@ -63,14 +63,14 @@ func TestClient_getAuthToken(t *testing.T) {
 			}()
 			defer os.Remove("/tmp/valid-token-file")
 
-			Convey("The API client should return the token from the file", func() {
+			Convey("Return the token from the file (token filename takes precedence over Login credentials)", func() {
 				conjur, err := NewClient(config)
 				So(err, ShouldBeNil)
 
-				token, err := conjur.getAuthToken()
+				tokenBytes, err := conjur.getAuthToken()
 
 				So(err, ShouldBeNil)
-				So(token, ShouldEqual, "token-from-file")
+				So(string(tokenBytes), ShouldEqual, "token-from-file")
 			})
 		})
 

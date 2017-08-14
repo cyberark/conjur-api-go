@@ -9,14 +9,14 @@ import (
 )
 
 func Test_waitForTextFile(t *testing.T) {
-	Convey("Non existent file times out", t, func() {
-		text, err := waitForTextFile("path/to/non-existent/file", time.After(1 * time.Millisecond))
+	Convey("Times out for non-existent filename", t, func() {
+		bytes, err := waitForTextFile("path/to/non-existent/file", time.After(1 * time.Millisecond))
 		So(err, ShouldNotBeNil)
 		So(err.Error(), ShouldEqual, "Operation WaitForTextFile timed out.")
-		So(text, ShouldBeBlank)
+		So(bytes, ShouldBeNil)
 	})
 
-	Convey("Eventually existent file is read", t, func() {
+	Convey("Returns bytes for eventually existent filename", t, func() {
 		os.Remove("/tmp/random-file-to-exist")
 
 		go func() {
@@ -24,10 +24,10 @@ func Test_waitForTextFile(t *testing.T) {
 		}()
 		defer os.Remove("/tmp/random-file-to-exist")
 
-		text, err := waitForTextFile("/tmp/random-file-to-exist", nil)
+		bytes, err := waitForTextFile("/tmp/random-file-to-exist", nil)
 
 		So(err, ShouldBeNil)
-		So(text, ShouldEqual, "some random stuff")
+		So(string(bytes), ShouldEqual, "some random stuff")
 
 	})
 }

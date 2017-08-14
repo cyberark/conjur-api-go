@@ -25,7 +25,7 @@ import "github.com/conjurinc/api-go/conjurapi"
 
 config := conjurapi.Config{
             Account:      os.Getenv("CONJUR_ACCOUNT"),
-            APIKey:       os.Getenv("CONJUR_API_KEY"),
+            APIKey:       os.Getenv("CONJUR_AUTHN_API_KEY"),
             ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL"),
             Username:     "admin",
         }
