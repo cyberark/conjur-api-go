@@ -11,7 +11,7 @@ import (
 )
 
 func (c *client) authenticateUrl() (string) {
-	return fmt.Sprintf("%s/authn/%s/%s/authenticate", c.config.ApplianceURL, c.config.Account, url.QueryEscape(c.config.Username))
+	return fmt.Sprintf("%s/authn/%s/%s/authenticate", c.config.ApplianceURL, c.config.Account, url.QueryEscape(c.config.Login))
 }
 
 func (c *client) getAuthToken() ([]byte, error) {
@@ -23,7 +23,7 @@ func (c *client) getAuthToken() ([]byte, error) {
 	switch {
 	case len(c.config.AuthnTokenFile) > 0:
 		tokenBytes, err = waitForTextFile(c.config.AuthnTokenFile, time.After(time.Second*10))
-	case len(c.config.Username) > 0 && len(c.config.APIKey) > 0:
+	case len(c.config.Login) > 0 && len(c.config.APIKey) > 0:
 		tokenBytes, err = c.getAuthTokenByLogin()
 	default:
 		err = fmt.Errorf("Missing at least 1 means of authentication.")

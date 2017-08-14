@@ -25,4 +25,5 @@ api_key=$(docker-compose exec -T possum rails r "print Credentials['cucumber:use
 # Execute tests
 docker-compose run --rm \
   -e CONJUR_AUTHN_API_KEY="$api_key" \
+  -e CONJUR_AUTHN_LOGIN="admin" \
   test bash -c 'go test -v ./... | tee output/junit.output && cat output/junit.output | go-junit-report > output/junit.xml'

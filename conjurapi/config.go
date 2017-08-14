@@ -10,7 +10,7 @@ type Config struct {
 	Account        string `validate:"required"`
 	APIKey         string
 	ApplianceURL   string `validate:"required"`
-	Username       string
+	Login          string
 	AuthnTokenFile string
 }
 

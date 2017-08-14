@@ -28,7 +28,7 @@ func TestClient_getAuthToken(t *testing.T) {
 
 		Convey("Given valid Login credentials", func() {
 			config.APIKey =	os.Getenv("CONJUR_AUTHN_API_KEY")
-			config.Username = "admin"
+			config.Login = os.Getenv("CONJUR_AUTHN_LOGIN")
 
 			Convey("Returns token bytes", func() {
 				conjur, err := NewClient(config)
@@ -41,7 +41,7 @@ func TestClient_getAuthToken(t *testing.T) {
 			})
 
 			Convey("Given non-existent username", func() {
-				config.Username = "non-existent-username"
+				config.Login = "non-existent-username"
 				conjur, err := NewClient(config)
 				So(err, ShouldBeNil)
 
@@ -55,7 +55,7 @@ func TestClient_getAuthToken(t *testing.T) {
 		Convey("Given existent token filename and valid Login credentials", func() {
 			config.AuthnTokenFile =	"/tmp/valid-token-file"
 			config.APIKey =	os.Getenv("CONJUR_AUTHN_API_KEY")
-			config.Username = "admin"
+			config.Login = os.Getenv("CONJUR_AUTHN_LOGIN")
 
 			os.Remove("/tmp/valid-token-file")
 			go func() {

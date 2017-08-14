@@ -14,7 +14,7 @@ func TestClient_LoadPolicy(t *testing.T) {
 			Account:      os.Getenv("CONJUR_ACCOUNT"),
 			APIKey:       os.Getenv("CONJUR_AUTHN_API_KEY"),
 			ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL"),
-			Username:     "admin",
+			Login:        os.Getenv("CONJUR_AUTHN_LOGIN"),
 		}
 
 		Convey("Successfully load policy", func() {
@@ -36,7 +36,7 @@ func TestClient_LoadPolicy(t *testing.T) {
 		})
 
 		Convey("Given invalid login credentials", func() {
-			config.Username = "invalid-user"
+			config.Login = "invalid-user"
 
 			Convey("Returns 401", func() {
 				conjur, err := NewClient(config)

@@ -27,7 +27,7 @@ config := conjurapi.Config{
             Account:      os.Getenv("CONJUR_ACCOUNT"),
             APIKey:       os.Getenv("CONJUR_AUTHN_API_KEY"),
             ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL"),
-            Username:     "admin",
+            Username:     os.Getenv("CONJUR_AUTHN_LOGIN"),
         }
         
 conjur := conjurapi.NewClient(config)

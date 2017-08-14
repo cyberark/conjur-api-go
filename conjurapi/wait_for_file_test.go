@@ -12,7 +12,7 @@ func Test_waitForTextFile(t *testing.T) {
 	Convey("Times out for non-existent filename", t, func() {
 		bytes, err := waitForTextFile("path/to/non-existent/file", time.After(1 * time.Millisecond))
 		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldEqual, "Operation WaitForTextFile timed out.")
+		So(err.Error(), ShouldEqual, "Operation waitForTextFile timed out.")
 		So(bytes, ShouldBeNil)
 	})
 
