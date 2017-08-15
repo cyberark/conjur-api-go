@@ -25,12 +25,10 @@ import "github.com/conjurinc/api-go/conjurapi"
 
 config := conjurapi.Config{
             Account:      os.Getenv("CONJUR_ACCOUNT"),
-            APIKey:       os.Getenv("CONJUR_AUTHN_API_KEY"),
-            ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL"),
-            Login:        os.Getenv("CONJUR_AUTHN_LOGIN"),
+            ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL")
         }
         
-conjur := conjurapi.NewClient(config)
+conjur, err := conjurapi.NewClientFromKey(config, os.Getenv("CONJUR_AUTHN_LOGIN"), os.Getenv("CONJUR_AUTHN_API_KEY"))
 ```
 
 ## Read secret
