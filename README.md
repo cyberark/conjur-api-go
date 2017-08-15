@@ -24,11 +24,15 @@ You can load the Conjur configuration from your environment using the following 
 import "github.com/conjurinc/api-go/conjurapi"
 
 config := conjurapi.Config{
-            Account:      os.Getenv("CONJUR_ACCOUNT"),
-            ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL")
-        }
+    Account:      os.Getenv("CONJUR_ACCOUNT"),
+    ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL"),
+}
         
-conjur, err := conjurapi.NewClientFromKey(config, os.Getenv("CONJUR_AUTHN_LOGIN"), os.Getenv("CONJUR_AUTHN_API_KEY"))
+conjur, err := conjurapi.NewClientFromKey(
+    config: config, 
+    Login:  os.Getenv("CONJUR_AUTHN_LOGIN"),
+    APIKey: os.Getenv("CONJUR_AUTHN_API_KEY"),
+)
 ```
 
 ## Read secret
