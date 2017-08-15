@@ -9,21 +9,21 @@ import (
 )
 
 func TestClient_LoadPolicy(t *testing.T) {
-	Convey("Given a valid configuration", t, func() {
-		config := Config{
-			Account:      os.Getenv("CONJUR_ACCOUNT"),
-			APIKey:       os.Getenv("CONJUR_API_KEY"),
-			ApplianceUrl: os.Getenv("CONJUR_APPLIANCE_URL"),
-			Username:     "admin",
-		}
+	Convey("Given valid configuration and login credentials", t, func() {
+		config := &Config{}
+		LoadFromEnv(config)
 
-		Convey("Existent and assigned variable is retrieved", func() {
+		api_key := os.Getenv("CONJUR_AUTHN_API_KEY")
+		login := os.Getenv("CONJUR_AUTHN_LOGIN")
+
+		Convey("Successfully load policy", func() {
 			variable_identifier := "alice"
 			policy := fmt.Sprintf(`
 - !user %s
 `, variable_identifier)
 
-			conjur := NewClient(config)
+			conjur, err := NewClientFromKey(*config, login, api_key)
+			So(err, ShouldBeNil)
 
 			resp, err := conjur.LoadPolicy(
 				"root",
@@ -34,11 +34,13 @@ func TestClient_LoadPolicy(t *testing.T) {
 			So(resp, ShouldContainSubstring, `{"created_roles":{"cucumber:user:alice":`)
 		})
 
-		Convey("When the configuration has invalid credentials", func() {
-			config.Username = "invalid-user"
+		Convey("Given invalid login credentials", func() {
+			login = "invalid-user"
 
-			Convey("Loading a policy returns 401", func() {
-				conjur := NewClient(config)
+			Convey("Returns 401", func() {
+				conjur, err := NewClientFromKey(*config, login, api_key)
+				So(err, ShouldBeNil)
+
 				secretValue, err := conjur.LoadPolicy("root", strings.NewReader(""))
 
 				So(err, ShouldNotBeNil)
