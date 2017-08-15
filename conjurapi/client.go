@@ -11,38 +11,38 @@ type Authenticator interface {
 	NeedsTokenRefresh() bool
 }
 
-type client struct {
+type Client struct {
 	config     Config
 	authToken  *AuthnToken
 	httpclient *http.Client
 	authenticator Authenticator
 }
 
-func AuthnURL(ApplianceURL, Account string) string {
-	return fmt.Sprintf("%s/authn/%s/%s/authenticate", ApplianceURL, Account, "%s")
+func AuthnURL(applianceURL, account string) string {
+	return fmt.Sprintf("%s/authn/%s/%s/authenticate", applianceURL, account, "%s")
 }
 
-func NewClientFromKey(config Config, Login string, APIKey string) (*client, error) {
+func NewClientFromKey(config Config, login string, aPIKey string) (*Client, error) {
 	return newClientWithAuthenticator(
 		config,
 		&APIKeyAuthenticator{
 			AuthnURLTemplate: AuthnURL(config.ApplianceURL, config.Account),
-			Login: Login,
-			APIKey: APIKey,
+			Login:            login,
+			APIKey:           aPIKey,
 		},
 	)
 }
 
-func NewClientFromTokenFile(config Config, TokenFile string) (*client, error) {
+func NewClientFromTokenFile(config Config, tokenFile string) (*Client, error) {
 	return newClientWithAuthenticator(
 		config,
 		&TokenFileAuthenticator{
-			TokenFile: TokenFile,
+			TokenFile: tokenFile,
 		},
 	)
 }
 
-func newClientWithAuthenticator(config Config, authenticator Authenticator) (*client, error) {
+func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Client, error) {
 	var (
 		err error
 	)
@@ -53,7 +53,7 @@ func newClientWithAuthenticator(config Config, authenticator Authenticator) (*cl
 		return nil, err
 	}
 
-	return &client{
+	return &Client{
 		config:     config,
 		authenticator:  authenticator,
 		httpclient: &http.Client{

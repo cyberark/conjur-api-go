@@ -7,7 +7,7 @@ import (
 	"io"
 )
 
-func (c *client) LoadPolicy(policyIdentifier string, policy io.Reader) (string, error) {
+func (c *Client) LoadPolicy(policyIdentifier string, policy io.Reader) (string, error) {
 	policyUrl := fmt.Sprintf("%s/policies/%s/policy/%s", c.config.ApplianceURL, c.config.Account, policyIdentifier)
 	req, err := http.NewRequest(
 		"PUT",

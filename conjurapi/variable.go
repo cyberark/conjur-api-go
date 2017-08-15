@@ -8,12 +8,12 @@ import (
 	"strings"
 )
 
-func (c *client) generateVariableUrl(varId string) string {
+func (c *Client) generateVariableUrl(varId string) string {
 	escapedVarId := url.QueryEscape(varId)
 	return fmt.Sprintf("%s/secrets/%s/variable/%s", c.config.ApplianceURL, c.config.Account, escapedVarId)
 }
 
-func (c *client) RetrieveSecret(variableIdentifier string) (string, error) {
+func (c *Client) RetrieveSecret(variableIdentifier string) (string, error) {
 	variableUrl := c.generateVariableUrl(variableIdentifier)
 	req, err := http.NewRequest(
 		"GET",
@@ -51,7 +51,7 @@ func (c *client) RetrieveSecret(variableIdentifier string) (string, error) {
 	}
 }
 
-func (c *client) AddSecret(variableIdentifier string, secretValue string) (error) {
+func (c *Client) AddSecret(variableIdentifier string, secretValue string) (error) {
 	variableUrl := c.generateVariableUrl(variableIdentifier)
 	req, err := http.NewRequest(
 		"POST",

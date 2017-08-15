@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func (c *client) RefreshToken() (error) {
+func (c *Client) RefreshToken() (error) {
 	var (
 		token AuthnToken
 		err error
@@ -26,11 +26,11 @@ func (c *client) RefreshToken() (error) {
 	return err
 }
 
-func (c *client) NeedsTokenRefresh() bool {
+func (c *Client) NeedsTokenRefresh() bool {
 	return c.authToken == nil || !c.authToken.ValidAtTime(time.Now()) || c.authenticator.NeedsTokenRefresh()
 }
 
-func (c *client) createAuthRequest(req *http.Request) (error) {
+func (c *Client) createAuthRequest(req *http.Request) (error) {
 	if err := c.RefreshToken(); err != nil {
 		return err
 	}
