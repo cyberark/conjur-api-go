@@ -10,12 +10,11 @@ import (
 
 func TestClient_LoadPolicy(t *testing.T) {
 	Convey("Given valid configuration and login credentials", t, func() {
-		config := Config{
-			Account:      os.Getenv("CONJUR_ACCOUNT"),
-			APIKey:       os.Getenv("CONJUR_AUTHN_API_KEY"),
-			ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL"),
-			Login:        os.Getenv("CONJUR_AUTHN_LOGIN"),
-		}
+		config := &Config{}
+		LoadFromEnv(config)
+
+		api_key := os.Getenv("CONJUR_AUTHN_API_KEY")
+		login := os.Getenv("CONJUR_AUTHN_LOGIN")
 
 		Convey("Successfully load policy", func() {
 			variable_identifier := "alice"
@@ -23,7 +22,7 @@ func TestClient_LoadPolicy(t *testing.T) {
 - !user %s
 `, variable_identifier)
 
-			conjur, err := NewClient(config)
+			conjur, err := NewClientFromKey(*config, login, api_key)
 			So(err, ShouldBeNil)
 
 			resp, err := conjur.LoadPolicy(
@@ -36,10 +35,10 @@ func TestClient_LoadPolicy(t *testing.T) {
 		})
 
 		Convey("Given invalid login credentials", func() {
-			config.Login = "invalid-user"
+			login = "invalid-user"
 
 			Convey("Returns 401", func() {
-				conjur, err := NewClient(config)
+				conjur, err := NewClientFromKey(*config, login, api_key)
 				So(err, ShouldBeNil)
 
 				secretValue, err := conjur.LoadPolicy("root", strings.NewReader(""))

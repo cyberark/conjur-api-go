@@ -32,26 +32,21 @@ func TestConfig_IsValid(t *testing.T) {
 	})
 }
 
-func TestLoadConfigFromEnv(t *testing.T) {
+func TestLoadFromEnv(t *testing.T) {
 	Convey("Given configuration and authentication credentials in env", t, func() {
 		e := ClearEnv()
 		defer e.RestoreEnv()
 
 		os.Setenv("CONJUR_ACCOUNT", "account")
-		os.Setenv("CONJUR_AUTHN_API_KEY", "authn-api-key")
 		os.Setenv("CONJUR_APPLIANCE_URL", "appliance-url")
-		os.Setenv("CONJUR_AUTHN_LOGIN", "authn-login")
-		os.Setenv("CONJUR_AUTHN_TOKEN_FILE", "authn-token-file")
 
 		Convey("Returns Config loaded with values from env", func() {
-			config := LoadConfigFromEnv()
+			config := &Config{}
+			LoadFromEnv(config)
 
-			So(config, ShouldResemble, Config{
+			So(*config, ShouldResemble, Config{
 				Account: "account",
-				APIKey: "authn-api-key",
 				ApplianceURL: "appliance-url",
-				Login: "authn-login",
-				AuthnTokenFile: "authn-token-file",
 			})
 		})
 	})

@@ -5,28 +5,37 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-func TestNewClient(t *testing.T) {
-	Convey("Given a valid configuration", t, func() {
-		config := Config{
-			ApplianceURL: "appliance-url",
-			Account: "account",
-		}
+func TestNewClientFromKey(t *testing.T) {
+	Convey("Has authenticator of type APIKeyAuthenticator", t, func() {
+		client, err := NewClientFromKey(Config{"account", "appliance-url"}, "login", "api-key" )
 
-		Convey("Return Conjur Client without error", func() {
-			conjur, err := NewClient(config)
-			So(err, ShouldBeNil)
-			So(conjur, ShouldNotBeNil)
-		})
+		So(err, ShouldBeNil)
+		So(client.authenticator, ShouldHaveSameTypeAs, &APIKeyAuthenticator{})
+	})
+}
 
-		Convey("Invalidate the configuration", func() {
-			config.Account = ""
+func TestNewClientFromTokenFile(t *testing.T) {
+	Convey("Has authenticator of type TokenFileAuthenticator", t, func() {
+		client, err := NewClientFromTokenFile(Config{"account", "appliance-url"}, "token-file" )
 
-			Convey("Return nil with error", func() {
-				conjur, err := NewClient(config)
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, "is required.")
-				So(conjur, ShouldBeNil)
-			})
-		})
+		So(err, ShouldBeNil)
+		So(client.authenticator, ShouldHaveSameTypeAs, &TokenFileAuthenticator{})
+	})
+}
+
+func Test_newClientWithAuthenticator(t *testing.T) {
+	Convey("Returns nil and error for invalid config", t, func() {
+		client, err := newClientWithAuthenticator(Config{}, nil )
+
+		So(client, ShouldBeNil)
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldContainSubstring, "required")
+	})
+
+	Convey("Returns client without error for valid config", t, func() {
+		client, err := newClientWithAuthenticator(Config{"account", "appliance-url"}, nil )
+
+		So(err, ShouldBeNil)
+		So(client, ShouldNotBeNil)
 	})
 }

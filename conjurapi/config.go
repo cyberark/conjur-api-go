@@ -9,10 +9,7 @@ import (
 
 type Config struct {
 	Account        string `validate:"required" env:"CONJUR_ACCOUNT"`
-	APIKey         string `env:"CONJUR_AUTHN_API_KEY"`
 	ApplianceURL   string `validate:"required" env:"CONJUR_APPLIANCE_URL"`
-	Login          string `env:"CONJUR_AUTHN_LOGIN"`
-	AuthnTokenFile string `env:"CONJUR_AUTHN_TOKEN_FILE"`
 }
 
 func (c *Config) validate() (error) {
@@ -40,12 +37,12 @@ func (c *Config) validate() (error) {
 	return fmt.Errorf("%s", strings.Join(errors, "\n"))
 }
 
-func LoadConfigFromEnv() Config {
+func LoadFromEnv(c interface{}) {
 	const tagName = "env"
-	c := Config{}
 
-	vElem := reflect.ValueOf(&c).Elem()
-	vType := reflect.ValueOf(c).Type()
+	vElem := reflect.ValueOf(c).Elem()
+	vType := vElem.Type()
+
 
 	for i := 0; i < vElem.NumField(); i++ {
 		typeField := vType.Field(i)
@@ -60,5 +57,4 @@ func LoadConfigFromEnv() Config {
 		}
 
 	}
-	return c
 }
