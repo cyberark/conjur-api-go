@@ -5,6 +5,8 @@ import (
 	"os"
 	"io/ioutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"fmt"
+	"math/rand"
 )
 
 func TestTokenFileAuthenticator_RefreshToken(t *testing.T) {
@@ -48,9 +50,9 @@ func TestTokenFileAuthenticator_RefreshToken(t *testing.T) {
 
 func TestTokenFileAuthenticator_NeedsTokenRefresh(t *testing.T) {
 	Convey("Given existent token filename", t, func() {
-		token_file :=	"/tmp/existent-token-file"
+		token_file := fmt.Sprintf("/tmp/existent-token-file-%v", rand.Intn(100))
 		token_file_contents := "token-from-file-contents"
-		os.Remove("/tmp/existent-token-file")
+		os.Remove(token_file)
 		go func() {
 			ioutil.WriteFile(token_file, []byte(token_file_contents), 0644)
 		}()
