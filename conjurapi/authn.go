@@ -18,7 +18,7 @@ func (c *Client) RefreshToken() (error) {
 		tokenBytes, err = c.authenticator.RefreshToken()
 		if err == nil {
 			if err = json.Unmarshal(tokenBytes, &token); err == nil && token.Key != "" {
-				c.authToken = &token
+				c.authToken = token
 			}
 		}
 	}
@@ -27,7 +27,7 @@ func (c *Client) RefreshToken() (error) {
 }
 
 func (c *Client) NeedsTokenRefresh() bool {
-	return c.authToken == nil || !c.authToken.ValidAtTime(time.Now()) || c.authenticator.NeedsTokenRefresh()
+	return &c.authToken == nil || !c.authToken.ValidAtTime(time.Now()) || c.authenticator.NeedsTokenRefresh()
 }
 
 func (c *Client) createAuthRequest(req *http.Request) (error) {

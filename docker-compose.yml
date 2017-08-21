@@ -1,10 +1,12 @@
 version: '2.1'
 services:
   postgres:
+    container_name: api-go-postgres
     image: postgres:9.3
 
-  possum:
-    image: registry.tld/possum:0.1.0-stable
+  conjur:
+    container_name: api-go-conjur
+    image: cyberark/conjur:0.1.0-stable
     command: server -a cucumber
     environment:
       DATABASE_URL: postgres://postgres@postgres/postgres
@@ -13,13 +15,17 @@ services:
       - postgres
 
   test:
+    container_name: api-go-test
     build: .
     ports:
         - "8080:8080"
     depends_on:
-      - possum
+      - conjur
     volumes:
-      - .:/go/src/github.com/conjurinc/api-go
+      - .:/go/src/github.com/cyberark/conjur-api-go
     environment:
-      CONJUR_APPLIANCE_URL: http://possum
+      CONJUR_APPLIANCE_URL: http://conjur
       CONJUR_ACCOUNT: cucumber
+      CONJUR_AUTHN_LOGIN: admin
+    entrypoint: sleep
+    command: infinity

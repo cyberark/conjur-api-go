@@ -12,9 +12,9 @@ type Authenticator interface {
 }
 
 type Client struct {
-	config     Config
-	authToken  *AuthnToken
-	httpclient *http.Client
+	config        Config
+	authToken     AuthnToken
+	httpclient    *http.Client
 	authenticator Authenticator
 }
 
@@ -54,11 +54,10 @@ func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Cl
 	}
 
 	return &Client{
-		config:     config,
-		authenticator:  authenticator,
+		config:        config,
+		authenticator: authenticator,
 		httpclient: &http.Client{
 			Timeout: time.Second * 10,
 		},
 	}, nil
 }
-
