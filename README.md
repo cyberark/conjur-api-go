@@ -5,7 +5,7 @@ Programmatic Golang access to the Conjur API.
 # Installation
 
 ```
-$ go get github.com/smartystreets/goconvey
+$ go get github.com/cyberark/conjur-api-go/conjurapi
 ```
 
 # Quick start
