@@ -12,18 +12,17 @@ rm -rf output
 mkdir -p output
 
 # Build test container & start the cluster
-docker-compose pull postgres possum
+docker-compose pull postgres conjur
 docker-compose build --pull
 docker-compose up -d
 
 # Delay to allow time for Possum to come up
 # TODO: remove this once we have HEALTHCHECK in place
-docker-compose run --rm test ./wait_for_server.sh
+docker-compose exec -T test ./wait_for_server.sh
 
-api_key=$(docker-compose exec -T possum rails r "print Credentials['cucumber:user:admin'].api_key")
+api_key=$(docker-compose exec -T conjur rails r "print Credentials['cucumber:user:admin'].api_key")
 
 # Execute tests
-docker-compose run --rm \
-  -e CONJUR_AUTHN_API_KEY="$api_key" \
-  -e CONJUR_AUTHN_LOGIN="admin" \
-  test bash -c 'go test -v ./... | tee output/junit.output && cat output/junit.output | go-junit-report > output/junit.xml'
+docker-compose exec -T test env \
+    CONJUR_AUTHN_API_KEY=$api_key \
+    bash -c 'go test -v ./... | tee output/junit.output && cat output/junit.output | go-junit-report > output/junit.xml'
