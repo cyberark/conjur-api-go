@@ -97,23 +97,23 @@ func (c *Config) mergeEnv() {
 }
 
 func LoadConfig() (Config) {
-	c := Config{}
+	config := Config{}
 
-	c.mergeYAML("/etc/conjur.conf")
+	config.mergeYAML("/etc/conjur.conf")
 
 	conjurrc := os.Getenv("CONJURRC")
 
 	if conjurrc != "" {
-		c.mergeYAML(conjurrc)
+		config.mergeYAML(conjurrc)
 	} else {
 		path := os.ExpandEnv("$HOME/.conjurrc")
-		c.mergeYAML(path)
+		config.mergeYAML(path)
 
 		path = os.ExpandEnv("$PWD/.conjurrc")
-		c.mergeYAML(path)
+		config.mergeYAML(path)
 	}
 
-	c.mergeEnv()
+	config.mergeEnv()
 
-	return c
+	return config
 }

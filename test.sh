@@ -25,4 +25,4 @@ api_key=$(docker-compose exec -T conjur rails r "print Credentials['cucumber:use
 # Execute tests
 docker-compose exec -T test env \
     CONJUR_AUTHN_API_KEY=$api_key \
-    bash -c 'go test -v ./... | tee output/junit.output && cat output/junit.output | go-junit-report > output/junit.xml'
+    bash -c 'go test -v "$(go list ./... | grep -v /vendor/)" | tee output/junit.output && cat output/junit.output | go-junit-report > output/junit.xml'
