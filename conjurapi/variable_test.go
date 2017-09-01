@@ -12,7 +12,7 @@ import (
 func TestClient_RetrieveSecret(t *testing.T) {
 	Convey("Given valid configuration and login credentials", t, func() {
 		config := &Config{}
-		LoadFromEnv(config)
+		config.mergeEnv()
 
 		login := os.Getenv("CONJUR_AUTHN_LOGIN")
 		api_key := os.Getenv("CONJUR_AUTHN_API_KEY")
@@ -25,7 +25,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 `, variable_identifier)
 
 
-			conjur, err := NewClientFromKey(*config, login, api_key)
+			conjur, err := NewClientFromKey(*config, LoginPair{login, api_key})
 			So(err, ShouldBeNil)
 
 			conjur.LoadPolicy(
@@ -46,7 +46,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 - !variable %s
 `, variable_identifier)
 
-			conjur, err := NewClientFromKey(*config, login, api_key)
+			conjur, err := NewClientFromKey(*config, LoginPair{login, api_key})
 			So(err, ShouldBeNil)
 
 			conjur.LoadPolicy(
@@ -62,7 +62,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 		})
 
 		Convey("Returns 404 on non-existent variable", func() {
-			conjur, err := NewClientFromKey(*config, login, api_key)
+			conjur, err := NewClientFromKey(*config, LoginPair{login, api_key})
 			So(err, ShouldBeNil)
 
 			secretValue, err := conjur.RetrieveSecret("not-existent-variable")
@@ -76,7 +76,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 			login = "invalid-user"
 
 			Convey("Returns 401", func() {
-				conjur, err := NewClientFromKey(*config, login, api_key)
+				conjur, err := NewClientFromKey(*config, LoginPair{login, api_key})
 				So(err, ShouldBeNil)
 
 				secretValue, err := conjur.RetrieveSecret("existent-or-non-existent-variable")

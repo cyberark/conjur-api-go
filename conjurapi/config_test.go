@@ -18,7 +18,7 @@ func TestConfig_IsValid(t *testing.T) {
 		So(err, ShouldBeNil)
 	})
 
-	Convey("Return concatenated error for invalid configuration", t, func() {
+	Convey("Return error for invalid configuration", t, func() {
 		config := Config{
 			Account:      "account",
 		}
@@ -28,7 +28,7 @@ func TestConfig_IsValid(t *testing.T) {
 
 		errString := err.Error()
 
-		So(errString, ShouldContainSubstring, "ApplianceURL is required.")
+		So(errString, ShouldContainSubstring, "Must specify an ApplianceURL")
 	})
 }
 
@@ -42,7 +42,7 @@ func TestLoadFromEnv(t *testing.T) {
 
 		Convey("Returns Config loaded with values from env", func() {
 			config := &Config{}
-			LoadFromEnv(config)
+			config.mergeEnv()
 
 			So(*config, ShouldResemble, Config{
 				Account: "account",

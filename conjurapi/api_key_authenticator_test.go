@@ -2,22 +2,29 @@ package conjurapi
 
 import (
 	"testing"
-	"os"
 	. "github.com/smartystreets/goconvey/convey"
+	"fmt"
 )
 
 func TestAPIKeyAuthenticator_RefreshToken(t *testing.T) {
 	Convey("Given valid credentials", t, func() {
-		AuthnURLTemplate := AuthnURL(os.Getenv("CONJUR_APPLIANCE_URL"), os.Getenv("CONJUR_ACCOUNT"))
-		Login := os.Getenv("CONJUR_AUTHN_LOGIN")
-		APIKey := os.Getenv("CONJUR_AUTHN_API_KEY")
-
+		Login := "valid-login"
+		APIKey := "valid-api-key"
+		Authenticate := func(loginPair LoginPair) ([]byte, error) {
+			if loginPair.Login == "valid-login" && loginPair.APIKey == "valid-api-key" {
+				return []byte("data"), nil
+			} else {
+				return nil, fmt.Errorf("401 Invalid")
+			}
+		}
 
 		Convey("Return the token bytes", func() {
 			authenticator := APIKeyAuthenticator{
-				AuthnURLTemplate: AuthnURLTemplate,
-				Login: Login,
-				APIKey: APIKey,
+				Authenticate: Authenticate,
+				LoginPair: LoginPair{
+					Login: Login,
+					APIKey: APIKey,
+				},
 			}
 
 			token, err := authenticator.RefreshToken()
@@ -31,9 +38,11 @@ func TestAPIKeyAuthenticator_RefreshToken(t *testing.T) {
 
 			Convey("Return nil with error", func() {
 				authenticator := APIKeyAuthenticator{
-					AuthnURLTemplate: AuthnURLTemplate,
-					Login: Login,
-					APIKey: APIKey,
+					Authenticate: Authenticate,
+					LoginPair: LoginPair{
+						Login: Login,
+						APIKey: APIKey,
+					},
 				}
 
 				token, err := authenticator.RefreshToken()
