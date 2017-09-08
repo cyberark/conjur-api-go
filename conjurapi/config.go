@@ -15,6 +15,7 @@ type Config struct {
 	SSLCert      string
 	SSLCertPath  string `yaml:"cert_file"`
 	Https        bool
+	V4           bool
 }
 
 func (c *Config) validate() (error) {
@@ -22,6 +23,10 @@ func (c *Config) validate() (error) {
 
 	if c.ApplianceURL == "" {
 		errors = append(errors, fmt.Sprintf("Must specify an ApplianceURL in %v", c))
+	}
+
+	if c.Account == "" {
+		errors = append(errors, fmt.Sprintf("Must specify an Account in %v", c))
 	}
 
 	c.Https = c.SSLCertPath != "" || c.SSLCert != ""
@@ -64,6 +69,7 @@ func (c *Config) merge(o *Config) {
 	c.SSLCert = mergeValue(c.SSLCert, o.SSLCert)
 	c.SSLCertPath = mergeValue(c.SSLCertPath, o.SSLCertPath)
 	c.NetRCPath = mergeValue(c.NetRCPath, o.NetRCPath)
+	c.V4 = c.V4 || o.V4
 }
 
 func (c *Config) mergeYAML(filename string) {
@@ -91,6 +97,7 @@ func (c *Config) mergeEnv() {
 		SSLCertPath:  os.Getenv("CONJUR_CERT_FILE"),
 		Account:      os.Getenv("CONJUR_ACCOUNT"),
 		NetRCPath:    os.Getenv("CONJUR_NETRC_PATH"),
+		V4:           os.Getenv("CONJUR_MAJOR_VERSION") == "4",
 	}
 
 	c.merge(&env)

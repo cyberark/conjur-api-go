@@ -6,6 +6,7 @@ import (
 	"os"
 	"fmt"
 	"strings"
+	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 )
 
 func TestClient_LoadPolicy(t *testing.T) {
@@ -22,7 +23,7 @@ func TestClient_LoadPolicy(t *testing.T) {
 - !user %s
 `, variable_identifier)
 
-			conjur, err := NewClientFromKey(*config, LoginPair{login, api_key})
+			conjur, err := NewClientFromKey(*config, authn.LoginPair{login, api_key})
 			So(err, ShouldBeNil)
 
 			resp, err := conjur.LoadPolicy(
@@ -31,20 +32,20 @@ func TestClient_LoadPolicy(t *testing.T) {
 			)
 
 			So(err, ShouldBeNil)
-			So(resp, ShouldContainSubstring, `{"created_roles":{"cucumber:user:alice":`)
+			So(string(resp), ShouldContainSubstring, `{"created_roles":{"cucumber:user:alice":`)
 		})
 
 		Convey("Given invalid login credentials", func() {
 			login = "invalid-user"
 
 			Convey("Returns 401", func() {
-				conjur, err := NewClientFromKey(*config, LoginPair{login, api_key})
+				conjur, err := NewClientFromKey(*config, authn.LoginPair{login, api_key})
 				So(err, ShouldBeNil)
 
-				secretValue, err := conjur.LoadPolicy("root", strings.NewReader(""))
+				resp, err := conjur.LoadPolicy("root", strings.NewReader(""))
 
 				So(err, ShouldNotBeNil)
-				So(secretValue, ShouldEqual, "")
+				So(string(resp), ShouldEqual, "")
 				So(err.Error(), ShouldContainSubstring, "401")
 			})
 

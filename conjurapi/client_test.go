@@ -3,17 +3,18 @@ package conjurapi
 import (
 	"testing"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 )
 
 func TestNewClientFromKey(t *testing.T) {
 	Convey("Has authenticator of type APIKeyAuthenticator", t, func() {
 		client, err := NewClientFromKey(
 			Config{Account: "account", ApplianceURL: "appliance-url"},
-			LoginPair{"login","api-key"},
+			authn.LoginPair{"login","api-key"},
 		)
 
 		So(err, ShouldBeNil)
-		So(client.authenticator, ShouldHaveSameTypeAs, &APIKeyAuthenticator{})
+		So(client.authenticator, ShouldHaveSameTypeAs, &authn.APIKeyAuthenticator{})
 	})
 }
 
@@ -22,7 +23,7 @@ func TestNewClientFromTokenFile(t *testing.T) {
 		client, err := NewClientFromTokenFile(Config{Account: "account", ApplianceURL: "appliance-url"}, "token-file" )
 
 		So(err, ShouldBeNil)
-		So(client.authenticator, ShouldHaveSameTypeAs, &TokenFileAuthenticator{})
+		So(client.authenticator, ShouldHaveSameTypeAs, &authn.TokenFileAuthenticator{})
 	})
 }
 
