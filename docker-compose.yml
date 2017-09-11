@@ -14,11 +14,19 @@ services:
     depends_on:
       - postgres
 
+  cuke-master:
+    container_name: api-go-conjur-v4
+    image: registry.tld/conjur-appliance-cuke-master:4.9-stable
+    security_opt:
+      - seccomp:unconfined # --security-opt seccomp=unconfined
+    ports:
+      - 443
+
   test:
     container_name: api-go-test
     build: .
     ports:
-        - "8080:8080"
+        - 8080
     depends_on:
       - conjur
     volumes:
@@ -27,5 +35,9 @@ services:
       CONJUR_APPLIANCE_URL: http://conjur
       CONJUR_ACCOUNT: cucumber
       CONJUR_AUTHN_LOGIN: admin
+      CONJUR_V4_APPLIANCE_URL: https://cuke-master/api
+      CONJUR_V4_HEALTH_URL: https://cuke-master/health
+      CONJUR_V4_ACCOUNT: cucumber
+      CONJUR_V4_AUTHN_LOGIN: admin
     entrypoint: sleep
     command: infinity
