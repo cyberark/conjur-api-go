@@ -6,16 +6,9 @@ pipeline {
   options {
     timestamps()
     buildDiscarder(logRotator(numToKeepStr: '30'))
-    skipDefaultCheckout()  // see 'post' below, once perms are fixed this is no longer needed
   }
 
   stages {
-    stage('Checkout SCM') {
-      steps {
-        checkout scm
-      }
-    }
-
     stage('Run tests') {
       steps {
         sh './test.sh'
@@ -33,7 +26,7 @@ pipeline {
 
   post {
     always {
-      sh 'sudo chown -R jenkins:jenkins .'
+      sh 'docker run -i --rm -v $PWD:/src -w /src alpine/git clean -fxd'
       deleteDir()
     }
     failure {
