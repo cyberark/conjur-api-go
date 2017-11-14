@@ -22,12 +22,7 @@ func (c *Client) RetrieveSecret(variableIdentifier string) ([]byte, error) {
 		return nil, err
 	}
 
-	err = c.createAuthRequest(req)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.SubmitRequest(req)
 	if err != nil {
 		return nil, err
 	}
@@ -45,12 +40,7 @@ func (c *Client) AddSecret(variableIdentifier string, secretValue string) ([]byt
 		return nil, err
 	}
 
-	err = c.createAuthRequest(req)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.SubmitRequest(req)
 	if err != nil {
 		return nil, err
 	}

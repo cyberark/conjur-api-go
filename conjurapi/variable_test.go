@@ -41,6 +41,33 @@ func TestClient_RetrieveSecret(t *testing.T) {
 			So(string(secretValue), ShouldEqual, secret_value)
 		})
 
+    Convey("Token authenticator can be used to fetch a secret", t, func() {
+      variable_identifier := "existent-variable-with-defined-value"
+      secret_value := fmt.Sprintf("secret-value-%v", rand.Intn(123456))
+      policy := fmt.Sprintf(`
+  - !variable %s
+  `, variable_identifier)
+
+      conjur, err := NewClientFromKey(*config, authn.LoginPair{login, api_key})
+      So(err, ShouldBeNil)
+
+      conjur.LoadPolicy(
+        "root",
+        strings.NewReader(policy),
+      )
+      conjur.AddSecret(variable_identifier, secret_value)
+
+      token, err := conjur.authenticator.RefreshToken()
+      So(err, ShouldBeNil)
+      
+      conjur, err = NewClientFromToken(*config, string(token))
+
+      secretValue, err := conjur.RetrieveSecret(variable_identifier)
+
+      So(err, ShouldBeNil)
+      So(string(secretValue), ShouldEqual, secret_value)
+    })
+
 		Convey("Returns 404 on existent variable with undefined value", func() {
 			variable_identifier := "existent-variable-with-undefined-value"
 			policy := fmt.Sprintf(`

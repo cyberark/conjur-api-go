@@ -16,7 +16,7 @@ services:
 
   cuke-master:
     container_name: api-go-conjur-v4
-    image: registry.tld/conjur-appliance-cuke-master:4.9-stable
+    image: registry2.itci.conjur.net/conjur-appliance-cuke-master:4.9-stable
     security_opt:
       - seccomp:unconfined # --security-opt seccomp=unconfined
     ports:
