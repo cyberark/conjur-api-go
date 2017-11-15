@@ -14,6 +14,12 @@ services:
     depends_on:
       - postgres
 
+  cli5:
+    image: conjurinc/cli5
+    environment:
+      CONJUR_APPLIANCE_URL: http://conjur
+      CONJUR_ACCOUNT: cucumber
+
   cuke-master:
     container_name: api-go-conjur-v4
     image: registry2.itci.conjur.net/conjur-appliance-cuke-master:4.9-stable

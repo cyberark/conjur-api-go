@@ -25,7 +25,6 @@ func TestClient_RetrieveSecret(t *testing.T) {
 - !variable %s
 `, variable_identifier)
 
-
 			conjur, err := NewClientFromKey(*config, authn.LoginPair{login, api_key})
 			So(err, ShouldBeNil)
 
@@ -33,7 +32,8 @@ func TestClient_RetrieveSecret(t *testing.T) {
 				"root",
 				strings.NewReader(policy),
 			)
-			conjur.AddSecret(variable_identifier, secret_value)
+			err = conjur.AddSecret(variable_identifier, secret_value)
+			So(err, ShouldBeNil)
 
 			secretValue, err := conjur.RetrieveSecret(variable_identifier)
 
@@ -41,7 +41,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 			So(string(secretValue), ShouldEqual, secret_value)
 		})
 
-    Convey("Token authenticator can be used to fetch a secret", t, func() {
+    Convey("Token authenticator can be used to fetch a secret", func() {
       variable_identifier := "existent-variable-with-defined-value"
       secret_value := fmt.Sprintf("secret-value-%v", rand.Intn(123456))
       policy := fmt.Sprintf(`
@@ -59,7 +59,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 
       token, err := conjur.authenticator.RefreshToken()
       So(err, ShouldBeNil)
-      
+
       conjur, err = NewClientFromToken(*config, string(token))
 
       secretValue, err := conjur.RetrieveSecret(variable_identifier)
@@ -131,7 +131,6 @@ func TestClient_RetrieveSecret(t *testing.T) {
 		Convey("Returns existent variable's defined value", func() {
 			variable_identifier := "existent-variable-with-defined-value"
 			secret_value := "existent-variable-defined-value"
-
 
 			conjur, err := NewClientFromKey(*config, authn.LoginPair{login, api_key})
 			So(err, ShouldBeNil)

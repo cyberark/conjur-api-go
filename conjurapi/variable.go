@@ -34,15 +34,15 @@ func (c *Client) RetrieveSecret(variableIdentifier string) ([]byte, error) {
 	}
 }
 
-func (c *Client) AddSecret(variableIdentifier string, secretValue string) ([]byte, error) {
+func (c *Client) AddSecret(variableIdentifier string, secretValue string) error {
 	req, err := wrapper.AddSecretRequest(c.config.ApplianceURL, c.config.Account, variableIdentifier, secretValue)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	resp, err := c.SubmitRequest(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	return wrapper.AddSecretResponse(variableIdentifier, resp)
