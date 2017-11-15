@@ -3,7 +3,6 @@ package conjurapi
 import (
 	"net/http"
 	"encoding/base64"
-	"time"
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 	"github.com/cyberark/conjur-api-go/conjurapi/wrapper"
 	"github.com/cyberark/conjur-api-go/conjurapi/wrapper_v4"
