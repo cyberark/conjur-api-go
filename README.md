@@ -28,10 +28,7 @@ import (
 func Main() {
     variableIdentifier := "db/secret"
     
-    config := conjurapi.Config{
-        Account:      os.Getenv("CONJUR_ACCOUNT"),
-        ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL"),
-    }
+    config := conjurapi.LoadConfig()
             
     conjur, err := conjurapi.NewClientFromKey(
         config: config,
