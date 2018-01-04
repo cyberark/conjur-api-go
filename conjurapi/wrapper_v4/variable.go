@@ -4,7 +4,8 @@ import (
 	"net/url"
 	"fmt"
 	"net/http"
-	"github.com/cyberark/conjur-api-go/conjurapi/wrapper"
+
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
 func RetrieveSecretRequest(applianceURL, variableIdentifier string) (*http.Request, error) {
@@ -15,8 +16,8 @@ func RetrieveSecretRequest(applianceURL, variableIdentifier string) (*http.Reque
 	)
 }
 
-func RetrieveSecretResponse(variableIdentifier string, resp *http.Response) ([]byte, error) {
-	return wrapper.RetrieveSecretResponse(variableIdentifier, resp)
+func RetrieveSecretResponse(resp *http.Response) ([]byte, error) {
+	return response.SecretDataResponse(resp)
 }
 
 func VariableURL(applianceURL, variableIdentifier string) string {

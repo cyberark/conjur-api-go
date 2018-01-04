@@ -8,17 +8,18 @@ import (
 	"math/rand"
 	"strings"
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
 func TestClient_RetrieveSecret(t *testing.T) {
-	Convey("Given valid configuration and login credentials", t, func() {
+	Convey("V5", t, func() {
 		config := &Config{}
 		config.mergeEnv()
 
 		login := os.Getenv("CONJUR_AUTHN_LOGIN")
 		api_key := os.Getenv("CONJUR_AUTHN_API_KEY")
 
-		Convey("Returns existent variable's defined value", func() {
+		Convey("On a populated secret", func() {
 			variable_identifier := "existent-variable-with-defined-value"
 			secret_value := fmt.Sprintf("secret-value-%v", rand.Intn(123456))
 			policy := fmt.Sprintf(`
@@ -35,10 +36,40 @@ func TestClient_RetrieveSecret(t *testing.T) {
 			err = conjur.AddSecret(variable_identifier, secret_value)
 			So(err, ShouldBeNil)
 
-			secretValue, err := conjur.RetrieveSecret(variable_identifier)
+			Convey("Returns existent variable's defined value", func() {
+				secretValue, err := conjur.RetrieveSecret(variable_identifier)
 
-			So(err, ShouldBeNil)
-			So(string(secretValue), ShouldEqual, secret_value)
+				So(err, ShouldBeNil)
+				So(string(secretValue), ShouldEqual, secret_value)
+			})
+
+			Convey("Handles a fully qualified variable id", func() {
+				secretValue, err := conjur.RetrieveSecret("cucumber:variable:" + variable_identifier)
+
+				So(err, ShouldBeNil)
+				So(string(secretValue), ShouldEqual, secret_value)
+			})
+
+			Convey("Prepends the account name automatically", func() {
+				secretValue, err := conjur.RetrieveSecret("variable:" + variable_identifier)
+
+				So(err, ShouldBeNil)
+				So(string(secretValue), ShouldEqual, secret_value)
+			})
+
+			Convey("Rejects an id from the wrong account", func() {
+				_, err := conjur.RetrieveSecret("foobar:variable:" + variable_identifier)
+
+				conjurError := err.(*response.ConjurError)
+				So(conjurError.Code, ShouldEqual, 404)
+			})
+
+			Convey("Rejects an id with the wrong kind", func() {
+				_, err := conjur.RetrieveSecret("cucumber:waffle:" + variable_identifier)
+
+				conjurError := err.(*response.ConjurError)
+				So(conjurError.Code, ShouldEqual, 404)
+			})
 		})
 
     Convey("Token authenticator can be used to fetch a secret", func() {
@@ -86,7 +117,10 @@ func TestClient_RetrieveSecret(t *testing.T) {
 
 			So(err, ShouldNotBeNil)
 			So(string(secretValue), ShouldEqual, "")
-			So(err.Error(), ShouldContainSubstring, "404")
+			So(err.Error(), ShouldEqual, "Requested version does not exist")
+			conjurError := err.(*response.ConjurError)
+			So(conjurError.Code, ShouldEqual, 404)
+			So(conjurError.Details.Code, ShouldEqual, "not_found")
 		})
 
 		Convey("Returns 404 on non-existent variable", func() {
@@ -97,7 +131,10 @@ func TestClient_RetrieveSecret(t *testing.T) {
 
 			So(err, ShouldNotBeNil)
 			So(string(secretValue), ShouldEqual, "")
-			So(err.Error(), ShouldContainSubstring, "404")
+			So(err.Error(), ShouldEqual, "Variable 'non-existent-variable' not found in account 'cucumber'")
+			conjurError := err.(*response.ConjurError)
+			So(conjurError.Code, ShouldEqual, 404)
+			So(conjurError.Details.Code, ShouldEqual, "not_found")
 		})
 
 		Convey("Given configuration has invalid login credentials", func() {
@@ -110,14 +147,15 @@ func TestClient_RetrieveSecret(t *testing.T) {
 				secretValue, err := conjur.RetrieveSecret("existent-or-non-existent-variable")
 
 				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "")
 				So(string(secretValue), ShouldEqual, "")
-				So(err.Error(), ShouldContainSubstring, "401")
+				conjurError := err.(*response.ConjurError)
+				So(conjurError.Code, ShouldEqual, 401)
 			})
-
 		})
 	})
 
-	Convey("V4 Given valid configuration and login credentials", t, func() {
+	Convey("V4", t, func() {
 		config := &Config{
 			ApplianceURL: os.Getenv("CONJUR_V4_APPLIANCE_URL"),
 			SSLCert:      os.Getenv("CONJUR_V4_SSL_CERTIFICATE"),
@@ -151,7 +189,9 @@ func TestClient_RetrieveSecret(t *testing.T) {
 
 			So(err, ShouldNotBeNil)
 			So(string(secretValue), ShouldEqual, "")
-			So(err.Error(), ShouldContainSubstring, "404")
+			So(err.Error(), ShouldEqual, "")
+			conjurError := err.(*response.ConjurError)
+			So(conjurError.Code, ShouldEqual, 404)
 		})
 
 		Convey("Returns 404 on non-existent variable", func() {
@@ -161,8 +201,10 @@ func TestClient_RetrieveSecret(t *testing.T) {
 			secretValue, err := conjur.RetrieveSecret("non-existent-variable")
 
 			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, "variable 'non-existent-variable' not found")
 			So(string(secretValue), ShouldEqual, "")
-			So(err.Error(), ShouldContainSubstring, "404")
+			conjurError := err.(*response.ConjurError)
+			So(conjurError.Code, ShouldEqual, 404)
 		})
 
 		Convey("Given configuration has invalid login credentials", func() {
@@ -176,10 +218,10 @@ func TestClient_RetrieveSecret(t *testing.T) {
 
 				So(err, ShouldNotBeNil)
 				So(string(secretValue), ShouldEqual, "")
-				So(err.Error(), ShouldContainSubstring, "401")
+				So(err.Error(), ShouldEqual, "")
+				conjurError := err.(*response.ConjurError)
+				So(conjurError.Code, ShouldEqual, 401)
 			})
-
 		})
 	})
-
 }

@@ -10,7 +10,7 @@ docker-compose build --pull
 docker-compose up -d
 docker-compose exec -T test ./wait_for_server.sh
 
-api_key=$(docker-compose exec -T conjur rails r "print Credentials['cucumber:user:admin'].api_key")
+api_key=$(docker-compose exec -T conjur conjurctl role retrieve-key cucumber:user:admin | tr -d '\r')
 
 docker-compose exec -T cuke-master bash -c "conjur authn login -u admin -p secret"
 docker-compose exec -T cuke-master bash -c "conjur variable create existent-variable-with-undefined-value"

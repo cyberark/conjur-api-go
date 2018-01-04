@@ -3,11 +3,16 @@ package wrapper
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"io"
+	"strings"
+
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
-func LoadPolicyRequest(applianceURL string, account string, policyIdentifier string, policy io.Reader) (*http.Request, error) {
-	policyUrl := fmt.Sprintf("%s/policies/%s/policy/%s", applianceURL, account, policyIdentifier)
+func LoadPolicyRequest(applianceURL string, policyId string, policy io.Reader) (*http.Request, error) {
+	tokens := strings.SplitN(policyId, ":", 3)
+	policyUrl := fmt.Sprintf("%s/policies/%s/%s/%s", applianceURL, tokens[0], tokens[1], url.QueryEscape(tokens[2]))
 
 	return http.NewRequest(
 		"PUT",
@@ -16,12 +21,7 @@ func LoadPolicyRequest(applianceURL string, account string, policyIdentifier str
 	)
 }
 
-func LoadPolicyResponse(resp *http.Response) ([]byte, error) {
-	switch resp.StatusCode {
-	case 201:
-		return ByteResponseTransformer(resp)
-	default:
-		return nil, fmt.Errorf("%v: %s", resp.StatusCode, resp.Status)
-	}
+func LoadPolicyResponse(resp *http.Response) (map[string]interface{}, error) {
+	obj := make(map[string]interface{})
+	return obj, response.JSONResponse(resp, &obj)
 }
-
