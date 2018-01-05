@@ -30,6 +30,10 @@ type Client struct {
 type Router interface {
 	AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, error)
 
+	RotateAPIKeyRequest(roleId string) (*http.Request, error)
+
+	CheckPermissionRequest(resourceId, privilege string) (*http.Request, error)
+
 	AddSecretRequest(variableId, secretValue string) (*http.Request, error)
 
 	RetrieveSecretRequest(variableId string) (*http.Request, error)

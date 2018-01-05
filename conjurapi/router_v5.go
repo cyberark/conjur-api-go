@@ -26,6 +26,30 @@ func (self RouterV5) AuthenticateRequest(loginPair authn.LoginPair) (*http.Reque
   return req, nil
 }
 
+func (self RouterV5) RotateAPIKeyRequest(roleId string) (*http.Request, error) {
+  rotateUrl := fmt.Sprintf("%s/authn/%s/api_key?role=%s", self.Config.ApplianceURL, self.Config.Account, roleId)
+
+  return http.NewRequest(
+    "PUT",
+    rotateUrl,
+    nil,
+  )
+}
+
+func (self RouterV5) CheckPermissionRequest(resourceId, privilege string) (*http.Request, error) {
+  tokens := strings.SplitN(resourceId, ":", 3)
+  if len(tokens) != 3 {
+    return nil, fmt.Errorf("Resource id '%s' must be fully qualified", resourceId)
+  }
+  checkUrl := fmt.Sprintf("%s/resources/%s/%s/%s?check=true&privilege=%s", self.Config.ApplianceURL, tokens[0], tokens[1], url.QueryEscape(tokens[2]), url.QueryEscape(privilege))
+
+  return http.NewRequest(
+    "GET",
+    checkUrl,
+    nil,
+  )
+}
+
 func (self RouterV5) LoadPolicyRequest(policyId string, policy io.Reader) (*http.Request, error) {
 	policyId = makeFullId(self.Config.Account, "policy", policyId)
 

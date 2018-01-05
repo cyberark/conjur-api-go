@@ -60,3 +60,17 @@ func (c *Client) Authenticate(loginPair authn.LoginPair) ([]byte, error) {
 
 	return response.SecretDataResponse(resp)
 }
+
+func (c *Client) RotateAPIKey(roleId string) ([]byte, error) {
+	req, err := c.router.RotateAPIKeyRequest(roleId)
+	if err != nil {
+		return nil, err
+	}
+
+  resp, err := c.SubmitRequest(req)
+  if err != nil {
+    return nil, err
+  }
+
+	return response.SecretDataResponse(resp)
+}
