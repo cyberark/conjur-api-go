@@ -1,6 +1,7 @@
 package conjurapi
 
 import (
+	"io"
 	"net/http"
 	"time"
 	"fmt"
@@ -23,6 +24,17 @@ type Client struct {
 	authToken     authn.AuthnToken
 	httpClient    *http.Client
 	authenticator Authenticator
+	router        Router
+}
+
+type Router interface {
+	AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, error)
+
+	AddSecretRequest(variableId, secretValue string) (*http.Request, error)
+
+	RetrieveSecretRequest(variableId string) (*http.Request, error)
+
+	LoadPolicyRequest(policyId string, policy io.Reader) (*http.Request, error)
 }
 
 func NewClientFromKey(config Config, loginPair authn.LoginPair) (*Client, error) {
@@ -142,6 +154,7 @@ func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Cl
 	}
 
 	var httpClient *http.Client
+	var router Router
 
 	if config.Https {
 		cert, err := config.ReadSSLCert()
@@ -156,10 +169,17 @@ func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Cl
 		httpClient = &http.Client{Timeout: time.Second * 10}
 	}
 
+	if config.V4 {
+		router = RouterV4{&config}
+	} else {
+		router = RouterV5{&config}
+	}
+
 	return &Client{
 		config:        config,
 		authenticator: authenticator,
-		httpClient: httpClient,
+		httpClient:    httpClient,
+		router:        router,
 	}, nil
 }
 

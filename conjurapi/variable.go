@@ -1,25 +1,11 @@
 package conjurapi
 
 import (
-	"fmt"
-	"net/http"
-
-	"github.com/cyberark/conjur-api-go/conjurapi/wrapper"
-	"github.com/cyberark/conjur-api-go/conjurapi/wrapper_v4"
+	"github.com/cyberark/conjur-api-go/conjurapi/response"	
 )
 
 func (c *Client) RetrieveSecret(variableId string) ([]byte, error) {
-	var (
-		req *http.Request
-		err error
-	)
-
-	if c.config.V4 {
-		req, err = wrapper_v4.RetrieveSecretRequest(c.config.ApplianceURL, variableId)
-	} else {
-		req, err = wrapper.RetrieveSecretRequest(c.config.ApplianceURL, makeFullId(c.config.Account, "variable", variableId))
-	}
-
+	req, err := c.router.RetrieveSecretRequest(variableId)
 	if err != nil {
 		return nil, err
 	}
@@ -29,25 +15,11 @@ func (c *Client) RetrieveSecret(variableId string) ([]byte, error) {
 		return nil, err
 	}
 
-	if c.config.V4 {
-		return wrapper_v4.RetrieveSecretResponse(resp)
-	} else {
-		return wrapper.RetrieveSecretResponse(resp)
-	}
+	return response.SecretDataResponse(resp)
 }
 
 func (c *Client) AddSecret(variableId string, secretValue string) error {
-	var (
-		req *http.Request
-		err error
-	)
-
-	if c.config.V4 {
-		err = fmt.Errorf("AddSecret is not supported for Conjur V4")
-	} else {
-		req, err = wrapper.AddSecretRequest(c.config.ApplianceURL, makeFullId(c.config.Account, "variable", variableId), secretValue)
-	}
-
+	req, err := c.router.AddSecretRequest(variableId, secretValue)
 	if err != nil {
 		return err
 	}
@@ -57,5 +29,5 @@ func (c *Client) AddSecret(variableId string, secretValue string) error {
 		return err
 	}
 
-	return wrapper.AddSecretResponse(resp)
+	return response.EmptyResponse(resp)
 }

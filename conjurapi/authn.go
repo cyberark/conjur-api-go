@@ -6,8 +6,7 @@ import (
 	"net/http"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
-	"github.com/cyberark/conjur-api-go/conjurapi/wrapper"
-	"github.com/cyberark/conjur-api-go/conjurapi/wrapper_v4"
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
 func (c *Client) RefreshToken() (err error) {
@@ -49,17 +48,7 @@ func (c *Client) createAuthRequest(req *http.Request) (error) {
 }
 
 func (c *Client) Authenticate(loginPair authn.LoginPair) ([]byte, error) {
-	var (
-		req *http.Request
-		err error
-	)
-
-	if c.config.V4 {
-		req, err = wrapper_v4.AuthenticateRequest(c.config.ApplianceURL, loginPair)
-	} else {
-		req, err = wrapper.AuthenticateRequest(c.config.ApplianceURL, c.config.Account, loginPair)
-	}
-
+	req, err := c.router.AuthenticateRequest(loginPair)
 	if err != nil {
 		return nil, err
 	}
@@ -69,9 +58,5 @@ func (c *Client) Authenticate(loginPair authn.LoginPair) ([]byte, error) {
 		return nil, err
 	}
 
-	if c.config.V4 {
-		return wrapper_v4.AuthenticateResponse(resp)
-	} else {
-		return wrapper.AuthenticateResponse(resp)
-	}
+	return response.SecretDataResponse(resp)
 }
