@@ -2,9 +2,9 @@ package conjurapi
 
 import (
 	"fmt"
-	"os"
-	"io/ioutil"
 	"gopkg.in/yaml.v1"
+	"io/ioutil"
+	"os"
 	"strings"
 )
 
@@ -18,7 +18,7 @@ type Config struct {
 	V4           bool
 }
 
-func (c *Config) validate() (error) {
+func (c *Config) validate() error {
 	errors := []string{}
 
 	if c.ApplianceURL == "" {
@@ -103,7 +103,7 @@ func (c *Config) mergeEnv() {
 	c.merge(&env)
 }
 
-func LoadConfig() (Config) {
+func LoadConfig() Config {
 	config := Config{}
 
 	config.mergeYAML("/etc/conjur.conf")

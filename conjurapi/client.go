@@ -1,14 +1,15 @@
 package conjurapi
 
 import (
-	"io"
-	"net/http"
-	"time"
-	"fmt"
-	"crypto/x509"
 	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/bgentry/go-netrc/netrc"
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
@@ -49,7 +50,13 @@ func NewClientFromKey(config Config, loginPair authn.LoginPair) (*Client, error)
 		config,
 		authenticator,
 	)
-	authenticator.Authenticate = client.Authenticate
+	authenticator.Authenticate = func(loginPair authn.LoginPair) ([]byte, error) {
+		response, err := client.Authenticate(loginPair)
+		if err != nil {
+			return nil, err
+		}
+		return ReadResponseBody(response)
+	}
 	return client, err
 }
 
@@ -64,7 +71,7 @@ func NewClientFromTokenFile(config Config, tokenFile string) (*Client, error) {
 	return newClientWithAuthenticator(
 		config,
 		&authn.TokenFileAuthenticator{
-			TokenFile: tokenFile,
+			TokenFile:   tokenFile,
 			MaxWaitTime: -1,
 		},
 	)
@@ -72,7 +79,7 @@ func NewClientFromTokenFile(config Config, tokenFile string) (*Client, error) {
 
 func LoginPairFromEnv() (*authn.LoginPair, error) {
 	return &authn.LoginPair{
-		Login: os.Getenv("CONJUR_AUTHN_LOGIN"),
+		Login:  os.Getenv("CONJUR_AUTHN_LOGIN"),
 		APIKey: os.Getenv("CONJUR_AUTHN_API_KEY"),
 	}, nil
 }
@@ -104,17 +111,17 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 	}
 
 	authnTokenFile := os.Getenv("CONJUR_AUTHN_TOKEN_FILE")
-	if authnTokenFile != ""  {
+	if authnTokenFile != "" {
 		return NewClientFromTokenFile(config, authnTokenFile)
 	}
 
 	loginPair, err := LoginPairFromEnv()
-	if err == nil && loginPair.Login != "" && loginPair.APIKey != ""  {
+	if err == nil && loginPair.Login != "" && loginPair.APIKey != "" {
 		return NewClientFromKey(config, *loginPair)
 	}
 
 	loginPair, err = LoginPairFromNetRC(config)
-	if err == nil && loginPair.Login != "" && loginPair.APIKey != ""  {
+	if err == nil && loginPair.Login != "" && loginPair.APIKey != "" {
 		return NewClientFromKey(config, *loginPair)
 	}
 
@@ -135,13 +142,19 @@ func (c *Client) SubmitRequest(req *http.Request) (resp *http.Response, err erro
 	return
 }
 
-func makeFullId(account, kind, id string) (string) {
+// Fully reads a response and closes it.
+func ReadResponseBody(response io.ReadCloser) ([]byte, error) {
+	defer response.Close()
+	return ioutil.ReadAll(response)
+}
+
+func makeFullId(account, kind, id string) string {
 	tokens := strings.SplitN(id, ":", 3)
 	switch len(tokens) {
-		case 1:
-			tokens = []string{ account, kind, tokens[0] }
-		case 2: 
-			tokens = []string{ account, tokens[0], tokens[1] }
+	case 1:
+		tokens = []string{account, kind, tokens[0]}
+	case 2:
+		tokens = []string{account, tokens[0], tokens[1]}
 	}
 	return strings.Join(tokens, ":")
 }

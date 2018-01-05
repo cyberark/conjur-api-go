@@ -3,6 +3,7 @@ package conjurapi
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
@@ -30,11 +31,11 @@ func (c *Client) RefreshToken() (err error) {
 
 func (c *Client) NeedsTokenRefresh() bool {
 	return c.authToken == nil ||
-		c.authToken.ShouldRefresh() || 
+		c.authToken.ShouldRefresh() ||
 		c.authenticator.NeedsTokenRefresh()
 }
 
-func (c *Client) createAuthRequest(req *http.Request) (error) {
+func (c *Client) createAuthRequest(req *http.Request) error {
 	if err := c.RefreshToken(); err != nil {
 		return err
 	}
@@ -47,7 +48,7 @@ func (c *Client) createAuthRequest(req *http.Request) (error) {
 	return nil
 }
 
-func (c *Client) Authenticate(loginPair authn.LoginPair) ([]byte, error) {
+func (c *Client) Authenticate(loginPair authn.LoginPair) (io.ReadCloser, error) {
 	req, err := c.router.AuthenticateRequest(loginPair)
 	if err != nil {
 		return nil, err
@@ -61,16 +62,16 @@ func (c *Client) Authenticate(loginPair authn.LoginPair) ([]byte, error) {
 	return response.SecretDataResponse(resp)
 }
 
-func (c *Client) RotateAPIKey(roleId string) ([]byte, error) {
+func (c *Client) RotateAPIKey(roleId string) (io.ReadCloser, error) {
 	req, err := c.router.RotateAPIKeyRequest(roleId)
 	if err != nil {
 		return nil, err
 	}
 
-  resp, err := c.SubmitRequest(req)
-  if err != nil {
-    return nil, err
-  }
+	resp, err := c.SubmitRequest(req)
+	if err != nil {
+		return nil, err
+	}
 
 	return response.SecretDataResponse(resp)
 }

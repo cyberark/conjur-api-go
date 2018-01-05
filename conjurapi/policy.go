@@ -3,7 +3,7 @@ package conjurapi
 import (
 	"io"
 
-	"github.com/cyberark/conjur-api-go/conjurapi/response"	
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
 func (c *Client) LoadPolicy(policyId string, policy io.Reader) (map[string]interface{}, error) {

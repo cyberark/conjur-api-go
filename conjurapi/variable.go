@@ -1,10 +1,12 @@
 package conjurapi
 
 import (
-	"github.com/cyberark/conjur-api-go/conjurapi/response"	
+	"io"
+
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
-func (c *Client) RetrieveSecret(variableId string) ([]byte, error) {
+func (c *Client) RetrieveSecret(variableId string) (io.ReadCloser, error) {
 	req, err := c.router.RetrieveSecretRequest(variableId)
 	if err != nil {
 		return nil, err
