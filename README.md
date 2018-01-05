@@ -36,15 +36,19 @@ func Main() {
         aPIKey: os.Getenv("CONJUR_AUTHN_API_KEY"),
     )
     if err != nil {
-        // error handling
+        panic(err)
     }
     
-    secretValue, err := conjur.RetrieveSecret(variableIdentifier)
+    secretResponse, err := conjur.RetrieveSecret(variableIdentifier)
     if err != nil {
-        // error handling
+        panic(err)
     }
-    
-    fmt.Println("The secret value is: ", secretValue)
+    secretValue, err := conjur.ReadResponseBody(secretResponse)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("The secret value is: ", string(secretValue))
 }
 ```
 
