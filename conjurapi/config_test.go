@@ -1,9 +1,9 @@
 package conjurapi
 
 import (
-	"testing"
 	. "github.com/smartystreets/goconvey/convey"
 	"os"
+	"testing"
 )
 
 func TestConfig_IsValid(t *testing.T) {
@@ -20,7 +20,7 @@ func TestConfig_IsValid(t *testing.T) {
 
 	Convey("Return error for invalid configuration", t, func() {
 		config := Config{
-			Account:      "account",
+			Account: "account",
 		}
 
 		err := config.validate()
@@ -45,7 +45,7 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 			config.mergeEnv()
 
 			So(*config, ShouldResemble, Config{
-				Account: "account",
+				Account:      "account",
 				ApplianceURL: "appliance-url",
 			})
 		})

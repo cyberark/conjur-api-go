@@ -1,13 +1,13 @@
 package conjurapi
 
 import (
-	"testing"
-	. "github.com/smartystreets/goconvey/convey"
-	"os"
 	"fmt"
-	"strings"
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
+	. "github.com/smartystreets/goconvey/convey"
+	"os"
+	"strings"
+	"testing"
 )
 
 func TestClient_LoadPolicy(t *testing.T) {

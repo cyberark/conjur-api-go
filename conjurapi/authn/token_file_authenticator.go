@@ -1,19 +1,19 @@
 package authn
 
 import (
-	"time"
 	"os"
+	"time"
 )
 
 type TokenFileAuthenticator struct {
-	TokenFile string `env:"CONJUR_AUTHN_TOKEN_FILE"`
-	mTime time.Time
+	TokenFile   string `env:"CONJUR_AUTHN_TOKEN_FILE"`
+	mTime       time.Time
 	MaxWaitTime time.Duration
 }
 
 func (a *TokenFileAuthenticator) RefreshToken() ([]byte, error) {
 	maxWaitTime := a.MaxWaitTime
-	var timeout <- chan time.Time
+	var timeout <-chan time.Time
 	if maxWaitTime == -1 {
 		timeout = nil
 	} else {

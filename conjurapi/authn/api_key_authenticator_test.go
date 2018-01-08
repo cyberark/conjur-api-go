@@ -1,9 +1,9 @@
 package authn
 
 import (
-	"testing"
-	. "github.com/smartystreets/goconvey/convey"
 	"fmt"
+	. "github.com/smartystreets/goconvey/convey"
+	"testing"
 )
 
 func TestAPIKeyAuthenticator_RefreshToken(t *testing.T) {
@@ -22,7 +22,7 @@ func TestAPIKeyAuthenticator_RefreshToken(t *testing.T) {
 			authenticator := APIKeyAuthenticator{
 				Authenticate: Authenticate,
 				LoginPair: LoginPair{
-					Login: Login,
+					Login:  Login,
 					APIKey: APIKey,
 				},
 			}
@@ -40,7 +40,7 @@ func TestAPIKeyAuthenticator_RefreshToken(t *testing.T) {
 				authenticator := APIKeyAuthenticator{
 					Authenticate: Authenticate,
 					LoginPair: LoginPair{
-						Login: Login,
+						Login:  Login,
 						APIKey: APIKey,
 					},
 				}
