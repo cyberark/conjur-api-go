@@ -1,10 +1,10 @@
 package authn
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"time"
-	"encoding/json"
-	"encoding/base64"
 )
 
 type AuthnToken interface {
@@ -17,25 +17,24 @@ type AuthnToken interface {
 }
 
 type AuthnToken4 struct {
-	bytes         []byte
-	Data          string `json:"data"`
-	timestamp 	  string `json:"timestamp"`
-	Signature 	  string `json:"signature"`
-	Key       	  string `json:"key"`
-	Timestamp     time.Time
+	bytes     []byte
+	Data      string `json:"data"`
+	timestamp string `json:"timestamp"`
+	Signature string `json:"signature"`
+	Key       string `json:"key"`
+	Timestamp time.Time
 }
-
 
 // Sample token
 // {"protected":"eyJhbGciOiJjb25qdXIub3JnL3Nsb3NpbG8vdjIiLCJraWQiOiI5M2VjNTEwODRmZTM3Zjc3M2I1ODhlNTYyYWVjZGMxMSJ9","payload":"eyJzdWIiOiJhZG1pbiIsImlhdCI6MTUxMDc1MzI1OX0=","signature":"raCufKOf7sKzciZInQTphu1mBbLhAdIJM72ChLB4m5wKWxFnNz_7LawQ9iYEI_we1-tdZtTXoopn_T1qoTplR9_Bo3KkpI5Hj3DB7SmBpR3CSRTnnEwkJ0_aJ8bql5Cbst4i4rSftyEmUqX-FDOqJdAztdi9BUJyLfbeKTW9OGg-QJQzPX1ucB7IpvTFCEjMoO8KUxZpbHj-KpwqAMZRooG4ULBkxp5nSfs-LN27JupU58oRgIfaWASaDmA98O2x6o88MFpxK_M0FeFGuDKewNGrRc8lCOtTQ9cULA080M5CSnruCqu1Qd52r72KIOAfyzNIiBCLTkblz2fZyEkdSKQmZ8J3AakxQE2jyHmMT-eXjfsEIzEt-IRPJIirI3Qm"}
 // https://www.conjur.org/reference/cryptography.html
 type AuthnToken5 struct {
-	bytes      []byte
-	Protected  string `json:"protected"`
-	Payload    string `json:"payload"`
-	Signature  string `json:"signature"`
-	iat        time.Time
-	exp        *time.Time
+	bytes     []byte
+	Protected string `json:"protected"`
+	Payload   string `json:"payload"`
+	Signature string `json:"signature"`
+	iat       time.Time
+	exp       *time.Time
 }
 
 func hasField(fields map[string]string, name string) (hasField bool) {
@@ -43,7 +42,7 @@ func hasField(fields map[string]string, name string) (hasField bool) {
 	return
 }
 
-func NewToken(data[] byte) (token AuthnToken, err error) {
+func NewToken(data []byte) (token AuthnToken, err error) {
 	fields := make(map[string]string)
 	if err = json.Unmarshal(data, &fields); err != nil {
 		err = fmt.Errorf("Unable to unmarshal token : %s", err)
@@ -150,5 +149,3 @@ func (t *AuthnToken4) Raw() []byte {
 func (t *AuthnToken4) ShouldRefresh() bool {
 	return t.Timestamp.Add(5 * time.Minute).After(time.Now())
 }
-
-
