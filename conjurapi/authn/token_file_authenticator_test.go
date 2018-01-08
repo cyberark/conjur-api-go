@@ -1,10 +1,10 @@
 package authn
 
 import (
-	"testing"
-	"os"
-	"io/ioutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"io/ioutil"
+	"os"
+	"testing"
 	"time"
 )
 
@@ -41,7 +41,7 @@ func TestTokenFileAuthenticator_RefreshToken(t *testing.T) {
 
 		Convey("Return the token from the file", func() {
 			authenticator := TokenFileAuthenticator{
-				TokenFile: token_file_name,
+				TokenFile:   token_file_name,
 				MaxWaitTime: 500 * time.Millisecond,
 			}
 
@@ -53,7 +53,7 @@ func TestTokenFileAuthenticator_RefreshToken(t *testing.T) {
 	})
 
 	Convey("Given a non-existent token filename", t, func() {
-		token_file :=	"/path/to/non-existent-token-file"
+		token_file := "/path/to/non-existent-token-file"
 
 		Convey("Return nil with error", func() {
 			authenticator := TokenFileAuthenticator{

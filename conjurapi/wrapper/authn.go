@@ -2,11 +2,11 @@ package wrapper
 
 import (
 	"fmt"
+	"github.com/cyberark/conjur-api-go/conjurapi/authn"
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 	"net/http"
 	"net/url"
 	"strings"
-	"github.com/cyberark/conjur-api-go/conjurapi/authn"
-	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
 func AuthenticateRequest(applianceURL, account string, loginPair authn.LoginPair) (*http.Request, error) {

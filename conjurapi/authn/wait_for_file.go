@@ -1,19 +1,20 @@
 package authn
 
 import (
-	"time"
 	"fmt"
-	"os"
 	"io/ioutil"
+	"os"
+	"time"
 )
 
 func waitForTextFile(fileName string, timeout <-chan time.Time) ([]byte, error) {
 	var (
 		fileBytes []byte
-		err error
+		err       error
 	)
 
-	waiting_loop: for  {
+waiting_loop:
+	for {
 		select {
 		case <-timeout:
 			err = fmt.Errorf("Operation waitForTextFile timed out.")

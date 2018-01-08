@@ -2,9 +2,9 @@ package wrapper
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
-	"io"
 	"strings"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/response"

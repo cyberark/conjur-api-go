@@ -1,11 +1,11 @@
 package authn
 
 import (
-	"testing"
 	. "github.com/smartystreets/goconvey/convey"
-	"time"
-	"os"
 	"io/ioutil"
+	"os"
+	"testing"
+	"time"
 )
 
 func Test_waitForTextFile(t *testing.T) {

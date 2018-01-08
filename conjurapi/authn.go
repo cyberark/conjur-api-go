@@ -31,11 +31,11 @@ func (c *Client) RefreshToken() (err error) {
 
 func (c *Client) NeedsTokenRefresh() bool {
 	return c.authToken == nil ||
-		c.authToken.ShouldRefresh() || 
+		c.authToken.ShouldRefresh() ||
 		c.authenticator.NeedsTokenRefresh()
 }
 
-func (c *Client) createAuthRequest(req *http.Request) (error) {
+func (c *Client) createAuthRequest(req *http.Request) error {
 	if err := c.RefreshToken(); err != nil {
 		return err
 	}

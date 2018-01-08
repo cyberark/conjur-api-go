@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/cyberark/conjur-api-go/conjurapi/response"	
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
 func RetrieveSecretRequest(applianceURL, variableId string) (*http.Request, error) {

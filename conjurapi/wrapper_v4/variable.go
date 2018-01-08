@@ -1,9 +1,9 @@
 package wrapper_v4
 
 import (
-	"net/url"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
