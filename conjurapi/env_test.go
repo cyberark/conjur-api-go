@@ -1,8 +1,8 @@
 package conjurapi
 
 import (
-	"strings"
 	"os"
+	"strings"
 )
 
 func splitEq(s string) (string, string) {
