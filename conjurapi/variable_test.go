@@ -2,13 +2,14 @@ package conjurapi
 
 import (
 	"fmt"
-	"github.com/cyberark/conjur-api-go/conjurapi/authn"
-	"github.com/cyberark/conjur-api-go/conjurapi/response"
-	. "github.com/smartystreets/goconvey/convey"
 	"math/rand"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/cyberark/conjur-api-go/conjurapi/authn"
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestClient_RetrieveSecret(t *testing.T) {
@@ -199,7 +200,6 @@ func TestClient_RetrieveSecret(t *testing.T) {
 
 			_, err = conjur.RetrieveSecret(variable_identifier)
 			So(err, ShouldNotBeNil)
-
 			So(err.Error(), ShouldEqual, "")
 			conjurError := err.(*response.ConjurError)
 			So(conjurError.Code, ShouldEqual, 404)

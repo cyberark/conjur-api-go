@@ -2,7 +2,10 @@ package response
 
 import (
 	"encoding/json"
+<<<<<<< HEAD
 	"io"
+=======
+>>>>>>> master
 	"io/ioutil"
 	"net/http"
 )
