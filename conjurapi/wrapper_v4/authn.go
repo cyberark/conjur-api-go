@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
-	"github.com/cyberark/conjur-api-go/conjurapi/wrapper"
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
 func AuthenticateRequest(applianceURL string, loginPair authn.LoginPair) (*http.Request, error) {
@@ -22,5 +23,5 @@ func AuthenticateRequest(applianceURL string, loginPair authn.LoginPair) (*http.
 }
 
 func AuthenticateResponse(resp *http.Response) ([]byte, error) {
-	return wrapper.AuthenticateResponse(resp)
+	return response.SecretDataResponse(resp)
 }

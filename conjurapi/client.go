@@ -7,6 +7,8 @@ import (
 	"crypto/x509"
 	"crypto/tls"
 	"os"
+	"strings"
+
 	"github.com/bgentry/go-netrc/netrc"
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 )
@@ -115,6 +117,17 @@ func (c *Client) SubmitRequest(req *http.Request) (resp *http.Response, err erro
 	}
 
 	return
+}
+
+func makeFullId(account, kind, id string) (string) {
+	tokens := strings.SplitN(id, ":", 3)
+	switch len(tokens) {
+		case 1:
+			tokens = []string{ account, kind, tokens[0] }
+		case 2: 
+			tokens = []string{ account, tokens[0], tokens[1] }
+	}
+	return strings.Join(tokens, ":")
 }
 
 func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Client, error) {

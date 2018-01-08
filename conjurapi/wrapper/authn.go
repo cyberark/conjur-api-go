@@ -6,14 +6,8 @@ import (
 	"net/url"
 	"strings"
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
-
-func SetRequestAuthorization(req *http.Request, base64EncodedAuthToken string) {
-	req.Header.Set(
-		"Authorization",
-		fmt.Sprintf("Token token=\"%s\"", base64EncodedAuthToken),
-	)
-}
 
 func AuthenticateRequest(applianceURL, account string, loginPair authn.LoginPair) (*http.Request, error) {
 	authenticateUrl := fmt.Sprintf("%s/authn/%s/%s/authenticate", applianceURL, account, url.QueryEscape(loginPair.Login))
@@ -28,10 +22,5 @@ func AuthenticateRequest(applianceURL, account string, loginPair authn.LoginPair
 }
 
 func AuthenticateResponse(resp *http.Response) ([]byte, error) {
-	switch resp.StatusCode {
-	case 200:
-		return ByteResponseTransformer(resp)
-	default:
-		return nil, fmt.Errorf("Authentication: %s", resp.Status)
-	}
+	return response.SecretDataResponse(resp)
 }

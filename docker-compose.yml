@@ -6,7 +6,7 @@ services:
 
   conjur:
     container_name: api-go-conjur
-    image: cyberark/conjur:0.1.0-stable
+    image: cyberark/conjur:0.2.0-stable
     command: server -a cucumber
     environment:
       DATABASE_URL: postgres://postgres@postgres/postgres

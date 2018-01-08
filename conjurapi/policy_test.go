@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"strings"
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
 func TestClient_LoadPolicy(t *testing.T) {
-	Convey("Given valid configuration and login credentials", t, func() {
+	Convey("V5", t, func() {
 		config := &Config{}
 		config.mergeEnv()
 
@@ -32,7 +33,7 @@ func TestClient_LoadPolicy(t *testing.T) {
 			)
 
 			So(err, ShouldBeNil)
-			So(string(resp), ShouldContainSubstring, `{"created_roles":{"cucumber:user:alice":`)
+			So(resp["created_roles"], ShouldNotBeNil)
 		})
 
 		Convey("Given invalid login credentials", func() {
@@ -45,11 +46,41 @@ func TestClient_LoadPolicy(t *testing.T) {
 				resp, err := conjur.LoadPolicy("root", strings.NewReader(""))
 
 				So(err, ShouldNotBeNil)
-				So(string(resp), ShouldEqual, "")
-				So(err.Error(), ShouldContainSubstring, "401")
+				So(resp, ShouldBeNil)
+				So(err, ShouldHaveSameTypeAs, &response.ConjurError{})
+				conjurError := err.(*response.ConjurError)
+				So(conjurError.Code, ShouldEqual, 401)
 			})
 
 		})
 	})
+	Convey("V4", t, func() {
+		config := &Config{
+			ApplianceURL: os.Getenv("CONJUR_V4_APPLIANCE_URL"),
+			SSLCert:      os.Getenv("CONJUR_V4_SSL_CERTIFICATE"),
+			Account:      os.Getenv("CONJUR_V4_ACCOUNT"),
+			V4:           true,
+		}
 
+		login := os.Getenv("CONJUR_V4_AUTHN_LOGIN")
+		api_key := os.Getenv("CONJUR_V4_AUTHN_API_KEY")
+
+		Convey("Policy loading is not supported", func() {
+			variable_identifier := "alice"
+			policy := fmt.Sprintf(`
+- !user %s
+`, variable_identifier)
+
+			conjur, err := NewClientFromKey(*config, authn.LoginPair{login, api_key})
+			So(err, ShouldBeNil)
+
+			_, err = conjur.LoadPolicy(
+				"root",
+				strings.NewReader(policy),
+			)
+
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, "LoadPolicy is not supported for Conjur V4")
+		})
+	})
 }

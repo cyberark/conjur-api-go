@@ -32,7 +32,7 @@ func TestConfig_IsValid(t *testing.T) {
 	})
 }
 
-func TestLoadFromEnv(t *testing.T) {
+func TestConfig_LoadFromEnv(t *testing.T) {
 	Convey("Given configuration and authentication credentials in env", t, func() {
 		e := ClearEnv()
 		defer e.RestoreEnv()
