@@ -2,11 +2,12 @@ package conjurapi
 
 import (
 	"fmt"
-	"github.com/cyberark/conjur-api-go/conjurapi/authn"
-	. "github.com/smartystreets/goconvey/convey"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/cyberark/conjur-api-go/conjurapi/authn"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestClient_RotateAPIKey(t *testing.T) {
@@ -14,29 +15,37 @@ func TestClient_RotateAPIKey(t *testing.T) {
 		config := &Config{}
 		config.mergeEnv()
 
-		api_key := os.Getenv("CONJUR_AUTHN_API_KEY")
+		apiKey := os.Getenv("CONJUR_AUTHN_API_KEY")
 		login := os.Getenv("CONJUR_AUTHN_LOGIN")
 
 		policy := fmt.Sprintf(`
 - !user alice
 `)
 
-		conjur, err := NewClientFromKey(*config, authn.LoginPair{login, api_key})
+		conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
 		So(err, ShouldBeNil)
 
 		conjur.LoadPolicy(
+			PolicyModePut,
 			"root",
 			strings.NewReader(policy),
 		)
 
 		Convey("Rotate the API key of a foreign role", func() {
-			rotateResponse, err := conjur.RotateAPIKey("cucumber:user:alice")
+			aliceAPIKey, err := conjur.RotateAPIKey("cucumber:user:alice")
+
+			_, err = conjur.Authenticate(authn.LoginPair{"alice", string(aliceAPIKey)})
+			So(err, ShouldBeNil)
+		})
+
+		Convey("Rotate the API key of a foreign role and read the data stream", func() {
+			rotateResponse, err := conjur.RotateAPIKeyReader("cucumber:user:alice")
 
 			So(err, ShouldBeNil)
-			aliceApiKey, err := ReadResponseBody(rotateResponse)
+			aliceAPIKey, err := ReadResponseBody(rotateResponse)
 			So(err, ShouldBeNil)
 
-			_, err = conjur.Authenticate(authn.LoginPair{"alice", string(aliceApiKey)})
+			_, err = conjur.Authenticate(authn.LoginPair{"alice", string(aliceAPIKey)})
 			So(err, ShouldBeNil)
 		})
 	})
@@ -50,19 +59,15 @@ func TestClient_RotateAPIKey(t *testing.T) {
 		}
 
 		login := os.Getenv("CONJUR_V4_AUTHN_LOGIN")
-		api_key := os.Getenv("CONJUR_V4_AUTHN_API_KEY")
+		apiKey := os.Getenv("CONJUR_V4_AUTHN_API_KEY")
 
-		conjur, err := NewClientFromKey(*config, authn.LoginPair{login, api_key})
+		conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
 		So(err, ShouldBeNil)
 
 		Convey("Rotate the API key of a foreign role", func() {
-			rotateResponse, err := conjur.RotateAPIKey("cucumber:user:alice")
+			aliceAPIKey, err := conjur.RotateAPIKey("cucumber:user:alice")
 
-			So(err, ShouldBeNil)
-			aliceApiKey, err := ReadResponseBody(rotateResponse)
-			So(err, ShouldBeNil)
-
-			_, err = conjur.Authenticate(authn.LoginPair{"alice", string(aliceApiKey)})
+			_, err = conjur.Authenticate(authn.LoginPair{"alice", string(aliceAPIKey)})
 			So(err, ShouldBeNil)
 		})
 	})

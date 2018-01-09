@@ -4,8 +4,10 @@ import (
 	"fmt"
 )
 
-func (c *Client) CheckPermission(resourceId, privilege string) (bool, error) {
-	req, err := c.router.CheckPermissionRequest(resourceId, privilege)
+// CheckPermission determines whether the authenticated user has a specified privilege
+// on a resource.
+func (c *Client) CheckPermission(resourceID, privilege string) (bool, error) {
+	req, err := c.router.CheckPermissionRequest(resourceID, privilege)
 	if err != nil {
 		return false, err
 	}

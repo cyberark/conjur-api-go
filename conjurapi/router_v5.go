@@ -14,10 +14,10 @@ type RouterV5 struct {
 	Config *Config
 }
 
-func (self RouterV5) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, error) {
-	authenticateUrl := fmt.Sprintf("%s/authn/%s/%s/authenticate", self.Config.ApplianceURL, self.Config.Account, url.QueryEscape(loginPair.Login))
+func (r RouterV5) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, error) {
+	authenticateURL := fmt.Sprintf("%s/authn/%s/%s/authenticate", r.Config.ApplianceURL, r.Config.Account, url.QueryEscape(loginPair.Login))
 
-	req, err := http.NewRequest("POST", authenticateUrl, strings.NewReader(loginPair.APIKey))
+	req, err := http.NewRequest("POST", authenticateURL, strings.NewReader(loginPair.APIKey))
 	if err != nil {
 		return nil, err
 	}
@@ -26,64 +26,76 @@ func (self RouterV5) AuthenticateRequest(loginPair authn.LoginPair) (*http.Reque
 	return req, nil
 }
 
-func (self RouterV5) RotateAPIKeyRequest(roleId string) (*http.Request, error) {
-	rotateUrl := fmt.Sprintf("%s/authn/%s/api_key?role=%s", self.Config.ApplianceURL, self.Config.Account, roleId)
+func (r RouterV5) RotateAPIKeyRequest(roleID string) (*http.Request, error) {
+	rotateURL := fmt.Sprintf("%s/authn/%s/api_key?role=%s", r.Config.ApplianceURL, r.Config.Account, roleID)
 
 	return http.NewRequest(
 		"PUT",
-		rotateUrl,
+		rotateURL,
 		nil,
 	)
 }
 
-func (self RouterV5) CheckPermissionRequest(resourceId, privilege string) (*http.Request, error) {
-	tokens := strings.SplitN(resourceId, ":", 3)
+func (r RouterV5) CheckPermissionRequest(resourceID, privilege string) (*http.Request, error) {
+	tokens := strings.SplitN(resourceID, ":", 3)
 	if len(tokens) != 3 {
-		return nil, fmt.Errorf("Resource id '%s' must be fully qualified", resourceId)
+		return nil, fmt.Errorf("Resource id '%s' must be fully qualified", resourceID)
 	}
-	checkUrl := fmt.Sprintf("%s/resources/%s/%s/%s?check=true&privilege=%s", self.Config.ApplianceURL, tokens[0], tokens[1], url.QueryEscape(tokens[2]), url.QueryEscape(privilege))
+	checkURL := fmt.Sprintf("%s/resources/%s/%s/%s?check=true&privilege=%s", r.Config.ApplianceURL, tokens[0], tokens[1], url.QueryEscape(tokens[2]), url.QueryEscape(privilege))
 
 	return http.NewRequest(
 		"GET",
-		checkUrl,
+		checkURL,
 		nil,
 	)
 }
 
-func (self RouterV5) LoadPolicyRequest(policyId string, policy io.Reader) (*http.Request, error) {
-	policyId = makeFullId(self.Config.Account, "policy", policyId)
+func (r RouterV5) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader) (*http.Request, error) {
+	policyID = makeFullId(r.Config.Account, "policy", policyID)
 
-	tokens := strings.SplitN(policyId, ":", 3)
-	policyUrl := fmt.Sprintf("%s/policies/%s/%s/%s", self.Config.ApplianceURL, tokens[0], tokens[1], url.QueryEscape(tokens[2]))
+	tokens := strings.SplitN(policyID, ":", 3)
+	policyURL := fmt.Sprintf("%s/policies/%s/%s/%s", r.Config.ApplianceURL, tokens[0], tokens[1], url.QueryEscape(tokens[2]))
+
+	var method string
+	switch mode {
+	case PolicyModePost:
+		method = "POST"
+	case PolicyModePatch:
+		method = "PATCH"
+	case PolicyModePut:
+		method = "PUT"
+	default:
+		return nil, fmt.Errorf("Invalid PolicyMode : %d", mode)
+	}
 
 	return http.NewRequest(
-		"PUT",
-		policyUrl,
+		method,
+		policyURL,
 		policy,
 	)
 }
 
-func (self RouterV5) RetrieveSecretRequest(variableId string) (*http.Request, error) {
-	variableId = makeFullId(self.Config.Account, "variable", variableId)
+func (r RouterV5) RetrieveSecretRequest(variableID string) (*http.Request, error) {
+	variableID = makeFullId(r.Config.Account, "variable", variableID)
 
 	return http.NewRequest(
 		"GET",
-		self.variableURL(variableId),
+		r.variableURL(variableID),
 		nil,
 	)
 }
 
-func (self RouterV5) AddSecretRequest(variableId, secretValue string) (*http.Request, error) {
-	variableId = makeFullId(self.Config.Account, "variable", variableId)
+func (r RouterV5) AddSecretRequest(variableID, secretValue string) (*http.Request, error) {
+	variableID = makeFullId(r.Config.Account, "variable", variableID)
 
 	return http.NewRequest(
 		"POST",
-		self.variableURL(variableId),
+		r.variableURL(variableID),
 		strings.NewReader(secretValue),
 	)
 }
 
-func (self RouterV5) variableURL(variableId string) string {
-	tokens := strings.SplitN(variableId, ":", 3)
-	return fmt.Sprintf("%s/secrets/%s/%s/%s", self.Config.ApplianceURL, tokens[0], tokens[1], url.QueryEscape(tokens[2]))
+func (r RouterV5) variableURL(variableID string) string {
+	tokens := strings.SplitN(variableID, ":", 3)
+	return fmt.Sprintf("%s/secrets/%s/%s/%s", r.Config.ApplianceURL, tokens[0], tokens[1], url.QueryEscape(tokens[2]))
 }

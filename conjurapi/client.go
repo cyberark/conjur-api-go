@@ -31,15 +31,15 @@ type Client struct {
 type Router interface {
 	AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, error)
 
-	RotateAPIKeyRequest(roleId string) (*http.Request, error)
+	RotateAPIKeyRequest(roleID string) (*http.Request, error)
 
-	CheckPermissionRequest(resourceId, privilege string) (*http.Request, error)
+	CheckPermissionRequest(resourceID, privilege string) (*http.Request, error)
 
-	AddSecretRequest(variableId, secretValue string) (*http.Request, error)
+	AddSecretRequest(variableID, secretValue string) (*http.Request, error)
 
-	RetrieveSecretRequest(variableId string) (*http.Request, error)
+	RetrieveSecretRequest(variableID string) (*http.Request, error)
 
-	LoadPolicyRequest(policyId string, policy io.Reader) (*http.Request, error)
+	LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader) (*http.Request, error)
 }
 
 func NewClientFromKey(config Config, loginPair authn.LoginPair) (*Client, error) {
@@ -50,14 +50,14 @@ func NewClientFromKey(config Config, loginPair authn.LoginPair) (*Client, error)
 		config,
 		authenticator,
 	)
-	authenticator.Authenticate = func(loginPair authn.LoginPair) ([]byte, error) {
-		response, err := client.Authenticate(loginPair)
-		if err != nil {
-			return nil, err
-		}
-		return ReadResponseBody(response)
-	}
+	authenticator.Authenticate = client.Authenticate
 	return client, err
+}
+
+// ReadResponseBody fully reads a response and closes it.
+func ReadResponseBody(response io.ReadCloser) ([]byte, error) {
+	defer response.Close()
+	return ioutil.ReadAll(response)
 }
 
 func NewClientFromToken(config Config, token string) (*Client, error) {
@@ -140,12 +140,6 @@ func (c *Client) SubmitRequest(req *http.Request) (resp *http.Response, err erro
 	}
 
 	return
-}
-
-// Fully reads a response and closes it.
-func ReadResponseBody(response io.ReadCloser) ([]byte, error) {
-	defer response.Close()
-	return ioutil.ReadAll(response)
 }
 
 func makeFullId(account, kind, id string) string {

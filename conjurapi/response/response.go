@@ -18,14 +18,29 @@ func readBody(resp *http.Response) ([]byte, error) {
 	return responseText, err
 }
 
+// DataResponse checks the HTTP status of the response. If it's less than
+// 300, it returns the response body as a byte array. Otherwise it returns
+// a NewConjurError.
+func DataResponse(resp *http.Response) ([]byte, error) {
+	if resp.StatusCode < 300 {
+		return readBody(resp)
+	}
+	return nil, NewConjurError(resp)
+}
+
+// SecretDataResponse checks the HTTP status of the response. If it's less than
+// 300, it returns the response body as a stream. Otherwise it returns
+// a NewConjurError.
 func SecretDataResponse(resp *http.Response) (io.ReadCloser, error) {
 	if resp.StatusCode < 300 {
 		return resp.Body, nil
-	} else {
-		return nil, NewConjurError(resp)
 	}
+	return nil, NewConjurError(resp)
 }
 
+// JSONResponse checks the HTTP status of the response. If it's less than
+// 300, it returns the response body as JSON. Otherwise it returns
+// a NewConjurError.
 func JSONResponse(resp *http.Response, obj interface{}) error {
 	if resp.StatusCode < 300 {
 		body, err := readBody(resp)
@@ -33,15 +48,16 @@ func JSONResponse(resp *http.Response, obj interface{}) error {
 			return err
 		}
 		return json.Unmarshal(body, obj)
-	} else {
-		return NewConjurError(resp)
 	}
+	return NewConjurError(resp)
 }
 
+// EmptyResponse checks the HTTP status of the response. If it's less than
+// 300, it returns without an error. Otherwise it returns
+// a NewConjurError.
 func EmptyResponse(resp *http.Response) error {
 	if resp.StatusCode < 300 {
 		return nil
-	} else {
-		return NewConjurError(resp)
 	}
+	return NewConjurError(resp)
 }

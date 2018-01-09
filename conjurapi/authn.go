@@ -48,13 +48,19 @@ func (c *Client) createAuthRequest(req *http.Request) error {
 	return nil
 }
 
-func (c *Client) Authenticate(loginPair authn.LoginPair) (io.ReadCloser, error) {
-	req, err := c.router.AuthenticateRequest(loginPair)
+// Authenticate obtains a new access token.
+func (c *Client) Authenticate(loginPair authn.LoginPair) ([]byte, error) {
+	resp, err := c.authenticate(loginPair)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := c.httpClient.Do(req)
+	return response.DataResponse(resp)
+}
+
+// AuthenticateReader obtains a new access token and returns it as a data stream.
+func (c *Client) AuthenticateReader(loginPair authn.LoginPair) (io.ReadCloser, error) {
+	resp, err := c.authenticate(loginPair)
 	if err != nil {
 		return nil, err
 	}
@@ -62,16 +68,46 @@ func (c *Client) Authenticate(loginPair authn.LoginPair) (io.ReadCloser, error) 
 	return response.SecretDataResponse(resp)
 }
 
-func (c *Client) RotateAPIKey(roleId string) (io.ReadCloser, error) {
-	req, err := c.router.RotateAPIKeyRequest(roleId)
+func (c *Client) authenticate(loginPair authn.LoginPair) (*http.Response, error) {
+	req, err := c.router.AuthenticateRequest(loginPair)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := c.SubmitRequest(req)
+	return c.httpClient.Do(req)
+}
+
+// RotateAPIKey replaces the API key of a role on the server with a new
+// random secret.
+//
+// The authenticated user must have update privilege on the role.
+func (c *Client) RotateAPIKey(roleID string) ([]byte, error) {
+	resp, err := c.rotateAPIKey(roleID)
+	if err != nil {
+		return nil, err
+	}
+
+	return response.DataResponse(resp)
+}
+
+// RotateAPIKeyReader replaces the API key of a role on the server with a new
+// random secret and returns it as a data stream.
+//
+// The authenticated user must have update privilege on the role.
+func (c *Client) RotateAPIKeyReader(roleID string) (io.ReadCloser, error) {
+	resp, err := c.rotateAPIKey(roleID)
 	if err != nil {
 		return nil, err
 	}
 
 	return response.SecretDataResponse(resp)
+}
+
+func (c *Client) rotateAPIKey(roleID string) (*http.Response, error) {
+	req, err := c.router.RotateAPIKeyRequest(roleID)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.SubmitRequest(req)
 }

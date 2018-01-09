@@ -2,11 +2,12 @@ package conjurapi
 
 import (
 	"fmt"
-	"github.com/cyberark/conjur-api-go/conjurapi/authn"
-	. "github.com/smartystreets/goconvey/convey"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/cyberark/conjur-api-go/conjurapi/authn"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestClient_CheckPermission(t *testing.T) {
@@ -14,7 +15,7 @@ func TestClient_CheckPermission(t *testing.T) {
 		config := &Config{}
 		config.mergeEnv()
 
-		api_key := os.Getenv("CONJUR_AUTHN_API_KEY")
+		apiKey := os.Getenv("CONJUR_AUTHN_API_KEY")
 		login := os.Getenv("CONJUR_AUTHN_LOGIN")
 
 		policy := fmt.Sprintf(`
@@ -28,10 +29,11 @@ func TestClient_CheckPermission(t *testing.T) {
   resource: !variable db-password
 `)
 
-		conjur, err := NewClientFromKey(*config, authn.LoginPair{login, api_key})
+		conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
 		So(err, ShouldBeNil)
 
 		conjur.LoadPolicy(
+			PolicyModePut,
 			"root",
 			strings.NewReader(policy),
 		)
@@ -59,9 +61,9 @@ func TestClient_CheckPermission(t *testing.T) {
 		}
 
 		login := os.Getenv("CONJUR_V4_AUTHN_LOGIN")
-		api_key := os.Getenv("CONJUR_V4_AUTHN_API_KEY")
+		apiKey := os.Getenv("CONJUR_V4_AUTHN_API_KEY")
 
-		conjur, err := NewClientFromKey(*config, authn.LoginPair{login, api_key})
+		conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
 		So(err, ShouldBeNil)
 
 		Convey("Check an allowed permission", func() {
