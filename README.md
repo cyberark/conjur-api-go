@@ -38,16 +38,25 @@ func Main() {
     if err != nil {
         panic(err)
     }
-    
-    secretResponse, err := conjur.RetrieveSecret(variableIdentifier)
-    if err != nil {
-        panic(err)
-    }
-    secretValue, err := conjur.ReadResponseBody(secretResponse)
-    if err != nil {
-        panic(err)
-    }
 
+    // Retrieve a secret into []byte.
+    secretValue, err := conjur.RetrieveSecret(variableIdentifier)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println("The secret value is: ", string(secretValue))
+
+    // Retrieve a secret into io.ReadCloser, then read into []byte.
+    // Alternatively, you can transfer the secret directly into secure memory, 
+    // vault, keychain, etc. 
+    secretResponse, err := conjur.RetrieveSecretReader(variableIdentifier)
+    if err != nil {
+        panic(err)
+    }
+    secretValue, err = conjur.ReadResponseBody(secretResponse)
+    if err != nil {
+        panic(err)
+    }
     fmt.Println("The secret value is: ", string(secretValue))
 }
 ```
