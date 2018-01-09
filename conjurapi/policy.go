@@ -18,10 +18,25 @@ const (
 	PolicyModePatch PolicyMode = 3
 )
 
+// CreatedRole contains the full role ID and API key of a role which was created
+// by the server when loading a policy.
+type CreatedRole struct {
+	ID     string
+	APIKey string `json:"api_key"`
+}
+
+// PolicyResponse contains information about the policy update.
+type PolicyResponse struct {
+	// Newly created roles.
+	CreatedRoles map[string]CreatedRole `json:"created_roles"`
+	// The version number of the policy.
+	Version uint32
+}
+
 // LoadPolicy submits new policy data or polciy changes to the server.
 //
 // The required permission depends on the mode.
-func (c *Client) LoadPolicy(mode PolicyMode, policyID string, policy io.Reader) (map[string]interface{}, error) {
+func (c *Client) LoadPolicy(mode PolicyMode, policyID string, policy io.Reader) (*PolicyResponse, error) {
 	req, err := c.router.LoadPolicyRequest(mode, policyID, policy)
 	if err != nil {
 		return nil, err
@@ -32,6 +47,6 @@ func (c *Client) LoadPolicy(mode PolicyMode, policyID string, policy io.Reader) 
 		return nil, err
 	}
 
-	obj := make(map[string]interface{})
-	return obj, response.JSONResponse(resp, &obj)
+	policyResponse := PolicyResponse{}
+	return &policyResponse, response.JSONResponse(resp, &policyResponse)
 }

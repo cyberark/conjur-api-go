@@ -2,9 +2,11 @@ package conjurapi
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
@@ -19,14 +21,16 @@ func TestClient_LoadPolicy(t *testing.T) {
 		apiKey := os.Getenv("CONJUR_AUTHN_API_KEY")
 		login := os.Getenv("CONJUR_AUTHN_LOGIN")
 
+		conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
+		So(err, ShouldBeNil)
+
+		randomizer := rand.New(rand.NewSource(time.Now().UnixNano()))
+
 		Convey("Successfully load policy", func() {
-			variableIdentifier := "alice"
+			username := "alice"
 			policy := fmt.Sprintf(`
 - !user %s
-`, variableIdentifier)
-
-			conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
-			So(err, ShouldBeNil)
+`, username)
 
 			resp, err := conjur.LoadPolicy(
 				PolicyModePut,
@@ -35,7 +39,32 @@ func TestClient_LoadPolicy(t *testing.T) {
 			)
 
 			So(err, ShouldBeNil)
-			So(resp["created_roles"], ShouldNotBeNil)
+			So(resp.Version, ShouldBeGreaterThanOrEqualTo, 1)
+		})
+
+		Convey("A new role is reported in the policy load response", func() {
+			const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+			result := make([]byte, 12)
+			for i := range result {
+				result[i] = chars[randomizer.Intn(len(chars))]
+			}
+
+			username := string(result)
+			policy := fmt.Sprintf(`
+- !user %s
+`, username)
+
+			resp, err := conjur.LoadPolicy(
+				PolicyModePut,
+				"root",
+				strings.NewReader(policy),
+			)
+
+			So(err, ShouldBeNil)
+			createdRole, ok := resp.CreatedRoles["cucumber:user:"+username]
+			So(createdRole.ID, ShouldNotBeBlank)
+			So(createdRole.APIKey, ShouldNotBeBlank)
+			So(ok, ShouldBeTrue)
 		})
 
 		Convey("Given invalid login credentials", func() {
@@ -67,14 +96,14 @@ func TestClient_LoadPolicy(t *testing.T) {
 		login := os.Getenv("CONJUR_V4_AUTHN_LOGIN")
 		apiKey := os.Getenv("CONJUR_V4_AUTHN_API_KEY")
 
+		conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
+		So(err, ShouldBeNil)
+
 		Convey("Policy loading is not supported", func() {
 			variableIdentifier := "alice"
 			policy := fmt.Sprintf(`
 - !user %s
 `, variableIdentifier)
-
-			conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
-			So(err, ShouldBeNil)
 
 			_, err = conjur.LoadPolicy(
 				PolicyModePut,
