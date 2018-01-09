@@ -4,6 +4,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -23,6 +25,21 @@ type Client struct {
 	authToken     authn.AuthnToken
 	httpClient    *http.Client
 	authenticator Authenticator
+	router        Router
+}
+
+type Router interface {
+	AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, error)
+
+	RotateAPIKeyRequest(roleID string) (*http.Request, error)
+
+	CheckPermissionRequest(resourceID, privilege string) (*http.Request, error)
+
+	AddSecretRequest(variableID, secretValue string) (*http.Request, error)
+
+	RetrieveSecretRequest(variableID string) (*http.Request, error)
+
+	LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader) (*http.Request, error)
 }
 
 func NewClientFromKey(config Config, loginPair authn.LoginPair) (*Client, error) {
@@ -35,6 +52,12 @@ func NewClientFromKey(config Config, loginPair authn.LoginPair) (*Client, error)
 	)
 	authenticator.Authenticate = client.Authenticate
 	return client, err
+}
+
+// ReadResponseBody fully reads a response and closes it.
+func ReadResponseBody(response io.ReadCloser) ([]byte, error) {
+	defer response.Close()
+	return ioutil.ReadAll(response)
 }
 
 func NewClientFromToken(config Config, token string) (*Client, error) {
@@ -142,6 +165,7 @@ func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Cl
 	}
 
 	var httpClient *http.Client
+	var router Router
 
 	if config.Https {
 		cert, err := config.ReadSSLCert()
@@ -156,10 +180,17 @@ func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Cl
 		httpClient = &http.Client{Timeout: time.Second * 10}
 	}
 
+	if config.V4 {
+		router = RouterV4{&config}
+	} else {
+		router = RouterV5{&config}
+	}
+
 	return &Client{
 		config:        config,
 		authenticator: authenticator,
 		httpClient:    httpClient,
+		router:        router,
 	}, nil
 }
 

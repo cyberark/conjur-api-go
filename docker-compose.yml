@@ -11,6 +11,7 @@ services:
     environment:
       DATABASE_URL: postgres://postgres@postgres/postgres
       CONJUR_DATA_KEY: 'WMfApcDBtocRWV+ZSUP3Tjr5XNU+Z2FdBb6BEezejIs='
+      RAILS_ENV: development
     depends_on:
       - postgres
 
@@ -24,7 +25,7 @@ services:
     container_name: api-go-conjur-v4
     image: registry2.itci.conjur.net/conjur-appliance-cuke-master:4.9-stable
     security_opt:
-      - seccomp:unconfined # --security-opt seccomp=unconfined
+      - seccomp:unconfined
     ports:
       - 443
 

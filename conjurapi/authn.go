@@ -3,11 +3,11 @@ package conjurapi
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
-	"github.com/cyberark/conjur-api-go/conjurapi/wrapper"
-	"github.com/cyberark/conjur-api-go/conjurapi/wrapper_v4"
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
 func (c *Client) RefreshToken() (err error) {
@@ -48,30 +48,66 @@ func (c *Client) createAuthRequest(req *http.Request) error {
 	return nil
 }
 
+// Authenticate obtains a new access token.
 func (c *Client) Authenticate(loginPair authn.LoginPair) ([]byte, error) {
-	var (
-		req *http.Request
-		err error
-	)
-
-	if c.config.V4 {
-		req, err = wrapper_v4.AuthenticateRequest(c.config.ApplianceURL, loginPair)
-	} else {
-		req, err = wrapper.AuthenticateRequest(c.config.ApplianceURL, c.config.Account, loginPair)
-	}
-
+	resp, err := c.authenticate(loginPair)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := c.httpClient.Do(req)
+	return response.DataResponse(resp)
+}
+
+// AuthenticateReader obtains a new access token and returns it as a data stream.
+func (c *Client) AuthenticateReader(loginPair authn.LoginPair) (io.ReadCloser, error) {
+	resp, err := c.authenticate(loginPair)
 	if err != nil {
 		return nil, err
 	}
 
-	if c.config.V4 {
-		return wrapper_v4.AuthenticateResponse(resp)
-	} else {
-		return wrapper.AuthenticateResponse(resp)
+	return response.SecretDataResponse(resp)
+}
+
+func (c *Client) authenticate(loginPair authn.LoginPair) (*http.Response, error) {
+	req, err := c.router.AuthenticateRequest(loginPair)
+	if err != nil {
+		return nil, err
 	}
+
+	return c.httpClient.Do(req)
+}
+
+// RotateAPIKey replaces the API key of a role on the server with a new
+// random secret.
+//
+// The authenticated user must have update privilege on the role.
+func (c *Client) RotateAPIKey(roleID string) ([]byte, error) {
+	resp, err := c.rotateAPIKey(roleID)
+	if err != nil {
+		return nil, err
+	}
+
+	return response.DataResponse(resp)
+}
+
+// RotateAPIKeyReader replaces the API key of a role on the server with a new
+// random secret and returns it as a data stream.
+//
+// The authenticated user must have update privilege on the role.
+func (c *Client) RotateAPIKeyReader(roleID string) (io.ReadCloser, error) {
+	resp, err := c.rotateAPIKey(roleID)
+	if err != nil {
+		return nil, err
+	}
+
+	return response.SecretDataResponse(resp)
+}
+
+func (c *Client) rotateAPIKey(roleID string) (*http.Response, error) {
+	req, err := c.router.RotateAPIKeyRequest(roleID)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.SubmitRequest(req)
 }

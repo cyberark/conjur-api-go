@@ -1,53 +1,50 @@
 package conjurapi
 
 import (
-	"fmt"
+	"io"
 	"net/http"
 
-	"github.com/cyberark/conjur-api-go/conjurapi/wrapper"
-	"github.com/cyberark/conjur-api-go/conjurapi/wrapper_v4"
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
-func (c *Client) RetrieveSecret(variableId string) ([]byte, error) {
-	var (
-		req *http.Request
-		err error
-	)
-
-	if c.config.V4 {
-		req, err = wrapper_v4.RetrieveSecretRequest(c.config.ApplianceURL, variableId)
-	} else {
-		req, err = wrapper.RetrieveSecretRequest(c.config.ApplianceURL, makeFullId(c.config.Account, "variable", variableId))
-	}
-
+// RetrieveSecret fetches a secret from a variable.
+//
+// The authenticated user must have execute privilege on the variable.
+func (c *Client) RetrieveSecret(variableID string) ([]byte, error) {
+	resp, err := c.retrieveSecret(variableID)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := c.SubmitRequest(req)
-	if err != nil {
-		return nil, err
-	}
-
-	if c.config.V4 {
-		return wrapper_v4.RetrieveSecretResponse(resp)
-	} else {
-		return wrapper.RetrieveSecretResponse(resp)
-	}
+	return response.DataResponse(resp)
 }
 
-func (c *Client) AddSecret(variableId string, secretValue string) error {
-	var (
-		req *http.Request
-		err error
-	)
-
-	if c.config.V4 {
-		err = fmt.Errorf("AddSecret is not supported for Conjur V4")
-	} else {
-		req, err = wrapper.AddSecretRequest(c.config.ApplianceURL, makeFullId(c.config.Account, "variable", variableId), secretValue)
+// RetrieveSecretReader fetches a secret from a variable and returns it as a
+// data stream.
+//
+// The authenticated user must have execute privilege on the variable.
+func (c *Client) RetrieveSecretReader(variableID string) (io.ReadCloser, error) {
+	resp, err := c.retrieveSecret(variableID)
+	if err != nil {
+		return nil, err
 	}
 
+	return response.SecretDataResponse(resp)
+}
+func (c *Client) retrieveSecret(variableID string) (*http.Response, error) {
+	req, err := c.router.RetrieveSecretRequest(variableID)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.SubmitRequest(req)
+}
+
+// AddSecret adds a secret value to a variable.
+//
+// The authenticated user must have update privilege on the variable.
+func (c *Client) AddSecret(variableID string, secretValue string) error {
+	req, err := c.router.AddSecretRequest(variableID, secretValue)
 	if err != nil {
 		return err
 	}
@@ -57,5 +54,5 @@ func (c *Client) AddSecret(variableId string, secretValue string) error {
 		return err
 	}
 
-	return wrapper.AddSecretResponse(resp)
+	return response.EmptyResponse(resp)
 }
