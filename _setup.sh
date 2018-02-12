@@ -1,8 +1,8 @@
 #!/bin/bash -ex
 
 # Build test container & start the cluster
-docker-compose pull postgres conjur cuke-master
-docker-compose build --pull
+docker-compose pull conjur cuke-master
+docker-compose build
 docker-compose up -d
 docker-compose exec -T test ./wait_for_server.sh
 
