@@ -2,10 +2,11 @@ package conjurapi
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v1"
 	"io/ioutil"
 	"os"
 	"strings"
+
+	"gopkg.in/yaml.v1"
 )
 
 type Config struct {
@@ -91,13 +92,15 @@ func (c *Config) mergeYAML(filename string) {
 }
 
 func (c *Config) mergeEnv() {
+	majorVersion4 := os.Getenv("CONJUR_MAJOR_VERSION") == "4" || os.Getenv("CONJUR_VERSION") == "4"
+
 	env := Config{
 		ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL"),
 		SSLCert:      os.Getenv("CONJUR_SSL_CERTIFICATE"),
 		SSLCertPath:  os.Getenv("CONJUR_CERT_FILE"),
 		Account:      os.Getenv("CONJUR_ACCOUNT"),
 		NetRCPath:    os.Getenv("CONJUR_NETRC_PATH"),
-		V4:           os.Getenv("CONJUR_MAJOR_VERSION") == "4",
+		V4:           majorVersion4,
 	}
 
 	c.merge(&env)

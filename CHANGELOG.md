@@ -1,3 +1,7 @@
+# v0.3.1
+
+* Make `CONJUR_VERSION` an alias for `CONJUR_MAJOR_VERSION` to match other client libraries.
+
 # v0.3.0
 
 * Adds new API methods `RotateAPIKey` and `CheckPermission`.
