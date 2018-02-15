@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-
 	"gopkg.in/yaml.v1"
 )
 
@@ -74,21 +73,22 @@ func (c *Config) merge(o *Config) {
 }
 
 func (c *Config) mergeYAML(filename string) {
-	var tmp Config
-
 	buf, err := ioutil.ReadFile(filename)
 
 	if err != nil {
 		return
 	}
 
-	err = yaml.Unmarshal(buf, &tmp)
-
-	if err != nil {
+	aux := struct {
+		ConjurVersion string `yaml:"version"`
+		Config `yaml:",inline"`
+	}{}
+	if err := yaml.Unmarshal(buf, &aux); err != nil {
 		return
 	}
+	aux.Config.V4 = aux.ConjurVersion == "4"
 
-	c.merge(&tmp)
+	c.merge(&aux.Config)
 }
 
 func (c *Config) mergeEnv() {
