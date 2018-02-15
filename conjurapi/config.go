@@ -88,7 +88,7 @@ func (c *Config) mergeYAML(filename string) {
 	}
 	aux.Config.V4 = aux.ConjurVersion == "4"
 
-	c.merge((*Config)(&aux.Config))
+	c.merge(&aux.Config)
 }
 
 func (c *Config) mergeEnv() {
