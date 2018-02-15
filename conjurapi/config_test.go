@@ -4,7 +4,25 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"os"
 	"testing"
+	"io/ioutil"
+	"fmt"
 )
+
+func TempFileForTesting(prefix string, fileContents string) (string, error) {
+	tmpfile, err := ioutil.TempFile(os.TempDir(), prefix)
+	if err != nil {
+		return "", err
+	}
+
+	if _, err := tmpfile.Write([]byte(fileContents)); err != nil {
+		return "", err
+	}
+	if err := tmpfile.Close(); err != nil {
+		return "", err
+	}
+
+	return tmpfile.Name(), err
+}
 
 func TestConfig_IsValid(t *testing.T) {
 	Convey("Return without error for valid configuration", t, func() {
@@ -50,4 +68,46 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 			})
 		})
 	})
+}
+
+var versiontests = []struct {
+	in    string
+	label string
+	out   bool
+}{
+	{"version: 4", "version 4", true},
+	{"version: 5", "version 5", false},
+	{"", "empty version", false},
+}
+
+func TestConfig_mergeYAML(t *testing.T) {
+	for index, versiontest := range versiontests {
+		Convey(fmt.Sprintf("Given a filled conjurrc file with %s", versiontest.label), t, func() {
+			conjurrcFileContents := fmt.Sprintf(`
+---
+appliance_url: http://path/to/appliance%v
+account: some account%v
+cert_file: "/path/to/cert/file/pem%v"
+netrc_path: "/path/to/netrc/file%v"
+%s
+`, index, index, index, index, versiontest.in)
+
+			tmpFileName, err := TempFileForTesting("TestConfigVersion", conjurrcFileContents)
+			defer os.Remove(tmpFileName) // clean up
+			So(err, ShouldBeNil)
+
+			Convey(fmt.Sprintf("Returns Config loaded with values from file and V4: %t", versiontest.out), func() {
+				config := &Config{}
+				config.mergeYAML(tmpFileName)
+
+				So(*config, ShouldResemble, Config{
+					Account:      fmt.Sprintf("some account%v", index),
+					ApplianceURL: fmt.Sprintf("http://path/to/appliance%v", index),
+					NetRCPath:    fmt.Sprintf("/path/to/netrc/file%v", index),
+					SSLCertPath:  fmt.Sprintf("/path/to/cert/file/pem%v", index),
+					V4:           versiontest.out,
+				})
+			})
+		})
+	}
 }
