@@ -2,7 +2,7 @@ FROM golang:1.8
 MAINTAINER Conjur Inc.
 
 RUN go get -u github.com/jstemmer/go-junit-report
-RUN go get github.com/tools/godep
+RUN go get -u github.com/golang/dep/cmd/dep
 RUN go get github.com/smartystreets/goconvey
 RUN apt-get update && apt-get install jq
 
