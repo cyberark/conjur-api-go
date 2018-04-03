@@ -4,6 +4,7 @@ import (
 	"fmt"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+	"time"
 )
 
 func TestAPIKeyAuthenticator_RefreshToken(t *testing.T) {
@@ -56,9 +57,15 @@ func TestAPIKeyAuthenticator_RefreshToken(t *testing.T) {
 }
 
 func TestAPIKeyAuthenticator_NeedsTokenRefresh(t *testing.T) {
-	Convey("Returns false", t, func() {
-		authenticator := APIKeyAuthenticator{}
+	Convey("Returns false when tokenBorn is not stale", t, func() {
+		authenticator := APIKeyAuthenticator{tokenBorn: time.Now()}
 
 		So(authenticator.NeedsTokenRefresh(), ShouldBeFalse)
+	})
+
+	Convey("Returns true when tokenBorn is stale", t, func() {
+		authenticator := APIKeyAuthenticator{tokenBorn: time.Now().Truncate(TOKEN_STALE)}
+
+		So(authenticator.NeedsTokenRefresh(), ShouldBeTrue)
 	})
 }
