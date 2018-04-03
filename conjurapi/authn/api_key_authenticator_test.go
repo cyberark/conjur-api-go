@@ -64,7 +64,7 @@ func TestAPIKeyAuthenticator_NeedsTokenRefresh(t *testing.T) {
 	})
 
 	Convey("Returns true when tokenBorn is stale", t, func() {
-		authenticator := APIKeyAuthenticator{tokenBorn: time.Now().Truncate(TOKEN_STALE)}
+		authenticator := APIKeyAuthenticator{tokenBorn: time.Now().Add(-TOKEN_STALE)}
 
 		So(authenticator.NeedsTokenRefresh(), ShouldBeTrue)
 	})
