@@ -62,6 +62,9 @@ func NewToken(data []byte) (token AuthnToken, err error) {
 		err = fmt.Errorf("Unrecognized token format")
 		return
 	}
+
+	err = token.FromJSON(data)
+
 	return
 }
 

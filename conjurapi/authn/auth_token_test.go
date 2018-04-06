@@ -28,13 +28,11 @@ func TestTokenV5_Parse(t *testing.T) {
 
 		So(err, ShouldBeNil)
 		So(reflect.TypeOf(token).String(), ShouldEqual, "*authn.AuthnToken5")
-		So(token.Raw(), ShouldBeNil)
+		So(token.Raw(), ShouldNotBeNil)
 	})
 
 	Convey("Token fields are parsed as expected", t, func() {
 		token, err := NewToken([]byte(token_s))
-
-		err = token.FromJSON([]byte(token_s))
 		So(err, ShouldBeNil)
 
 		So(string(token.Raw()), ShouldEqual, token_s)
@@ -48,8 +46,6 @@ func TestTokenV5_Parse(t *testing.T) {
 
 	Convey("Token exp is supported", t, func() {
 		token, err := NewToken([]byte(token_with_exp_s))
-
-		err = token.FromJSON([]byte(token_with_exp_s))
 		So(err, ShouldBeNil)
 
 		token_v5 := token.(*AuthnToken5)
@@ -60,16 +56,12 @@ func TestTokenV5_Parse(t *testing.T) {
 	})
 
 	Convey("Malformed base64 in token is reported", t, func() {
-		token, err := NewToken([]byte(token_mangled_s))
-
-		err = token.FromJSON([]byte(token_mangled_s))
+		_, err := NewToken([]byte(token_mangled_s))
 		So(err.Error(), ShouldEqual, "v5 access token field 'payload' is not valid base64")
 	})
 
 	Convey("Malformed JSON in token is reported", t, func() {
-		token, err := NewToken([]byte(token_mangled_2_s))
-
-		err = token.FromJSON([]byte(token_mangled_2_s))
+		_, err := NewToken([]byte(token_mangled_2_s))
 		So(err.Error(), ShouldEqual, "Unable to unmarshal v5 access token field 'payload' : invalid character 'o' in literal false (expecting 'a')")
 	})
 }
@@ -80,7 +72,6 @@ func TestTokenV4_Parse(t *testing.T) {
 
 	Convey("Token type V4 is detected", t, func() {
 		token, err := NewToken(expired_token_bytes)
-		err = token.FromJSON(expired_token_bytes)
 
 		So(err, ShouldBeNil)
 		So(reflect.TypeOf(token).String(), ShouldEqual, "*authn.AuthnToken4")
@@ -134,7 +125,6 @@ func TestTokenV4_Parse(t *testing.T) {
 
 	Convey("New token can be parsed and fields are valid", t, func() {
 		token, err := NewToken([]byte(new_token_bytes))
-		err = token.FromJSON(new_token_bytes)
 		token4, _ := token.(*AuthnToken4)
 
 		So(err, ShouldBeNil)
