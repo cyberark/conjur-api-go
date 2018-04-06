@@ -123,7 +123,6 @@ func (t *AuthnToken4) FromJSON(data []byte) (err error) {
 func (t *AuthnToken4) UnmarshalJSON(data []byte) (err error) {
 	type Alias AuthnToken4
 	x := &struct {
-		bytes     []byte
 		Data      string `json:"data"`
 		Timestamp string `json:"timestamp"`
 		Signature string `json:"signature"`
