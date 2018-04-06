@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+const (
+	TimeFormatToken4 = "2006-01-02 15:04:05 MST"
+)
+
 type AuthnToken interface {
 	// Parse from JSON. Required before further usage.
 	FromJSON(data []byte) error
@@ -19,7 +23,6 @@ type AuthnToken interface {
 type AuthnToken4 struct {
 	bytes     []byte
 	Data      string `json:"data"`
-	timestamp string `json:"timestamp"`
 	Signature string `json:"signature"`
 	Key       string `json:"key"`
 	Timestamp time.Time
@@ -109,19 +112,33 @@ func (t *AuthnToken5) FromJSON(data []byte) (err error) {
 }
 
 func (t *AuthnToken4) FromJSON(data []byte) (err error) {
-	t.bytes = data
-
 	err = json.Unmarshal(data, &t)
 	if err != nil {
 		err = fmt.Errorf("Unable to unmarshal v4 access token %s", err)
+	}
+
+	return
+}
+
+func (t *AuthnToken4) UnmarshalJSON(data []byte) (err error) {
+	type Alias AuthnToken4
+	x := &struct {
+		bytes     []byte
+		Data      string `json:"data"`
+		Timestamp string `json:"timestamp"`
+		Signature string `json:"signature"`
+		Key       string `json:"key"`
+		*Alias
+	}{
+		Alias: (*Alias)(t),
+	}
+
+	if err = json.Unmarshal(data, &x); err != nil {
 		return
 	}
 
-	t.Timestamp, err = time.Parse("2006-01-02 15:04:05 MST", t.timestamp)
-	if err != nil {
-		err = fmt.Errorf("Unable to parse v4 access token field 'timestamp' %s : %s", t.Timestamp, err)
-		return
-	}
+	t.Timestamp, err = time.Parse(TimeFormatToken4, x.Timestamp)
+	t.bytes = data
 
 	return
 }
@@ -147,5 +164,5 @@ func (t *AuthnToken4) Raw() []byte {
 }
 
 func (t *AuthnToken4) ShouldRefresh() bool {
-	return t.Timestamp.Add(5 * time.Minute).After(time.Now())
+	return time.Now().After(t.Timestamp.Add(5 * time.Minute))
 }
