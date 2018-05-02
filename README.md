@@ -52,8 +52,6 @@ func main() {
     // Alternatively, you can transfer the secret directly into secure memory,
     // vault, keychain, etc.
     secretResponse, err := conjur.RetrieveSecretReader(variableIdentifier)
-    defer secretResponse.Close()
-
     if err != nil {
         panic(err)
     }
