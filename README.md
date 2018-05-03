@@ -23,17 +23,19 @@ import (
     "os"
     "fmt"
     "github.com/cyberark/conjur-api-go/conjurapi"
+    "github.com/cyberark/conjur-api-go/conjurapi/authn"
 )
 
-func Main() {
+func main() {
     variableIdentifier := "db/secret"
-    
+
     config := conjurapi.LoadConfig()
-            
-    conjur, err := conjurapi.NewClientFromKey(
-        config: config,
-        login:  os.Getenv("CONJUR_AUTHN_LOGIN"),
-        aPIKey: os.Getenv("CONJUR_AUTHN_API_KEY"),
+
+    conjur, err := conjurapi.NewClientFromKey(config,
+        authn.LoginPair{
+            Login:  os.Getenv("CONJUR_AUTHN_LOGIN"),
+            APIKey: os.Getenv("CONJUR_AUTHN_API_KEY"),
+        },
     )
     if err != nil {
         panic(err)
@@ -47,13 +49,14 @@ func Main() {
     fmt.Println("The secret value is: ", string(secretValue))
 
     // Retrieve a secret into io.ReadCloser, then read into []byte.
-    // Alternatively, you can transfer the secret directly into secure memory, 
-    // vault, keychain, etc. 
+    // Alternatively, you can transfer the secret directly into secure memory,
+    // vault, keychain, etc.
     secretResponse, err := conjur.RetrieveSecretReader(variableIdentifier)
     if err != nil {
         panic(err)
     }
-    secretValue, err = conjur.ReadResponseBody(secretResponse)
+
+    secretValue, err = conjurapi.ReadResponseBody(secretResponse)
     if err != nil {
         panic(err)
     }
