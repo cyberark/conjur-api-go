@@ -1,5 +1,12 @@
 #!/bin/bash -ex
 
+# This bug in the current version of compose causes problems in
+# Jenkins:
+# https://github.com/docker/compose/issues/5929. docker-compose will
+# malfunction if it's run in a directory that has a name starting with
+# '_' or '-'. Until we get the fix, set COMPOSE_PROJECT_NAME
+export COMPOSE_PROJECT_NAME="$(basename $PWD | sed 's/^[_-]*\(.*\)/\1/')"
+
 exec_on() {
   local container="$1"; shift
 
