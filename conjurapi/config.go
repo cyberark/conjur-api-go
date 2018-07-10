@@ -2,6 +2,7 @@ package conjurapi
 
 import (
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -76,6 +77,7 @@ func (c *Config) mergeYAML(filename string) {
 	buf, err := ioutil.ReadFile(filename)
 
 	if err != nil {
+		log.Debugf("Failed reading %s, %v\n", filename, err)
 		return
 	}
 
@@ -88,6 +90,7 @@ func (c *Config) mergeYAML(filename string) {
 	}
 	aux.Config.V4 = aux.ConjurVersion == "4"
 
+	log.Debugf("Config from %s: %+v\n", filename, aux.Config)
 	c.merge(&aux.Config)
 }
 
@@ -103,27 +106,25 @@ func (c *Config) mergeEnv() {
 		V4:           majorVersion4,
 	}
 
+	log.Debugf("Config from environment: %+v\n", env)
 	c.merge(&env)
 }
 
 func LoadConfig() Config {
-	config := Config{}
+	// Default to using ~/.netrc, subsequent configuration can
+	// override it.
+	config := Config{NetRCPath: os.ExpandEnv("$HOME/.netrc")}
 
 	config.mergeYAML("/etc/conjur.conf")
 
 	conjurrc := os.Getenv("CONJURRC")
-
-	if conjurrc != "" {
-		config.mergeYAML(conjurrc)
-	} else {
-		path := os.ExpandEnv("$HOME/.conjurrc")
-		config.mergeYAML(path)
-
-		path = os.ExpandEnv("$PWD/.conjurrc")
-		config.mergeYAML(path)
+	if conjurrc == "" {
+		conjurrc = os.ExpandEnv("$HOME/.conjurrc")
 	}
+	config.mergeYAML(conjurrc)
 
 	config.mergeEnv()
 
+	log.Debugf("Final config: %+v\n", config)
 	return config
 }
