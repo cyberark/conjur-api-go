@@ -6,7 +6,11 @@ services:
 
   conjur:
     container_name: api-go-conjur
-    image: cyberark/conjur
+    
+    # conjur:0.9.0 has a bug that causes some test failures. Pin to
+    # the previous version till it's fixed
+    image: cyberark/conjur:0.8.1-stable
+    
     command: server -a cucumber
     environment:
       DATABASE_URL: postgres://postgres@postgres/postgres
