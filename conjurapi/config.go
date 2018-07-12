@@ -2,10 +2,11 @@ package conjurapi
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v1"
 )
 
@@ -83,7 +84,7 @@ func (c *Config) mergeYAML(filename string) {
 
 	aux := struct {
 		ConjurVersion string `yaml:"version"`
-		Config `yaml:",inline"`
+		Config        `yaml:",inline"`
 	}{}
 	if err := yaml.Unmarshal(buf, &aux); err != nil {
 		return
