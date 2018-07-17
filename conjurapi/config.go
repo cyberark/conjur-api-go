@@ -24,17 +24,19 @@ func (c *Config) validate() error {
 	errors := []string{}
 
 	if c.ApplianceURL == "" {
-		errors = append(errors, fmt.Sprintf("Must specify an ApplianceURL in %v", c))
+		errors = append(errors, "Must specify an ApplianceURL")
 	}
 
 	if c.Account == "" {
-		errors = append(errors, fmt.Sprintf("Must specify an Account in %v", c))
+		errors = append(errors, "Must specify an Account")
 	}
 
 	c.Https = c.SSLCertPath != "" || c.SSLCert != ""
 
 	if len(errors) == 0 {
 		return nil
+	} else if log.GetLevel() == log.DebugLevel {
+		errors = append(errors, fmt.Sprintf("config: %+v", c))
 	}
 	return fmt.Errorf("%s", strings.Join(errors, " -- "))
 }

@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type ConjurError struct {
@@ -33,13 +35,27 @@ func NewConjurError(resp *http.Response) error {
 	if err != nil {
 		cerr.Message = strings.TrimSpace(string(body))
 	}
+
+	// If the body's empty, use the HTTP status as the message
+	if cerr.Message == "" {
+		cerr.Message = resp.Status
+	}
+
 	return &cerr
 }
 
 func (self *ConjurError) Error() string {
-	if self.Details != nil && self.Details.Message != "" {
-		return self.Details.Message
-	} else {
-		return self.Message
+	log.Debugf("self.Details: %+v, self.Message: %+v\n", self.Details, self.Message)
+
+	var b strings.Builder
+
+	if self.Message != "" {
+		b.WriteString(self.Message + ". ")
 	}
+
+	if self.Details != nil && self.Details.Message != "" {
+		b.WriteString(self.Details.Message + ".")
+	}
+
+	return b.String()
 }

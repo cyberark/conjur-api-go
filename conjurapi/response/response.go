@@ -5,6 +5,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func readBody(resp *http.Response) ([]byte, error) {
@@ -18,10 +20,16 @@ func readBody(resp *http.Response) ([]byte, error) {
 	return responseText, err
 }
 
+func logResponse(resp *http.Response) {
+	req := resp.Request
+	log.Debugf("%d %s %s %+v", resp.StatusCode, req.Method, req.URL, req.Header)
+}
+
 // DataResponse checks the HTTP status of the response. If it's less than
 // 300, it returns the response body as a byte array. Otherwise it returns
 // a NewConjurError.
 func DataResponse(resp *http.Response) ([]byte, error) {
+	logResponse(resp)
 	if resp.StatusCode < 300 {
 		return readBody(resp)
 	}
@@ -32,6 +40,7 @@ func DataResponse(resp *http.Response) ([]byte, error) {
 // 300, it returns the response body as a stream. Otherwise it returns
 // a NewConjurError.
 func SecretDataResponse(resp *http.Response) (io.ReadCloser, error) {
+	logResponse(resp)
 	if resp.StatusCode < 300 {
 		return resp.Body, nil
 	}
@@ -42,6 +51,7 @@ func SecretDataResponse(resp *http.Response) (io.ReadCloser, error) {
 // 300, it returns the response body as JSON. Otherwise it returns
 // a NewConjurError.
 func JSONResponse(resp *http.Response, obj interface{}) error {
+	logResponse(resp)
 	if resp.StatusCode < 300 {
 		body, err := readBody(resp)
 		if err != nil {
@@ -56,6 +66,7 @@ func JSONResponse(resp *http.Response, obj interface{}) error {
 // 300, it returns without an error. Otherwise it returns
 // a NewConjurError.
 func EmptyResponse(resp *http.Response) error {
+	logResponse(resp)
 	if resp.StatusCode < 300 {
 		return nil
 	}

@@ -130,7 +130,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 			_, err = conjur.RetrieveSecret(variableIdentifier)
 
 			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, "Requested version does not exist")
+			So(err.Error(), ShouldContainSubstring, "Requested version does not exist")
 			conjurError := err.(*response.ConjurError)
 			So(conjurError.Code, ShouldEqual, 404)
 			So(conjurError.Details.Code, ShouldEqual, "not_found")
@@ -143,7 +143,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 			_, err = conjur.RetrieveSecret("non-existent-variable")
 
 			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, "Variable 'non-existent-variable' not found in account 'cucumber'")
+			So(err.Error(), ShouldContainSubstring, "Variable 'non-existent-variable' not found in account 'cucumber'")
 			conjurError := err.(*response.ConjurError)
 			So(conjurError.Code, ShouldEqual, 404)
 			So(conjurError.Details.Code, ShouldEqual, "not_found")
@@ -159,7 +159,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 				_, err = conjur.RetrieveSecret("existent-or-non-existent-variable")
 
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "")
+				So(err.Error(), ShouldContainSubstring, "Unauthorized")
 				conjurError := err.(*response.ConjurError)
 				So(conjurError.Code, ShouldEqual, 401)
 			})
@@ -198,7 +198,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 
 			_, err = conjur.RetrieveSecret(variableIdentifier)
 			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, "")
+			So(err.Error(), ShouldContainSubstring, "Not Found")
 			conjurError := err.(*response.ConjurError)
 			So(conjurError.Code, ShouldEqual, 404)
 		})
@@ -210,7 +210,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 			_, err = conjur.RetrieveSecret("non-existent-variable")
 
 			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, "variable 'non-existent-variable' not found")
+			So(err.Error(), ShouldContainSubstring, "variable 'non-existent-variable' not found")
 			conjurError := err.(*response.ConjurError)
 			So(conjurError.Code, ShouldEqual, 404)
 		})
@@ -225,7 +225,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 				_, err = conjur.RetrieveSecret("existent-or-non-existent-variable")
 
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "")
+				So(err.Error(), ShouldContainSubstring, "Unauthorized")
 				conjurError := err.(*response.ConjurError)
 				So(conjurError.Code, ShouldEqual, 401)
 			})
