@@ -6,11 +6,15 @@ services:
 
   conjur:
     container_name: api-go-conjur
-    image: cyberark/conjur
+    
+    # conjur:0.9.0 has a bug that causes some test failures. Pin to
+    # the previous version till it's fixed
+    image: cyberark/conjur:0.8.1-stable
+    
     command: server -a cucumber
     environment:
       DATABASE_URL: postgres://postgres@postgres/postgres
-      CONJUR_DATA_KEY: 'WMfApcDBtocRWV+ZSUP3Tjr5XNU+Z2FdBb6BEezejIs='
+      CONJUR_DATA_KEY:
       RAILS_ENV: development
     depends_on:
       - postgres
@@ -37,14 +41,41 @@ services:
     depends_on:
       - conjur
     volumes:
-      - .:/go/src/github.com/cyberark/conjur-api-go
+      - ./output:/go/src/github.com/cyberark/conjur-api-go/output
     environment:
+      CONJUR_DATA_KEY:
       CONJUR_APPLIANCE_URL: http://conjur
       CONJUR_ACCOUNT: cucumber
       CONJUR_AUTHN_LOGIN: admin
+      CONJUR_AUTHN_API_KEY:
       CONJUR_V4_APPLIANCE_URL: https://cuke-master/api
       CONJUR_V4_HEALTH_URL: https://cuke-master/health
       CONJUR_V4_ACCOUNT: cucumber
       CONJUR_V4_AUTHN_LOGIN: admin
+      CONJUR_V4_AUTHN_API_KEY:
+      CONJUR_V4_SSL_CERTIFICATE:
+        
+  dev:
+    container_name: api-go-dev
+    build: .
+    ports:
+        - 8080
+    depends_on:
+      - conjur
+    volumes:
+      - .:/go/src/github.com/cyberark/conjur-api-go
+    environment:
+      CONJUR_DATA_KEY:
+      CONJUR_APPLIANCE_URL: http://conjur
+      CONJUR_ACCOUNT: cucumber
+      CONJUR_AUTHN_LOGIN: admin
+      CONJUR_AUTHN_API_KEY:
+      CONJUR_V4_APPLIANCE_URL: https://cuke-master/api
+      CONJUR_V4_HEALTH_URL: https://cuke-master/health
+      CONJUR_V4_ACCOUNT: cucumber
+      CONJUR_V4_AUTHN_LOGIN: admin
+      CONJUR_V4_AUTHN_API_KEY:
+      CONJUR_V4_SSL_CERTIFICATE:        
     entrypoint: sleep
     command: infinity
+    

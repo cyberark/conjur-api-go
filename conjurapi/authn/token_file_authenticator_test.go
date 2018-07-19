@@ -14,6 +14,7 @@ func TestTokenFileAuthenticator_RefreshToken(t *testing.T) {
 		token_file_name := token_file.Name()
 		token_file_contents := "token-from-file-contents"
 		token_file.Write([]byte(token_file_contents))
+		token_file.Close()
 		defer os.Remove(token_file_name)
 
 		Convey("Return the token from the file", func() {

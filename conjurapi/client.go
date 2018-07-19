@@ -13,6 +13,7 @@ import (
 
 	"github.com/bgentry/go-netrc/netrc"
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
+	log "github.com/sirupsen/logrus"
 )
 
 type Authenticator interface {
@@ -134,6 +135,7 @@ func (c *Client) SubmitRequest(req *http.Request) (resp *http.Response, err erro
 		return
 	}
 
+	log.Debugf("req: %+v\n", req)
 	resp, err = c.httpClient.Do(req)
 	if err != nil {
 		return

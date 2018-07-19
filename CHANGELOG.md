@@ -1,3 +1,15 @@
+# v0.3.2
+
+* Use github.com/sirupsen/logrus for logging.
+* When the log level for logrus is set to DebugLevel, show debug information, including:
+
+  * what configuration information is contained in each of the
+    locations (e.g. the environment, config files, etc), as well as
+    the final configuration
+  
+  * the HTTP request sent to, and the responses received from, the Conjur server
+  
+
 # v0.3.1
 
 * Make `CONJUR_VERSION` an alias for `CONJUR_MAJOR_VERSION` to match other client libraries.

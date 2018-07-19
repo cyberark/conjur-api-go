@@ -1,11 +1,11 @@
 package conjurapi
 
 import (
+	"fmt"
 	. "github.com/smartystreets/goconvey/convey"
+	"io/ioutil"
 	"os"
 	"testing"
-	"io/ioutil"
-	"fmt"
 )
 
 func TempFileForTesting(prefix string, fileContents string) (string, error) {
@@ -81,6 +81,25 @@ var versiontests = []struct {
 }
 
 func TestConfig_mergeYAML(t *testing.T) {
+	Convey("No other netrc specified", t, func() {
+		e := ClearEnv()
+		defer e.RestoreEnv()
+
+		os.Setenv("HOME", "/Users/conjuruser")
+		os.Setenv("CONJUR_ACCOUNT", "account")
+		os.Setenv("CONJUR_APPLIANCE_URL", "appliance-url")
+
+		Convey("Uses $HOME/.netrc by deafult", func() {
+			config := LoadConfig()
+
+			So(config, ShouldResemble, Config{
+				Account:      "account",
+				ApplianceURL: "appliance-url",
+				NetRCPath:    "/Users/conjuruser/.netrc",
+			})
+		})
+	})
+
 	for index, versiontest := range versiontests {
 		Convey(fmt.Sprintf("Given a filled conjurrc file with %s", versiontest.label), t, func() {
 			conjurrcFileContents := fmt.Sprintf(`

@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v1"
 )
 
@@ -22,17 +24,19 @@ func (c *Config) validate() error {
 	errors := []string{}
 
 	if c.ApplianceURL == "" {
-		errors = append(errors, fmt.Sprintf("Must specify an ApplianceURL in %v", c))
+		errors = append(errors, "Must specify an ApplianceURL")
 	}
 
 	if c.Account == "" {
-		errors = append(errors, fmt.Sprintf("Must specify an Account in %v", c))
+		errors = append(errors, "Must specify an Account")
 	}
 
 	c.Https = c.SSLCertPath != "" || c.SSLCert != ""
 
 	if len(errors) == 0 {
 		return nil
+	} else if log.GetLevel() == log.DebugLevel {
+		errors = append(errors, fmt.Sprintf("config: %+v", c))
 	}
 	return fmt.Errorf("%s", strings.Join(errors, " -- "))
 }
@@ -76,18 +80,20 @@ func (c *Config) mergeYAML(filename string) {
 	buf, err := ioutil.ReadFile(filename)
 
 	if err != nil {
+		log.Debugf("Failed reading %s, %v\n", filename, err)
 		return
 	}
 
 	aux := struct {
 		ConjurVersion string `yaml:"version"`
-		Config `yaml:",inline"`
+		Config        `yaml:",inline"`
 	}{}
 	if err := yaml.Unmarshal(buf, &aux); err != nil {
 		return
 	}
 	aux.Config.V4 = aux.ConjurVersion == "4"
 
+	log.Debugf("Config from %s: %+v\n", filename, aux.Config)
 	c.merge(&aux.Config)
 }
 
@@ -103,27 +109,25 @@ func (c *Config) mergeEnv() {
 		V4:           majorVersion4,
 	}
 
+	log.Debugf("Config from environment: %+v\n", env)
 	c.merge(&env)
 }
 
 func LoadConfig() Config {
-	config := Config{}
+	// Default to using ~/.netrc, subsequent configuration can
+	// override it.
+	config := Config{NetRCPath: os.ExpandEnv("$HOME/.netrc")}
 
 	config.mergeYAML("/etc/conjur.conf")
 
 	conjurrc := os.Getenv("CONJURRC")
-
-	if conjurrc != "" {
-		config.mergeYAML(conjurrc)
-	} else {
-		path := os.ExpandEnv("$HOME/.conjurrc")
-		config.mergeYAML(path)
-
-		path = os.ExpandEnv("$PWD/.conjurrc")
-		config.mergeYAML(path)
+	if conjurrc == "" {
+		conjurrc = os.ExpandEnv("$HOME/.conjurrc")
 	}
+	config.mergeYAML(conjurrc)
 
 	config.mergeEnv()
 
+	log.Debugf("Final config: %+v\n", config)
 	return config
 }
