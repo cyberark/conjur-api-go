@@ -84,6 +84,53 @@ func TestClient_RetrieveSecret(t *testing.T) {
 			})
 		})
 
+		Convey("On many populated secrets", func() {
+			variables := map[string]string{
+				"myapp-01":             "these",
+				"alice@devops":         "are",
+				"prod/aws/db-password": "all",
+				"research+development": "secret",
+				"sales&marketing":      "strings!",
+				"onemore":              "{\"json\": \"object\"}",
+			}
+
+			policy := ""
+			for id := range variables {
+				policy = fmt.Sprintf("%s- !variable %s\n", policy, id)
+			}
+
+			conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
+			So(err, ShouldBeNil)
+
+			conjur.LoadPolicy(
+				PolicyModePut,
+				"root",
+				strings.NewReader(policy),
+			)
+
+			for id, value := range variables {
+				err = conjur.AddSecret(id, value)
+				So(err, ShouldBeNil)
+			}
+
+			Convey("Fetch many secrets in a single batch retrieval", func() {
+				variableIds := []string{}
+				for id := range variables {
+					variableIds = append(variableIds, id)
+				}
+
+				secrets, err := conjur.RetrieveBatchSecrets(variableIds)
+				So(err, ShouldBeNil)
+
+				for id, value := range variables {
+					fullyQualifiedID := fmt.Sprintf("%s:variable:%s", config.Account, id)
+					fetchedValue, ok := secrets[fullyQualifiedID]
+					So(ok, ShouldBeTrue)
+					So(string(fetchedValue), ShouldEqual, value)
+				}
+			})
+		})
+
 		Convey("Token authenticator can be used to fetch a secret", func() {
 			variableIdentifier := "existent-variable-with-defined-value"
 			secretValue := fmt.Sprintf("secret-value-%v", rand.Intn(123456))
@@ -213,6 +260,33 @@ func TestClient_RetrieveSecret(t *testing.T) {
 			So(err.Error(), ShouldContainSubstring, "variable 'non-existent-variable' not found")
 			conjurError := err.(*response.ConjurError)
 			So(conjurError.Code, ShouldEqual, 404)
+		})
+
+		Convey("Fetch many secrets in a single batch retrieval", func() {
+			variables := map[string]string{
+				"myapp-01":             "these",
+				"alice@devops":         "are",
+				"prod/aws/db-password": "all",
+				"research+development": "secret",
+				"sales&marketing":      "strings",
+				"onemore":              "{\"json\": \"object\"}",
+			}
+
+			conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
+			So(err, ShouldBeNil)
+
+			variableIds := []string{}
+			for id := range variables {
+				variableIds = append(variableIds, id)
+			}
+			secrets, err := conjur.RetrieveBatchSecrets(variableIds)
+			So(err, ShouldBeNil)
+
+			for id, value := range variables {
+				fetchedValue, ok := secrets[id]
+				So(ok, ShouldBeTrue)
+				So(string(fetchedValue), ShouldEqual, value)
+			}
 		})
 
 		Convey("Given configuration has invalid login credentials", func() {
