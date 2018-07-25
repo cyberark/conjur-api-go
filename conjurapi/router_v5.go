@@ -75,6 +75,20 @@ func (r RouterV5) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.
 	)
 }
 
+func (r RouterV5) RetrieveBatchSecretsRequest(variableIDs []string) (*http.Request, error) {
+	fullVariableIDs := []string{}
+	for _, variable := range variableIDs {
+		variableID := makeFullId(r.Config.Account, "variable", variable)
+		fullVariableIDs = append(fullVariableIDs, variableID)
+	}
+
+	return http.NewRequest(
+		"GET",
+		r.batchVariableURL(fullVariableIDs),
+		nil,
+	)
+}
+
 func (r RouterV5) RetrieveSecretRequest(variableID string) (*http.Request, error) {
 	variableID = makeFullId(r.Config.Account, "variable", variableID)
 
@@ -98,4 +112,9 @@ func (r RouterV5) AddSecretRequest(variableID, secretValue string) (*http.Reques
 func (r RouterV5) variableURL(variableID string) string {
 	tokens := strings.SplitN(variableID, ":", 3)
 	return fmt.Sprintf("%s/secrets/%s/%s/%s", r.Config.ApplianceURL, tokens[0], tokens[1], url.QueryEscape(tokens[2]))
+}
+
+func (r RouterV5) batchVariableURL(variableIDs []string) string {
+	queryString := url.QueryEscape(strings.Join(variableIDs, ","))
+	return fmt.Sprintf("%s/secrets?variable_ids=%s", r.Config.ApplianceURL, queryString)
 }
