@@ -74,6 +74,14 @@ func (r RouterV4) AddSecretRequest(variableIDentifier, secretValue string) (*htt
 	return nil, fmt.Errorf("AddSecret is not supported for Conjur V4")
 }
 
+func (r RouterV4) RetrieveBatchSecretsRequest(variableIDs []string) (*http.Request, error) {
+	return http.NewRequest(
+		"GET",
+		r.batchVariableURL(variableIDs),
+		nil,
+	)
+}
+
 func (r RouterV4) RetrieveSecretRequest(variableIDentifier string) (*http.Request, error) {
 	return http.NewRequest(
 		"GET",
@@ -84,4 +92,9 @@ func (r RouterV4) RetrieveSecretRequest(variableIDentifier string) (*http.Reques
 
 func (r RouterV4) variableURL(variableIDentifier string) string {
 	return fmt.Sprintf("%s/variables/%s/value", r.Config.ApplianceURL, url.QueryEscape(variableIDentifier))
+}
+
+func (r RouterV4) batchVariableURL(variableIDs []string) string {
+	queryString := url.QueryEscape(strings.Join(variableIDs, ","))
+	return fmt.Sprintf("%s/variables/values?vars=%s", r.Config.ApplianceURL, queryString)
 }

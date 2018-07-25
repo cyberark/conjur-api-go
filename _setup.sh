@@ -27,8 +27,34 @@ api_key=$(exec_on conjur conjurctl role retrieve-key cucumber:user:admin | tr -d
 exec_on cuke-master bash -c 'conjur authn login -u admin -p secret'
 exec_on cuke-master conjur user create --as-group security_admin alice
 exec_on cuke-master conjur variable create existent-variable-with-undefined-value
-exec_on cuke-master conjur variable create existent-variable-with-defined-value
-exec_on cuke-master conjur variable values add existent-variable-with-defined-value existent-variable-defined-value
+
+vars=(
+  'existent-variable-with-defined-value'
+  'myapp-01'
+  'alice@devops'
+  'prod/aws/db-password'
+  'research+development'
+  'sales&marketing'
+  'onemore'
+)
+
+secrets=(
+  'existent-variable-defined-value'
+  'these'
+  'are'
+  'all'
+  'secret'
+  'strings'
+  '{"json": "object"}'
+)
+
+count=${#vars[@]}
+for ((i=0; i<$count; i++)); do
+  id="${vars[$i]}"
+  val="${secrets[$i]}"
+  exec_on cuke-master conjur variable create "$id"
+  exec_on cuke-master conjur variable values add "$id" "$val"
+done
 
 api_key_v4=$(exec_on cuke-master conjur user rotate_api_key)
 ssl_cert_v4=$(exec_on cuke-master cat /opt/conjur/etc/ssl/ca.pem)

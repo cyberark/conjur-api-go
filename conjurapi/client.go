@@ -40,6 +40,8 @@ type Router interface {
 
 	RetrieveSecretRequest(variableID string) (*http.Request, error)
 
+	RetrieveBatchSecretsRequest(variableIDs []string) (*http.Request, error)
+
 	LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader) (*http.Request, error)
 }
 
