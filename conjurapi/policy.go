@@ -21,7 +21,7 @@ const (
 // CreatedRole contains the full role ID and API key of a role which was created
 // by the server when loading a policy.
 type CreatedRole struct {
-	ID     string
+	ID     string `json:"id"`
 	APIKey string `json:"api_key"`
 }
 
@@ -30,7 +30,7 @@ type PolicyResponse struct {
 	// Newly created roles.
 	CreatedRoles map[string]CreatedRole `json:"created_roles"`
 	// The version number of the policy.
-	Version uint32
+	Version uint32 `json:"version"`
 }
 
 // LoadPolicy submits new policy data or polciy changes to the server.
