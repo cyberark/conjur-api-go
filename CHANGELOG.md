@@ -1,3 +1,7 @@
+# v0.3.3
+
+* Update the tags on `PolicyResponse` so they match the JSON returned by the server.
+
 # v0.3.2
 
 * Use github.com/sirupsen/logrus for logging.
