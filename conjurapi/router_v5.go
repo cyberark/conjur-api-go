@@ -50,6 +50,38 @@ func (r RouterV5) CheckPermissionRequest(resourceID, privilege string) (*http.Re
 	)
 }
 
+func (r RouterV5) ResourceRequest(resourceID string) (*http.Request, error) {
+	account, kind, id, err := parseID(resourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	requestURL := makeRouterURL(r.resourcesURL(account), kind, url.QueryEscape(id))
+
+	return http.NewRequest(
+		"GET",
+		requestURL.String(),
+		nil,
+	)
+}
+
+func (r RouterV5) ResourcesRequest(filter *ResourceFilter) (*http.Request, error) {
+	var query []string
+	if filter != nil {
+		if filter.Kind != "" {
+			query = append(query, fmt.Sprintf("kind=%s", url.QueryEscape(filter.Kind)))
+		}
+	}
+
+	requestURL := makeRouterURL(r.resourcesURL(r.Config.Account)).withQuery(strings.Join(query, "&"))
+
+	return http.NewRequest(
+		"GET",
+		requestURL.String(),
+		nil,
+	)
+}
+
 func (r RouterV5) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader) (*http.Request, error) {
 	policyID = makeFullId(r.Config.Account, "policy", policyID)
 

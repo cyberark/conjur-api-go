@@ -30,19 +30,15 @@ type Client struct {
 }
 
 type Router interface {
-	AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, error)
-
-	RotateAPIKeyRequest(roleID string) (*http.Request, error)
-
-	CheckPermissionRequest(resourceID, privilege string) (*http.Request, error)
-
 	AddSecretRequest(variableID, secretValue string) (*http.Request, error)
-
-	RetrieveSecretRequest(variableID string) (*http.Request, error)
-
-	RetrieveBatchSecretsRequest(variableIDs []string) (*http.Request, error)
-
+	AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, error)
+	CheckPermissionRequest(resourceID, privilege string) (*http.Request, error)
 	LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader) (*http.Request, error)
+	ResourceRequest(resourceID string) (*http.Request, error)
+	ResourcesRequest(filter *ResourceFilter) (*http.Request, error)
+	RetrieveBatchSecretsRequest(variableIDs []string) (*http.Request, error)
+	RetrieveSecretRequest(variableID string) (*http.Request, error)
+	RotateAPIKeyRequest(roleID string) (*http.Request, error)
 }
 
 func NewClientFromKey(config Config, loginPair authn.LoginPair) (*Client, error) {
