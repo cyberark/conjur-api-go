@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 )
 
 func readBody(resp *http.Response) ([]byte, error) {
@@ -22,7 +22,7 @@ func readBody(resp *http.Response) ([]byte, error) {
 
 func logResponse(resp *http.Response) {
 	req := resp.Request
-	log.Debugf("%d %s %s %+v", resp.StatusCode, req.Method, req.URL, req.Header)
+	logging.ApiLog.Debugf("%d %s %s %+v", resp.StatusCode, req.Method, req.URL, req.Header)
 }
 
 // DataResponse checks the HTTP status of the response. If it's less than
