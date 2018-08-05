@@ -157,6 +157,15 @@ func makeFullId(account, kind, id string) string {
 	return strings.Join(tokens, ":")
 }
 
+func parseID(fullID string) (account, kind, id string, err error) {
+	tokens := strings.SplitN(fullID, ":", 3)
+	if len(tokens) != 3 {
+		err = fmt.Errorf("Id '%s' must be fully qualified", fullID)
+		return
+	}
+	return tokens[0], tokens[1], tokens[2], nil
+}
+
 func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Client, error) {
 	var (
 		err error
