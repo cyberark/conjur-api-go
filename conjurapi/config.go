@@ -15,13 +15,13 @@ import (
 )
 
 type Config struct {
-	Account      string `yaml:"account"`
-	ApplianceURL string `yaml:"appliance_url"`
-	NetRCPath    string `yaml:"netrc_path"`
-	SSLCert      string
-	SSLCertPath  string `yaml:"cert_file"`
-	Https        bool
-	V4           bool
+	Account      string `yaml:"account,omitempty"`
+	ApplianceURL string `yaml:"appliance_url,omitempty"`
+	NetRCPath    string `yaml:"netrc_path,omitempty"`
+	SSLCert      string `yaml:"-"`
+	SSLCertPath  string `yaml:"cert_file,omitempty"`
+	Https        bool   `yaml:"-"`
+	V4           bool   `yaml:"v4"`
 }
 
 func (c *Config) validate() error {
