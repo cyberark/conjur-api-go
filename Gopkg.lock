@@ -34,7 +34,7 @@
   version = "v1.0.5"
 
 [[projects]]
-  digest = "1:8e059ba57bf50718652c005894a680ff47e8201760e9ee658091754daaebd578"
+  digest = "1:268d9458e12861d01186d9cee12870f8586d11de8a5a152f3f95d4c7573e0cb8"
   name = "github.com/smartystreets/assertions"
   packages = [
     ".",
@@ -46,7 +46,7 @@
   version = "1.8.1"
 
 [[projects]]
-  digest = "1:d7b05f2a6c2f3fc4d4d8018ada93d00847d30a0bbbf17d7b385bccad163e68f1"
+  digest = "1:7efd0b2309cdd6468029fa30c808c50a820c9344df07e1a4bbdaf18f282907aa"
   name = "github.com/smartystreets/goconvey"
   packages = [
     "convey",
@@ -67,7 +67,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:64107e3c8f52f341891a565d117bf263ed396fe0c16bad19634b25be25debfaa"
+  digest = "1:5420733d35e5e562fffc7c5b99660f3587af042b5420f19b17fe0426e6a5259d"
   name = "golang.org/x/sys"
   packages = [
     "unix",
@@ -77,12 +77,12 @@
   revision = "1b2967e3c290b7c545b3db0deeda16e9be4f98a2"
 
 [[projects]]
-  branch = "v1"
-  digest = "1:52ffb9db0286de37253a5098607cfbcfcdc94e51e8c226da120513df82adab0c"
-  name = "gopkg.in/yaml.v1"
+  digest = "1:7c95b35057a0ff2e19f707173cc1a947fa43a6eb5c4d300d196ece0334046082"
+  name = "gopkg.in/yaml.v2"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "9f9df34309c04878acc86042b16630b0f696e1de"
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -91,7 +91,7 @@
     "github.com/bgentry/go-netrc/netrc",
     "github.com/sirupsen/logrus",
     "github.com/smartystreets/goconvey/convey",
-    "gopkg.in/yaml.v1",
+    "gopkg.in/yaml.v2",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

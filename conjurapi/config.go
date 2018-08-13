@@ -11,7 +11,7 @@ import (
 
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 )
 
 type Config struct {
