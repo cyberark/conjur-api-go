@@ -13,7 +13,7 @@ import (
 
 	"github.com/bgentry/go-netrc/netrc"
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
-	log "github.com/sirupsen/logrus"
+	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 )
 
 type Authenticator interface {
@@ -30,19 +30,15 @@ type Client struct {
 }
 
 type Router interface {
-	AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, error)
-
-	RotateAPIKeyRequest(roleID string) (*http.Request, error)
-
-	CheckPermissionRequest(resourceID, privilege string) (*http.Request, error)
-
 	AddSecretRequest(variableID, secretValue string) (*http.Request, error)
-
-	RetrieveSecretRequest(variableID string) (*http.Request, error)
-
-	RetrieveBatchSecretsRequest(variableIDs []string) (*http.Request, error)
-
+	AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, error)
+	CheckPermissionRequest(resourceID, privilege string) (*http.Request, error)
 	LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader) (*http.Request, error)
+	ResourceRequest(resourceID string) (*http.Request, error)
+	ResourcesRequest(filter *ResourceFilter) (*http.Request, error)
+	RetrieveBatchSecretsRequest(variableIDs []string) (*http.Request, error)
+	RetrieveSecretRequest(variableID string) (*http.Request, error)
+	RotateAPIKeyRequest(roleID string) (*http.Request, error)
 }
 
 func NewClientFromKey(config Config, loginPair authn.LoginPair) (*Client, error) {
@@ -137,7 +133,7 @@ func (c *Client) SubmitRequest(req *http.Request) (resp *http.Response, err erro
 		return
 	}
 
-	log.Debugf("req: %+v\n", req)
+	logging.ApiLog.Debugf("req: %+v\n", req)
 	resp, err = c.httpClient.Do(req)
 	if err != nil {
 		return
@@ -155,6 +151,15 @@ func makeFullId(account, kind, id string) string {
 		tokens = []string{account, tokens[0], tokens[1]}
 	}
 	return strings.Join(tokens, ":")
+}
+
+func parseID(fullID string) (account, kind, id string, err error) {
+	tokens := strings.SplitN(fullID, ":", 3)
+	if len(tokens) != 3 {
+		err = fmt.Errorf("Id '%s' must be fully qualified", fullID)
+		return
+	}
+	return tokens[0], tokens[1], tokens[2], nil
 }
 
 func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Client, error) {

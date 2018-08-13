@@ -15,7 +15,7 @@ type RouterV5 struct {
 }
 
 func (r RouterV5) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, error) {
-	authenticateURL := fmt.Sprintf("%s/authn/%s/%s/authenticate", r.Config.ApplianceURL, r.Config.Account, url.QueryEscape(loginPair.Login))
+	authenticateURL := makeRouterURL(r.authnURL(), url.QueryEscape(loginPair.Login), "authenticate").String()
 
 	req, err := http.NewRequest("POST", authenticateURL, strings.NewReader(loginPair.APIKey))
 	if err != nil {
@@ -27,7 +27,7 @@ func (r RouterV5) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request,
 }
 
 func (r RouterV5) RotateAPIKeyRequest(roleID string) (*http.Request, error) {
-	rotateURL := fmt.Sprintf("%s/authn/%s/api_key?role=%s", r.Config.ApplianceURL, r.Config.Account, roleID)
+	rotateURL := makeRouterURL(r.authnURL(), "api_key").withQuery("role=%s", roleID).String()
 
 	return http.NewRequest(
 		"PUT",
@@ -37,11 +37,11 @@ func (r RouterV5) RotateAPIKeyRequest(roleID string) (*http.Request, error) {
 }
 
 func (r RouterV5) CheckPermissionRequest(resourceID, privilege string) (*http.Request, error) {
-	tokens := strings.SplitN(resourceID, ":", 3)
-	if len(tokens) != 3 {
-		return nil, fmt.Errorf("Resource id '%s' must be fully qualified", resourceID)
+	account, kind, id, err := parseID(resourceID)
+	if err != nil {
+		return nil, err
 	}
-	checkURL := fmt.Sprintf("%s/resources/%s/%s/%s?check=true&privilege=%s", r.Config.ApplianceURL, tokens[0], tokens[1], url.QueryEscape(tokens[2]), url.QueryEscape(privilege))
+	checkURL := makeRouterURL(r.resourcesURL(account), kind, url.QueryEscape(id)).withQuery("check=true&privilege=%s", url.QueryEscape(privilege)).String()
 
 	return http.NewRequest(
 		"GET",
@@ -50,11 +50,46 @@ func (r RouterV5) CheckPermissionRequest(resourceID, privilege string) (*http.Re
 	)
 }
 
+func (r RouterV5) ResourceRequest(resourceID string) (*http.Request, error) {
+	account, kind, id, err := parseID(resourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	requestURL := makeRouterURL(r.resourcesURL(account), kind, url.QueryEscape(id))
+
+	return http.NewRequest(
+		"GET",
+		requestURL.String(),
+		nil,
+	)
+}
+
+func (r RouterV5) ResourcesRequest(filter *ResourceFilter) (*http.Request, error) {
+	var query []string
+	if filter != nil {
+		if filter.Kind != "" {
+			query = append(query, fmt.Sprintf("kind=%s", url.QueryEscape(filter.Kind)))
+		}
+	}
+
+	requestURL := makeRouterURL(r.resourcesURL(r.Config.Account)).withQuery(strings.Join(query, "&"))
+
+	return http.NewRequest(
+		"GET",
+		requestURL.String(),
+		nil,
+	)
+}
+
 func (r RouterV5) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader) (*http.Request, error) {
 	policyID = makeFullId(r.Config.Account, "policy", policyID)
 
-	tokens := strings.SplitN(policyID, ":", 3)
-	policyURL := fmt.Sprintf("%s/policies/%s/%s/%s", r.Config.ApplianceURL, tokens[0], tokens[1], url.QueryEscape(tokens[2]))
+	account, kind, id, err := parseID(policyID)
+	if err != nil {
+		return nil, err
+	}
+	policyURL := makeRouterURL(r.policiesURL(account), kind, url.QueryEscape(id)).String()
 
 	var method string
 	switch mode {
@@ -92,9 +127,14 @@ func (r RouterV5) RetrieveBatchSecretsRequest(variableIDs []string) (*http.Reque
 func (r RouterV5) RetrieveSecretRequest(variableID string) (*http.Request, error) {
 	variableID = makeFullId(r.Config.Account, "variable", variableID)
 
+	variableURL, err := r.variableURL(variableID)
+	if err != nil {
+		return nil, err
+	}
+
 	return http.NewRequest(
 		"GET",
-		r.variableURL(variableID),
+		variableURL,
 		nil,
 	)
 }
@@ -102,19 +142,47 @@ func (r RouterV5) RetrieveSecretRequest(variableID string) (*http.Request, error
 func (r RouterV5) AddSecretRequest(variableID, secretValue string) (*http.Request, error) {
 	variableID = makeFullId(r.Config.Account, "variable", variableID)
 
+	variableURL, err := r.variableURL(variableID)
+	if err != nil {
+		return nil, err
+	}
+
 	return http.NewRequest(
 		"POST",
-		r.variableURL(variableID),
+		variableURL,
 		strings.NewReader(secretValue),
 	)
 }
 
-func (r RouterV5) variableURL(variableID string) string {
-	tokens := strings.SplitN(variableID, ":", 3)
-	return fmt.Sprintf("%s/secrets/%s/%s/%s", r.Config.ApplianceURL, tokens[0], tokens[1], url.QueryEscape(tokens[2]))
+func (r RouterV5) variableURL(variableID string) (string, error) {
+	account, kind, id, err := parseID(variableID)
+	if err != nil {
+		return "", err
+	}
+	return makeRouterURL(r.secretsURL(account), kind, url.QueryEscape(id)).String(), nil
 }
 
 func (r RouterV5) batchVariableURL(variableIDs []string) string {
 	queryString := url.QueryEscape(strings.Join(variableIDs, ","))
-	return fmt.Sprintf("%s/secrets?variable_ids=%s", r.Config.ApplianceURL, queryString)
+	return makeRouterURL(r.globalSecretsURL()).withQuery("variable_ids=%s", queryString).String()
+}
+
+func (r RouterV5) authnURL() string {
+	return makeRouterURL(r.Config.ApplianceURL, "authn", r.Config.Account).String()
+}
+
+func (r RouterV5) resourcesURL(account string) string {
+	return makeRouterURL(r.Config.ApplianceURL, "resources", account).String()
+}
+
+func (r RouterV5) secretsURL(account string) string {
+	return makeRouterURL(r.Config.ApplianceURL, "secrets", account).String()
+}
+
+func (r RouterV5) globalSecretsURL() string {
+	return makeRouterURL(r.Config.ApplianceURL, "secrets").String()
+}
+
+func (r RouterV5) policiesURL(account string) string {
+	return makeRouterURL(r.Config.ApplianceURL, "policies", account).String()
 }

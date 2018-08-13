@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 )
 
 type ConjurError struct {
@@ -45,7 +45,7 @@ func NewConjurError(resp *http.Response) error {
 }
 
 func (self *ConjurError) Error() string {
-	log.Debugf("self.Details: %+v, self.Message: %+v\n", self.Details, self.Message)
+	logging.ApiLog.Debugf("self.Details: %+v, self.Message: %+v\n", self.Details, self.Message)
 
 	var b strings.Builder
 

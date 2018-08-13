@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
+	"github.com/sirupsen/logrus"
 )
 
 type RouterV4 struct {
@@ -54,6 +55,16 @@ func (r RouterV4) RotateAPIKeyRequest(roleID string) (*http.Request, error) {
 
 func (r RouterV4) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader) (*http.Request, error) {
 	return nil, fmt.Errorf("LoadPolicy is not supported for Conjur V4")
+}
+
+func (r RouterV4) ResourceRequest(resourceID string) (*http.Request, error) {
+	logrus.Panic("ResourceRequest not implemented yet")
+	return nil, nil
+}
+
+func (r RouterV4) ResourcesRequest(filter *ResourceFilter) (*http.Request, error) {
+	logrus.Panic("ResourcesRequest not implemented yet")
+	return nil, nil
 }
 
 func (r RouterV4) CheckPermissionRequest(resourceID, privilege string) (*http.Request, error) {

@@ -6,7 +6,8 @@ import (
 	"os"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/cyberark/conjur-api-go/conjurapi/logging"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v1"
 )
 
@@ -35,7 +36,7 @@ func (c *Config) validate() error {
 
 	if len(errors) == 0 {
 		return nil
-	} else if log.GetLevel() == log.DebugLevel {
+	} else if logging.ApiLog.Level == logrus.DebugLevel {
 		errors = append(errors, fmt.Sprintf("config: %+v", c))
 	}
 	return fmt.Errorf("%s", strings.Join(errors, " -- "))
@@ -80,7 +81,7 @@ func (c *Config) mergeYAML(filename string) {
 	buf, err := ioutil.ReadFile(filename)
 
 	if err != nil {
-		log.Debugf("Failed reading %s, %v\n", filename, err)
+		logging.ApiLog.Debugf("Failed reading %s, %v\n", filename, err)
 		return
 	}
 
@@ -93,7 +94,7 @@ func (c *Config) mergeYAML(filename string) {
 	}
 	aux.Config.V4 = aux.ConjurVersion == "4"
 
-	log.Debugf("Config from %s: %+v\n", filename, aux.Config)
+	logging.ApiLog.Debugf("Config from %s: %+v\n", filename, aux.Config)
 	c.merge(&aux.Config)
 }
 
@@ -109,7 +110,7 @@ func (c *Config) mergeEnv() {
 		V4:           majorVersion4,
 	}
 
-	log.Debugf("Config from environment: %+v\n", env)
+	logging.ApiLog.Debugf("Config from environment: %+v\n", env)
 	c.merge(&env)
 }
 
@@ -128,6 +129,6 @@ func LoadConfig() Config {
 
 	config.mergeEnv()
 
-	log.Debugf("Final config: %+v\n", config)
+	logging.ApiLog.Debugf("Final config: %+v\n", config)
 	return config
 }
