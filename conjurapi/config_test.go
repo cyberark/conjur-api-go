@@ -5,6 +5,8 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"os"
+	"os/user"
+	"path"
 	"testing"
 )
 
@@ -82,10 +84,14 @@ var versiontests = []struct {
 
 func TestConfig_mergeYAML(t *testing.T) {
 	Convey("No other netrc specified", t, func() {
+		usr, err := user.Current()
+		if err != nil {
+			return
+		}
+
 		e := ClearEnv()
 		defer e.RestoreEnv()
 
-		os.Setenv("HOME", "/Users/conjuruser")
 		os.Setenv("CONJUR_ACCOUNT", "account")
 		os.Setenv("CONJUR_APPLIANCE_URL", "appliance-url")
 
@@ -95,7 +101,7 @@ func TestConfig_mergeYAML(t *testing.T) {
 			So(config, ShouldResemble, Config{
 				Account:      "account",
 				ApplianceURL: "appliance-url",
-				NetRCPath:    "/Users/conjuruser/.netrc",
+				NetRCPath:    path.Join(usr.HomeDir, ".netrc"),
 			})
 		})
 	})
