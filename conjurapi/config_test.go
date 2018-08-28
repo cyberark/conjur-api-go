@@ -84,7 +84,7 @@ var versiontests = []struct {
 
 func TestConfig_mergeYAML(t *testing.T) {
 	Convey("No other netrc specified", t, func() {
-	    usr, err := user.Current()
+		usr, err := user.Current()
 		if err != nil {
 			return
 		}
