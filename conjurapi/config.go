@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/user"
 	"strings"
+	"path"
+	"runtime"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 	"github.com/sirupsen/logrus"
@@ -115,15 +118,20 @@ func (c *Config) mergeEnv() {
 }
 
 func LoadConfig() Config {
+    usr, err := user.Current()
+	if err != nil {
+		logging.ApiLog.Debugf("Failed to get os.user object")
+		return Config{}
+	}
 	// Default to using ~/.netrc, subsequent configuration can
 	// override it.
-	config := Config{NetRCPath: os.ExpandEnv("$HOME/.netrc")}
+	config := Config{NetRCPath: path.Join(usr.HomeDir, ".netrc")}
 
-	config.mergeYAML("/etc/conjur.conf")
+	config.mergeYAML(path.Join(getSystemPath(), "conjur.conf"))
 
 	conjurrc := os.Getenv("CONJURRC")
 	if conjurrc == "" {
-		conjurrc = os.ExpandEnv("$HOME/.conjurrc")
+		conjurrc = path.Join(usr.HomeDir, ".conjurrc")
 	}
 	config.mergeYAML(conjurrc)
 
@@ -131,4 +139,14 @@ func LoadConfig() Config {
 
 	logging.ApiLog.Debugf("Final config: %+v\n", config)
 	return config
+}
+
+func getSystemPath() string {
+	if runtime.GOOS == "windows" {
+		//No way to use SHGetKnownFolderPath(FOLDERID_ProgramFilesX64, ...)
+		//Hardcoding should be fine for now since SUMMON_PROVIDER and -p are available
+		return "C:\\windows"
+	} else {
+		return "/etc"
+	}
 }
