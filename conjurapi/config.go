@@ -143,8 +143,8 @@ func LoadConfig() Config {
 
 func getSystemPath() string {
 	if runtime.GOOS == "windows" {
-		//No way to use SHGetKnownFolderPath(FOLDERID_ProgramFilesX64, ...)
-		//Hardcoding should be fine for now since SUMMON_PROVIDER and -p are available
+		//No way to use SHGetKnownFolderPath()
+		//Hardcoding should be fine for now since CONJURRC is available
 		return "C:\\windows"
 	} else {
 		return "/etc"
