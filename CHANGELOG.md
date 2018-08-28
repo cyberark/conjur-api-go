@@ -6,13 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+* Change signature of `conjurapi.LoadConfig` so it returns an `error` in addition to the
+  `conjurapi.Config`
+  
+# [0.4.0]
+
 * Add `Resource`, to fetch a resource by id.
 * Add `Resources`, to show all resources, optionally filtered by a `ResourceFilter`.
 * Use a separate logrus logger for the API. Control the destination for messages with the
   environment variable `CONJURAPI_LOG`.
-
-# [0.4.0]
-
 * Add support for `.conjurrc` and `.netrc` in Windows user directories.
 * Add support for `conjur.conf` in Windows system directory.
 
@@ -53,7 +55,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.4.0...HEAD
 [0.4.0]: https://github.com/cyberark/conjur-api-go/compare/v0.3.3...v0.4.0
 [0.3.3]: https://github.com/cyberark/conjur-api-go/compare/v0.3.0...v0.3.3
 [0.3.0]: https://github.com/cyberark/conjur-api-go/compare/v0.2.0...v0.3.0
