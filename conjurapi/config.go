@@ -117,15 +117,14 @@ func (c *Config) mergeEnv() {
 	c.merge(&env)
 }
 
-func LoadConfig() Config {
-    usr, err := user.Current()
+func LoadConfig() (config Config, err error) {
+	usr, err := user.Current()
 	if err != nil {
-		logging.ApiLog.Debugf("Failed to get os.user object")
-		return Config{}
+		return
 	}
 	// Default to using ~/.netrc, subsequent configuration can
 	// override it.
-	config := Config{NetRCPath: path.Join(usr.HomeDir, ".netrc")}
+	config = Config{NetRCPath: path.Join(usr.HomeDir, ".netrc")}
 
 	config.mergeYAML(path.Join(getSystemPath(), "conjur.conf"))
 
@@ -138,7 +137,7 @@ func LoadConfig() Config {
 	config.mergeEnv()
 
 	logging.ApiLog.Debugf("Final config: %+v\n", config)
-	return config
+	return
 }
 
 func getSystemPath() string {

@@ -96,7 +96,8 @@ func TestConfig_mergeYAML(t *testing.T) {
 		os.Setenv("CONJUR_APPLIANCE_URL", "appliance-url")
 
 		Convey("Uses $HOME/.netrc by deafult", func() {
-			config := LoadConfig()
+			config, err := LoadConfig()
+			So(err, ShouldBeNil)
 
 			So(config, ShouldResemble, Config{
 				Account:      "account",
