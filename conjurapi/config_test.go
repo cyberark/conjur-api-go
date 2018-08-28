@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"os"
 	"os/user"
-	"testing"
 	"path"
+	"testing"
 )
 
 func TempFileForTesting(prefix string, fileContents string) (string, error) {

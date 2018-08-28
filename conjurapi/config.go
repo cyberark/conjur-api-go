@@ -5,9 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 	"os/user"
-	"strings"
 	"path"
 	"runtime"
+	"strings"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 	"github.com/sirupsen/logrus"
