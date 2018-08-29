@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * Change signature of `conjurapi.LoadConfig` so it returns an `error` in addition to the
   `conjurapi.Config`
-  
+* Fix marshaling of `conjurapi.Config` into YAML.
+
 # [0.4.0]
 
 * Add `Resource`, to fetch a resource by id.
