@@ -52,6 +52,38 @@ func TestConfig_IsValid(t *testing.T) {
 	})
 }
 
+func TestConfig_IsHttps(t *testing.T) {
+	Convey("Return true for configuration with SSLCert", t, func() {
+		config := Config{
+			SSLCert: "cert",
+		}
+
+		err := config.IsHttps()
+
+		So(err, ShouldBeTrue)
+	})
+
+	Convey("Return true for configuration with SSLCertPath", t, func() {
+		config := Config{
+			SSLCertPath: "path/to/cert",
+		}
+
+		err := config.IsHttps()
+
+		So(err, ShouldBeTrue)
+	})
+
+	Convey("Return false for configuration without SSLCert or SSLCertPath", t, func() {
+		config := Config{
+		}
+
+		err := config.IsHttps()
+
+		So(err, ShouldBeFalse)
+	})
+
+}
+
 func TestConfig_LoadFromEnv(t *testing.T) {
 	Convey("Given configuration and authentication credentials in env", t, func() {
 		e := ClearEnv()

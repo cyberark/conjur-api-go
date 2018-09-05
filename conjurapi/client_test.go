@@ -18,6 +18,24 @@ func TestNewClientFromKey(t *testing.T) {
 	})
 }
 
+func TestClient_GetConfig(t *testing.T) {
+	Convey("Returns Client Config", t, func() {
+		expectedConfig := Config{
+			Account:      "some-account",
+			ApplianceURL: "some-appliance-url",
+			NetRCPath:    "some-netrc-path",
+			SSLCert:      "some-ssl-cert",
+			SSLCertPath:  "some-ssl-cert-path",
+			V4:           true,
+		}
+		client := Client{
+			config: expectedConfig,
+		}
+
+		So(client.GetConfig(), ShouldResemble, expectedConfig)
+	})
+}
+
 func TestNewClientFromTokenFile(t *testing.T) {
 	Convey("Has authenticator of type TokenFileAuthenticator", t, func() {
 		client, err := NewClientFromTokenFile(Config{Account: "account", ApplianceURL: "appliance-url"}, "token-file")
