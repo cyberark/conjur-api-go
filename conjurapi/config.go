@@ -20,8 +20,11 @@ type Config struct {
 	NetRCPath    string `yaml:"netrc_path,omitempty"`
 	SSLCert      string `yaml:"-"`
 	SSLCertPath  string `yaml:"cert_file,omitempty"`
-	Https        bool   `yaml:"-"`
 	V4           bool   `yaml:"v4"`
+}
+
+func (c *Config) IsHttps() bool {
+	return c.SSLCertPath != "" || c.SSLCert != ""
 }
 
 func (c *Config) validate() error {
@@ -34,8 +37,6 @@ func (c *Config) validate() error {
 	if c.Account == "" {
 		errors = append(errors, "Must specify an Account")
 	}
-
-	c.Https = c.SSLCertPath != "" || c.SSLCert != ""
 
 	if len(errors) == 0 {
 		return nil
@@ -55,7 +56,7 @@ func (c *Config) ReadSSLCert() ([]byte, error) {
 func (c *Config) BaseURL() string {
 	prefix := ""
 	if !strings.HasPrefix(c.ApplianceURL, "http") {
-		if c.Https {
+		if c.IsHttps() {
 			prefix = "https://"
 		} else {
 			prefix = "http://"

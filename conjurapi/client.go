@@ -127,6 +127,10 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 	return nil, fmt.Errorf("Environment variables and machine identity files satisfying at least one authentication strategy must be present!")
 }
 
+func (c *Client) GetConfig() (Config) {
+	return c.config
+}
+
 func (c *Client) SubmitRequest(req *http.Request) (resp *http.Response, err error) {
 	err = c.createAuthRequest(req)
 	if err != nil {
@@ -176,7 +180,7 @@ func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Cl
 	var httpClient *http.Client
 	var router Router
 
-	if config.Https {
+	if config.IsHttps() {
 		cert, err := config.ReadSSLCert()
 		if err != nil {
 			return nil, err
