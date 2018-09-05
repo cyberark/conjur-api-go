@@ -27,6 +27,14 @@ func (r RouterV5) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request,
 }
 
 func (r RouterV5) RotateAPIKeyRequest(roleID string) (*http.Request, error) {
+	account, _, _, err := parseID(roleID)
+	if err != nil {
+		return nil, err
+	}
+	if account != r.Config.Account {
+		return nil, fmt.Errorf("Account of '%s' must match the configured account '%s'", roleID, r.Config.Account)
+	}
+
 	rotateURL := makeRouterURL(r.authnURL(), "api_key").withQuery("role=%s", roleID).String()
 
 	return http.NewRequest(
@@ -83,9 +91,9 @@ func (r RouterV5) ResourcesRequest(filter *ResourceFilter) (*http.Request, error
 }
 
 func (r RouterV5) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader) (*http.Request, error) {
-	policyID = makeFullId(r.Config.Account, "policy", policyID)
+	fullPolicyID := makeFullId(r.Config.Account, "policy", policyID)
 
-	account, kind, id, err := parseID(policyID)
+	account, kind, id, err := parseID(fullPolicyID)
 	if err != nil {
 		return nil, err
 	}
@@ -112,9 +120,9 @@ func (r RouterV5) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.
 
 func (r RouterV5) RetrieveBatchSecretsRequest(variableIDs []string) (*http.Request, error) {
 	fullVariableIDs := []string{}
-	for _, variable := range variableIDs {
-		variableID := makeFullId(r.Config.Account, "variable", variable)
-		fullVariableIDs = append(fullVariableIDs, variableID)
+	for _, variableID := range variableIDs {
+		fullVariableID := makeFullId(r.Config.Account, "variable", variableID)
+		fullVariableIDs = append(fullVariableIDs, fullVariableID)
 	}
 
 	return http.NewRequest(
@@ -125,9 +133,9 @@ func (r RouterV5) RetrieveBatchSecretsRequest(variableIDs []string) (*http.Reque
 }
 
 func (r RouterV5) RetrieveSecretRequest(variableID string) (*http.Request, error) {
-	variableID = makeFullId(r.Config.Account, "variable", variableID)
+	fullVariableID := makeFullId(r.Config.Account, "variable", variableID)
 
-	variableURL, err := r.variableURL(variableID)
+	variableURL, err := r.variableURL(fullVariableID)
 	if err != nil {
 		return nil, err
 	}
@@ -140,9 +148,9 @@ func (r RouterV5) RetrieveSecretRequest(variableID string) (*http.Request, error
 }
 
 func (r RouterV5) AddSecretRequest(variableID, secretValue string) (*http.Request, error) {
-	variableID = makeFullId(r.Config.Account, "variable", variableID)
+	fullVariableID := makeFullId(r.Config.Account, "variable", variableID)
 
-	variableURL, err := r.variableURL(variableID)
+	variableURL, err := r.variableURL(fullVariableID)
 	if err != nil {
 		return nil, err
 	}

@@ -20,6 +20,7 @@ func TestClient_RotateAPIKey(t *testing.T) {
 
 		policy := fmt.Sprintf(`
 - !user alice
+- !host bob
 `)
 
 		conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
@@ -31,10 +32,17 @@ func TestClient_RotateAPIKey(t *testing.T) {
 			strings.NewReader(policy),
 		)
 
-		Convey("Rotate the API key of a foreign role", func() {
+		Convey("Rotate the API key of a foreign user role of kind user", func() {
 			aliceAPIKey, err := conjur.RotateAPIKey("cucumber:user:alice")
 
 			_, err = conjur.Authenticate(authn.LoginPair{"alice", string(aliceAPIKey)})
+			So(err, ShouldBeNil)
+		})
+
+		Convey("Rotate the API key of a foreign role of non-user kind", func() {
+			bobAPIKey, err := conjur.RotateAPIKey("cucumber:host:bob")
+
+			_, err = conjur.Authenticate(authn.LoginPair{"host/bob", string(bobAPIKey)})
 			So(err, ShouldBeNil)
 		})
 
@@ -64,10 +72,17 @@ func TestClient_RotateAPIKey(t *testing.T) {
 		conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
 		So(err, ShouldBeNil)
 
-		Convey("Rotate the API key of a foreign role", func() {
+		Convey("Rotate the API key of a foreign role of kind user", func() {
 			aliceAPIKey, err := conjur.RotateAPIKey("cucumber:user:alice")
 
 			_, err = conjur.Authenticate(authn.LoginPair{"alice", string(aliceAPIKey)})
+			So(err, ShouldBeNil)
+		})
+
+		Convey("Rotate the API key of a foreign role of non-user kind", func() {
+			bobAPIKey, err := conjur.RotateAPIKey("cucumber:host:bob")
+
+			_, err = conjur.Authenticate(authn.LoginPair{"host/bob", string(bobAPIKey)})
 			So(err, ShouldBeNil)
 		})
 	})

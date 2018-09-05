@@ -224,6 +224,19 @@ func TestClient_RetrieveSecret(t *testing.T) {
 		login := os.Getenv("CONJUR_V4_AUTHN_LOGIN")
 		apiKey := os.Getenv("CONJUR_V4_AUTHN_API_KEY")
 
+		Convey("Returns existent variable's defined value, given full qualified ID", func() {
+			variableIdentifier := "cucumber:variable:existent-variable-with-defined-value"
+			secretValue := "existent-variable-defined-value"
+
+			conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
+			So(err, ShouldBeNil)
+
+			obtainedSecretValue, err := conjur.RetrieveSecret(variableIdentifier)
+			So(err, ShouldBeNil)
+
+			So(string(obtainedSecretValue), ShouldEqual, secretValue)
+		})
+
 		Convey("Returns existent variable's defined value", func() {
 			variableIdentifier := "existent-variable-with-defined-value"
 			secretValue := "existent-variable-defined-value"
