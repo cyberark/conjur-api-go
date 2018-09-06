@@ -26,6 +26,7 @@ api_key=$(exec_on conjur conjurctl role retrieve-key cucumber:user:admin | tr -d
 
 exec_on cuke-master bash -c 'conjur authn login -u admin -p secret'
 exec_on cuke-master conjur user create --as-group security_admin alice
+exec_on cuke-master conjur host create --as-group security_admin bob
 exec_on cuke-master conjur variable create existent-variable-with-undefined-value
 
 vars=(

@@ -28,23 +28,23 @@ func (r RouterV4) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request,
 }
 
 func (r RouterV4) RotateAPIKeyRequest(roleID string) (*http.Request, error) {
-	tokens := strings.SplitN(roleID, ":", 3)
-	if len(tokens) != 3 {
-		return nil, fmt.Errorf("Role id '%s' must be fully qualified", roleID)
+	account, kind, id, err := parseID(roleID)
+	if err != nil {
+		return nil, err
 	}
-	if tokens[0] != r.Config.Account {
+	if account != r.Config.Account {
 		return nil, fmt.Errorf("Account of '%s' must match the configured account '%s'", roleID, r.Config.Account)
 	}
 
 	var username string
-	switch tokens[1] {
+	switch kind {
 	case "user":
-		username = tokens[2]
+		username = id
 	default:
-		username = strings.Join([]string{tokens[1], tokens[2]}, "/")
+		username = strings.Join([]string{kind, id}, "/")
 	}
 
-	rotateURL := fmt.Sprintf("%s/authn/users/api_key?id=%s", r.Config.ApplianceURL, username)
+	rotateURL := fmt.Sprintf("%s/authn/users/api_key?id=%s", r.Config.ApplianceURL, url.QueryEscape(username))
 
 	return http.NewRequest(
 		"PUT",
@@ -68,11 +68,12 @@ func (r RouterV4) ResourcesRequest(filter *ResourceFilter) (*http.Request, error
 }
 
 func (r RouterV4) CheckPermissionRequest(resourceID, privilege string) (*http.Request, error) {
-	tokens := strings.SplitN(resourceID, ":", 3)
-	if len(tokens) != 3 {
-		return nil, fmt.Errorf("Resource id '%s' must be fully qualified", resourceID)
+	account, kind, id, err := parseID(resourceID)
+	if err != nil {
+		return nil, err
 	}
-	checkURL := fmt.Sprintf("%s/authz/%s/resources/%s/%s?check=true&privilege=%s", r.Config.ApplianceURL, tokens[0], tokens[1], url.QueryEscape(tokens[2]), url.QueryEscape(privilege))
+
+	checkURL := fmt.Sprintf("%s/authz/%s/resources/%s/%s?check=true&privilege=%s", r.Config.ApplianceURL, account, kind, url.QueryEscape(id), url.QueryEscape(privilege))
 
 	return http.NewRequest(
 		"GET",
@@ -81,7 +82,7 @@ func (r RouterV4) CheckPermissionRequest(resourceID, privilege string) (*http.Re
 	)
 }
 
-func (r RouterV4) AddSecretRequest(variableIDentifier, secretValue string) (*http.Request, error) {
+func (r RouterV4) AddSecretRequest(variableID, secretValue string) (*http.Request, error) {
 	return nil, fmt.Errorf("AddSecret is not supported for Conjur V4")
 }
 
@@ -93,16 +94,27 @@ func (r RouterV4) RetrieveBatchSecretsRequest(variableIDs []string) (*http.Reque
 	)
 }
 
-func (r RouterV4) RetrieveSecretRequest(variableIDentifier string) (*http.Request, error) {
+func (r RouterV4) RetrieveSecretRequest(variableID string) (*http.Request, error) {
+	fullVariableID := makeFullId(r.Config.Account, "variable", variableID)
+
+	variableURL, err := r.variableURL(fullVariableID)
+	if err != nil {
+		return nil, err
+	}
+
 	return http.NewRequest(
 		"GET",
-		r.variableURL(variableIDentifier),
+		variableURL,
 		nil,
 	)
 }
 
-func (r RouterV4) variableURL(variableIDentifier string) string {
-	return fmt.Sprintf("%s/variables/%s/value", r.Config.ApplianceURL, url.QueryEscape(variableIDentifier))
+func (r RouterV4) variableURL(variableID string) (string, error) {
+	_, _, id, err := parseID(variableID)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/variables/%s/value", r.Config.ApplianceURL, url.QueryEscape(id)), nil
 }
 
 func (r RouterV4) batchVariableURL(variableIDs []string) string {
