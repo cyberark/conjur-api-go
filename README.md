@@ -29,7 +29,10 @@ import (
 func main() {
     variableIdentifier := "db/secret"
 
-    config := conjurapi.LoadConfig()
+    config, err := conjurapi.LoadConfig()
+    if err != nil {
+        panic(err)
+    }
 
     conjur, err := conjurapi.NewClientFromKey(config,
         authn.LoginPair{
