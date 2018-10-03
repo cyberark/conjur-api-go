@@ -127,6 +127,14 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 	return nil, fmt.Errorf("Environment variables and machine identity files satisfying at least one authentication strategy must be present!")
 }
 
+func (c *Client) GetHttpClient() (*http.Client) {
+	return c.httpClient
+}
+
+func (c *Client) SetHttpClient(httpClient *http.Client) {
+	c.httpClient = httpClient
+}
+
 func (c *Client) GetConfig() (Config) {
 	return c.config
 }
