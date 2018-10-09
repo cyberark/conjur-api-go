@@ -82,14 +82,17 @@ func TestClient_CheckPermission(t *testing.T) {
 
 		Convey("Check a permission on a non-existent resource", checkNonExisting(conjur, "cucumber:variable:foobar"))
 	})
-	Convey("V4", t, func() {
-		conjur, err := v4Setup()
-		So(err, ShouldBeNil)
 
-		Convey("Check an allowed permission", checkAllowed(conjur, "cucumber:variable:existent-variable-with-defined-value"))
+	if os.Getenv("TEST_VERSION") != "oss" {
+		Convey("V4", t, func() {
+			conjur, err := v4Setup()
+			So(err, ShouldBeNil)
 
-		Convey("Check a permission on a non-existent resource", checkNonExisting(conjur, "cucumber:variable:foobar"))
-	})
+			Convey("Check an allowed permission", checkAllowed(conjur, "cucumber:variable:existent-variable-with-defined-value"))
+
+			Convey("Check a permission on a non-existent resource", checkNonExisting(conjur, "cucumber:variable:foobar"))
+		})
+	}
 }
 
 func TestClient_Resources(t *testing.T) {
@@ -109,13 +112,15 @@ func TestClient_Resources(t *testing.T) {
 		Convey("Lists resources by kind", listResources(conjur, &ResourceFilter{Kind: "variable"}))
 	})
 
-	Convey("V4", t, func() {
-		conjur, err := v4Setup()
-		So(err, ShouldBeNil)
+	if os.Getenv("TEST_VERSION") != "oss" {
+		Convey("V4", t, func() {
+			conjur, err := v4Setup()
+			So(err, ShouldBeNil)
 
-		// v4 router doesn't support it yet.
-		SkipConvey("Lists resources", listResources(conjur, nil))
-	})
+			// v4 router doesn't support it yet.
+			SkipConvey("Lists resources", listResources(conjur, nil))
+		})
+	}
 }
 
 func TestClient_Resource(t *testing.T) {
@@ -133,11 +138,13 @@ func TestClient_Resource(t *testing.T) {
 		Convey("Shows a resource", showResource(conjur, "cucumber:variable:db-password"))
 	})
 
-	Convey("V4", t, func() {
-		conjur, err := v4Setup()
-		So(err, ShouldBeNil)
+	if os.Getenv("TEST_VERSION") != "oss" {
+		Convey("V4", t, func() {
+			conjur, err := v4Setup()
+			So(err, ShouldBeNil)
 
-		// v4 router doesn't support it yet.
-		SkipConvey("Shows a resource", showResource(conjur, "cucumber:variable:existent-variable-with-defined-value"))
-	})
+			// v4 router doesn't support it yet.
+			SkipConvey("Shows a resource", showResource(conjur, "cucumber:variable:existent-variable-with-defined-value"))
+		})
+	}
 }

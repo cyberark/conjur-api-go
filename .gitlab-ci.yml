@@ -1,0 +1,42 @@
+image: docker:stable-git
+
+stages:
+  - test
+  - package
+
+test:
+  stage: test
+  services:
+  - docker:stable-dind
+  variables:
+    DOCKER_DRIVER: overlay2
+  artifacts:
+    untracked: true
+    reports:
+      junit: output/junit.xml
+    when: always
+  script:
+    - apk add --no-cache py-pip
+    - pip install docker-compose
+    - ./test.sh oss
+  only:
+    - branches
+
+package:
+  stage: package
+  services:
+  - docker:stable-dind
+  variables:
+    DOCKER_DRIVER: overlay2
+  script:
+    - ./package.sh
+  only:
+    - branches
+  dependencies:
+    - test
+  artifacts:
+    paths:
+      - output/dist/*
+
+before_script:
+  - apk add --no-cache bash

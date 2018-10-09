@@ -85,34 +85,38 @@ func TestClient_LoadPolicy(t *testing.T) {
 
 		})
 	})
-	Convey("V4", t, func() {
-		config := &Config{
-			ApplianceURL: os.Getenv("CONJUR_V4_APPLIANCE_URL"),
-			SSLCert:      os.Getenv("CONJUR_V4_SSL_CERTIFICATE"),
-			Account:      os.Getenv("CONJUR_V4_ACCOUNT"),
-			V4:           true,
-		}
 
-		login := os.Getenv("CONJUR_V4_AUTHN_LOGIN")
-		apiKey := os.Getenv("CONJUR_V4_AUTHN_API_KEY")
+	if os.Getenv("TEST_VERSION") != "oss" {
+		Convey("V4", t, func() {
 
-		conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
-		So(err, ShouldBeNil)
+			config := &Config{
+				ApplianceURL: os.Getenv("CONJUR_V4_APPLIANCE_URL"),
+				SSLCert:      os.Getenv("CONJUR_V4_SSL_CERTIFICATE"),
+				Account:      os.Getenv("CONJUR_V4_ACCOUNT"),
+				V4:           true,
+			}
 
-		Convey("Policy loading is not supported", func() {
-			variableIdentifier := "alice"
-			policy := fmt.Sprintf(`
+			login := os.Getenv("CONJUR_V4_AUTHN_LOGIN")
+			apiKey := os.Getenv("CONJUR_V4_AUTHN_API_KEY")
+
+			conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
+			So(err, ShouldBeNil)
+
+			Convey("Policy loading is not supported", func() {
+				variableIdentifier := "alice"
+				policy := fmt.Sprintf(`
 - !user %s
 `, variableIdentifier)
 
-			_, err = conjur.LoadPolicy(
-				PolicyModePut,
-				"root",
-				strings.NewReader(policy),
-			)
+				_, err = conjur.LoadPolicy(
+					PolicyModePut,
+					"root",
+					strings.NewReader(policy),
+				)
 
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, "LoadPolicy is not supported for Conjur V4")
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "LoadPolicy is not supported for Conjur V4")
+			})
 		})
-	})
+	}
 }
