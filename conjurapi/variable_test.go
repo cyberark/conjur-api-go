@@ -213,109 +213,111 @@ func TestClient_RetrieveSecret(t *testing.T) {
 		})
 	})
 
-	Convey("V4", t, func() {
-		config := &Config{
-			ApplianceURL: os.Getenv("CONJUR_V4_APPLIANCE_URL"),
-			SSLCert:      os.Getenv("CONJUR_V4_SSL_CERTIFICATE"),
-			Account:      os.Getenv("CONJUR_V4_ACCOUNT"),
-			V4:           true,
-		}
-
-		login := os.Getenv("CONJUR_V4_AUTHN_LOGIN")
-		apiKey := os.Getenv("CONJUR_V4_AUTHN_API_KEY")
-
-		Convey("Returns existent variable's defined value, given full qualified ID", func() {
-			variableIdentifier := "cucumber:variable:existent-variable-with-defined-value"
-			secretValue := "existent-variable-defined-value"
-
-			conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
-			So(err, ShouldBeNil)
-
-			obtainedSecretValue, err := conjur.RetrieveSecret(variableIdentifier)
-			So(err, ShouldBeNil)
-
-			So(string(obtainedSecretValue), ShouldEqual, secretValue)
-		})
-
-		Convey("Returns existent variable's defined value", func() {
-			variableIdentifier := "existent-variable-with-defined-value"
-			secretValue := "existent-variable-defined-value"
-
-			conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
-			So(err, ShouldBeNil)
-
-			obtainedSecretValue, err := conjur.RetrieveSecret(variableIdentifier)
-			So(err, ShouldBeNil)
-
-			So(string(obtainedSecretValue), ShouldEqual, secretValue)
-		})
-
-		Convey("Returns 404 on existent variable with undefined value", func() {
-			variableIdentifier := "existent-variable-with-undefined-value"
-
-			conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
-			So(err, ShouldBeNil)
-
-			_, err = conjur.RetrieveSecret(variableIdentifier)
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldContainSubstring, "Not Found")
-			conjurError := err.(*response.ConjurError)
-			So(conjurError.Code, ShouldEqual, 404)
-		})
-
-		Convey("Returns 404 on non-existent variable", func() {
-			conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
-			So(err, ShouldBeNil)
-
-			_, err = conjur.RetrieveSecret("non-existent-variable")
-
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldContainSubstring, "variable 'non-existent-variable' not found")
-			conjurError := err.(*response.ConjurError)
-			So(conjurError.Code, ShouldEqual, 404)
-		})
-
-		Convey("Fetch many secrets in a single batch retrieval", func() {
-			variables := map[string]string{
-				"myapp-01":             "these",
-				"alice@devops":         "are",
-				"prod/aws/db-password": "all",
-				"research+development": "secret",
-				"sales&marketing":      "strings",
-				"onemore":              "{\"json\": \"object\"}",
+	if os.Getenv("TEST_VERSION") != "oss" {
+		Convey("V4", t, func() {
+			config := &Config{
+				ApplianceURL: os.Getenv("CONJUR_V4_APPLIANCE_URL"),
+				SSLCert:      os.Getenv("CONJUR_V4_SSL_CERTIFICATE"),
+				Account:      os.Getenv("CONJUR_V4_ACCOUNT"),
+				V4:           true,
 			}
 
-			conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
-			So(err, ShouldBeNil)
+			login := os.Getenv("CONJUR_V4_AUTHN_LOGIN")
+			apiKey := os.Getenv("CONJUR_V4_AUTHN_API_KEY")
 
-			variableIds := []string{}
-			for id := range variables {
-				variableIds = append(variableIds, id)
-			}
-			secrets, err := conjur.RetrieveBatchSecrets(variableIds)
-			So(err, ShouldBeNil)
+			Convey("Returns existent variable's defined value, given full qualified ID", func() {
+				variableIdentifier := "cucumber:variable:existent-variable-with-defined-value"
+				secretValue := "existent-variable-defined-value"
 
-			for id, value := range variables {
-				fetchedValue, ok := secrets[id]
-				So(ok, ShouldBeTrue)
-				So(string(fetchedValue), ShouldEqual, value)
-			}
-		})
-
-		Convey("Given configuration has invalid login credentials", func() {
-			login = "invalid-user"
-
-			Convey("Returns 401", func() {
 				conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
 				So(err, ShouldBeNil)
 
-				_, err = conjur.RetrieveSecret("existent-or-non-existent-variable")
+				obtainedSecretValue, err := conjur.RetrieveSecret(variableIdentifier)
+				So(err, ShouldBeNil)
+
+				So(string(obtainedSecretValue), ShouldEqual, secretValue)
+			})
+
+			Convey("Returns existent variable's defined value", func() {
+				variableIdentifier := "existent-variable-with-defined-value"
+				secretValue := "existent-variable-defined-value"
+
+				conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
+				So(err, ShouldBeNil)
+
+				obtainedSecretValue, err := conjur.RetrieveSecret(variableIdentifier)
+				So(err, ShouldBeNil)
+
+				So(string(obtainedSecretValue), ShouldEqual, secretValue)
+			})
+
+			Convey("Returns 404 on existent variable with undefined value", func() {
+				variableIdentifier := "existent-variable-with-undefined-value"
+
+				conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
+				So(err, ShouldBeNil)
+
+				_, err = conjur.RetrieveSecret(variableIdentifier)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldContainSubstring, "Not Found")
+				conjurError := err.(*response.ConjurError)
+				So(conjurError.Code, ShouldEqual, 404)
+			})
+
+			Convey("Returns 404 on non-existent variable", func() {
+				conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
+				So(err, ShouldBeNil)
+
+				_, err = conjur.RetrieveSecret("non-existent-variable")
 
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, "Unauthorized")
+				So(err.Error(), ShouldContainSubstring, "variable 'non-existent-variable' not found")
 				conjurError := err.(*response.ConjurError)
-				So(conjurError.Code, ShouldEqual, 401)
+				So(conjurError.Code, ShouldEqual, 404)
+			})
+
+			Convey("Fetch many secrets in a single batch retrieval", func() {
+				variables := map[string]string{
+					"myapp-01":             "these",
+					"alice@devops":         "are",
+					"prod/aws/db-password": "all",
+					"research+development": "secret",
+					"sales&marketing":      "strings",
+					"onemore":              "{\"json\": \"object\"}",
+				}
+
+				conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
+				So(err, ShouldBeNil)
+
+				variableIds := []string{}
+				for id := range variables {
+					variableIds = append(variableIds, id)
+				}
+				secrets, err := conjur.RetrieveBatchSecrets(variableIds)
+				So(err, ShouldBeNil)
+
+				for id, value := range variables {
+					fetchedValue, ok := secrets[id]
+					So(ok, ShouldBeTrue)
+					So(string(fetchedValue), ShouldEqual, value)
+				}
+			})
+
+			Convey("Given configuration has invalid login credentials", func() {
+				login = "invalid-user"
+
+				Convey("Returns 401", func() {
+					conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
+					So(err, ShouldBeNil)
+
+					_, err = conjur.RetrieveSecret("existent-or-non-existent-variable")
+
+					So(err, ShouldNotBeNil)
+					So(err.Error(), ShouldContainSubstring, "Unauthorized")
+					conjurError := err.(*response.ConjurError)
+					So(conjurError.Code, ShouldEqual, 401)
+				})
 			})
 		})
-	})
+	}
 }

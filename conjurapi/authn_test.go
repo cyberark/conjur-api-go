@@ -58,32 +58,35 @@ func TestClient_RotateAPIKey(t *testing.T) {
 		})
 	})
 
-	Convey("V4", t, func() {
-		config := &Config{
-			ApplianceURL: os.Getenv("CONJUR_V4_APPLIANCE_URL"),
-			SSLCert:      os.Getenv("CONJUR_V4_SSL_CERTIFICATE"),
-			Account:      os.Getenv("CONJUR_V4_ACCOUNT"),
-			V4:           true,
-		}
+	if os.Getenv("TEST_VERSION") != "oss" {
+		Convey("V4", t, func() {
 
-		login := os.Getenv("CONJUR_V4_AUTHN_LOGIN")
-		apiKey := os.Getenv("CONJUR_V4_AUTHN_API_KEY")
+			config := &Config{
+				ApplianceURL: os.Getenv("CONJUR_V4_APPLIANCE_URL"),
+				SSLCert:      os.Getenv("CONJUR_V4_SSL_CERTIFICATE"),
+				Account:      os.Getenv("CONJUR_V4_ACCOUNT"),
+				V4:           true,
+			}
 
-		conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
-		So(err, ShouldBeNil)
+			login := os.Getenv("CONJUR_V4_AUTHN_LOGIN")
+			apiKey := os.Getenv("CONJUR_V4_AUTHN_API_KEY")
 
-		Convey("Rotate the API key of a foreign role of kind user", func() {
-			aliceAPIKey, err := conjur.RotateAPIKey("cucumber:user:alice")
-
-			_, err = conjur.Authenticate(authn.LoginPair{"alice", string(aliceAPIKey)})
+			conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
 			So(err, ShouldBeNil)
-		})
 
-		Convey("Rotate the API key of a foreign role of non-user kind", func() {
-			bobAPIKey, err := conjur.RotateAPIKey("cucumber:host:bob")
+			Convey("Rotate the API key of a foreign role of kind user", func() {
+				aliceAPIKey, err := conjur.RotateAPIKey("cucumber:user:alice")
 
-			_, err = conjur.Authenticate(authn.LoginPair{"host/bob", string(bobAPIKey)})
-			So(err, ShouldBeNil)
+				_, err = conjur.Authenticate(authn.LoginPair{"alice", string(aliceAPIKey)})
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Rotate the API key of a foreign role of non-user kind", func() {
+				bobAPIKey, err := conjur.RotateAPIKey("cucumber:host:bob")
+
+				_, err = conjur.Authenticate(authn.LoginPair{"host/bob", string(bobAPIKey)})
+				So(err, ShouldBeNil)
+			})
 		})
-	})
+	}
 }

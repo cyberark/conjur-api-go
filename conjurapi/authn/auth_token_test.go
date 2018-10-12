@@ -1,14 +1,7 @@
 package authn
 
 import (
-	"bytes"
-	"crypto/tls"
 	"fmt"
-	"io/ioutil"
-	"log"
-	"net/http"
-	"net/url"
-	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -68,6 +61,10 @@ func TestTokenV5_Parse(t *testing.T) {
 
 func TestTokenV4_Parse(t *testing.T) {
 	expired_token_bytes := []byte(`{"data":"admin","timestamp":"2018-04-06 03:10:08 UTC","signature":"QxTMoWWYXbgMo_JuX4KHQuiPwPRe8fpIlnZMhlvHalyhJHK0RbkqOyw28ImLwClBaTPjx6KU7KmqYLi9pMszHQZhQ7A2fLm1v-x0XzZGrDOt6gd0fTEZ0CJl7VVxVBZWLrJ83r8tY-sdjKysrE1fyDXyMU_vDtgJVi9y72qddkH-Pl16Pd4PJceEEybfWylIs1Z5V5qn-ocWX18D-i9pB67Usz3m-wKa43TptiDYLGU1-Y_EXyilv_uNGouqwYa0IueK5yJxO1Rcyb2aCBG0i-0Vl7qYrT0zIwDqmxLAwbqOtrtfHngFOCqsW04jJLPOruR5FwMlGw90GT1lZH_3GCm6QK8p15IWfVS9UOky8Y4l-1vfh-d15BZPGemUbu0j","key":"86ffd9d612ad06fe978b559fbeba4ca2"}`)
+
+	nextYear := time.Now().Year() + 1
+	new_token_bytes := []byte(fmt.Sprintf(`{"data":"admin","timestamp":"%v-04-06 03:10:08 UTC","signature":"QxTMoWWYXbgMo_JuX4KHQuiPwPRe8fpIlnZMhlvHalyhJHK0RbkqOyw28ImLwClBaTPjx6KU7KmqYLi9pMszHQZhQ7A2fLm1v-x0XzZGrDOt6gd0fTEZ0CJl7VVxVBZWLrJ83r8tY-sdjKysrE1fyDXyMU_vDtgJVi9y72qddkH-Pl16Pd4PJceEEybfWylIs1Z5V5qn-ocWX18D-i9pB67Usz3m-wKa43TptiDYLGU1-Y_EXyilv_uNGouqwYa0IueK5yJxO1Rcyb2aCBG0i-0Vl7qYrT0zIwDqmxLAwbqOtrtfHngFOCqsW04jJLPOruR5FwMlGw90GT1lZH_3GCm6QK8p15IWfVS9UOky8Y4l-1vfh-d15BZPGemUbu0j","key":"86ffd9d612ad06fe978b559fbeba4ca2"}`, nextYear))
+
 	var expired_token *AuthnToken4
 
 	Convey("Token type V4 is detected", t, func() {
@@ -87,41 +84,6 @@ func TestTokenV4_Parse(t *testing.T) {
 	Convey("Expired token should be refreshed", t, func() {
 		So(expired_token.ShouldRefresh(), ShouldEqual, true)
 	})
-
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-
-	httpClient := http.Client{Transport: tr}
-
-	authUrl := fmt.Sprintf("%s/authn/users/%s/authenticate",
-		os.Getenv("CONJUR_V4_APPLIANCE_URL"),
-		url.PathEscape(os.Getenv("CONJUR_V4_AUTHN_LOGIN")))
-
-	req, err := http.NewRequest("POST",
-		authUrl,
-		bytes.NewBuffer([]byte(os.Getenv("CONJUR_V4_AUTHN_API_KEY"))))
-
-	if err != nil {
-		log.Printf("Failed creating request to authenticate: %s\n", err)
-		log.Println("Cannot continue.")
-		return
-	}
-
-	req.Header.Set("Accept", "*/*")
-	res, err := httpClient.Do(req)
-	if err != nil {
-		log.Printf("Failed creating request to authenticate: %s\n", err)
-		log.Println("Cannot continue.")
-		return
-	}
-
-	if res.StatusCode != http.StatusOK {
-		log.Printf("Received %d response when authenticating.\n", res.StatusCode)
-		log.Println("Cannot continue.")
-	}
-
-	new_token_bytes, _ := ioutil.ReadAll(res.Body)
 
 	Convey("New token can be parsed and fields are valid", t, func() {
 		token, err := NewToken([]byte(new_token_bytes))

@@ -84,7 +84,7 @@ func TestTokenFileAuthenticator_NeedsTokenRefresh(t *testing.T) {
 			}
 			authenticator.RefreshToken()
 
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(1000 * time.Millisecond)
 			token_file.Write([]byte("recent modification"))
 
 			So(authenticator.NeedsTokenRefresh(), ShouldBeTrue)
