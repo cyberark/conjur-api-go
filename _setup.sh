@@ -36,17 +36,13 @@ else
 fi
 
 exec_on conjur conjurctl wait
-if oss_only; then
-  true
-else
+if ! oss_only; then
   exec_on cuke-master /opt/conjur/evoke/bin/wait_for_conjur
 fi
 
 api_key=$(exec_on conjur conjurctl role retrieve-key cucumber:user:admin | tr -d '\r')
 
-if oss_only; then
-  true
-else
+if ! oss_only; then
   exec_on cuke-master bash -c 'conjur authn login -u admin -p secret'
   exec_on cuke-master conjur user create --as-group security_admin alice
   exec_on cuke-master conjur host create --as-group security_admin bob
