@@ -2,9 +2,9 @@ package authn
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"time"
+	"github.com/spf13/afero"
 )
 
 func waitForTextFile(fileName string, timeout <-chan time.Time) ([]byte, error) {
@@ -20,10 +20,10 @@ waiting_loop:
 			err = fmt.Errorf("Operation waitForTextFile timed out.")
 			break waiting_loop
 		default:
-			if _, err := os.Stat(fileName); os.IsNotExist(err) {
+			if _, err := AppFS.Stat(fileName); os.IsNotExist(err) {
 				time.Sleep(100 * time.Millisecond)
 			} else {
-				fileBytes, err = ioutil.ReadFile(fileName)
+				fileBytes, err = afero.ReadFile(AppFS, fileName)
 				break waiting_loop
 			}
 		}
