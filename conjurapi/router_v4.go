@@ -53,6 +53,11 @@ func (r RouterV4) RotateAPIKeyRequest(roleID string) (*http.Request, error) {
 	)
 }
 
+func (r RouterV4) LoginRequest(username, password string) (req *http.Request, err error) {
+	logrus.Panic("LoginRequest not implement yet")
+	return nil, nil
+}
+
 func (r RouterV4) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader) (*http.Request, error) {
 	return nil, fmt.Errorf("LoadPolicy is not supported for Conjur V4")
 }

@@ -34,6 +34,7 @@ type Router interface {
 	AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, error)
 	CheckPermissionRequest(resourceID, privilege string) (*http.Request, error)
 	LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader) (*http.Request, error)
+	LoginRequest(username, password string) (*http.Request, error)
 	ResourceRequest(resourceID string) (*http.Request, error)
 	ResourcesRequest(filter *ResourceFilter) (*http.Request, error)
 	RetrieveBatchSecretsRequest(variableIDs []string) (*http.Request, error)
@@ -127,7 +128,7 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 	return nil, fmt.Errorf("Environment variables and machine identity files satisfying at least one authentication strategy must be present!")
 }
 
-func (c *Client) GetHttpClient() (*http.Client) {
+func (c *Client) GetHttpClient() *http.Client {
 	return c.httpClient
 }
 
@@ -135,7 +136,7 @@ func (c *Client) SetHttpClient(httpClient *http.Client) {
 	c.httpClient = httpClient
 }
 
-func (c *Client) GetConfig() (Config) {
+func (c *Client) GetConfig() Config {
 	return c.config
 }
 

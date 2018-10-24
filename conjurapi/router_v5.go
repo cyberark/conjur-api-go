@@ -14,6 +14,18 @@ type RouterV5 struct {
 	Config *Config
 }
 
+func (r RouterV5) LoginRequest(username, password string) (req *http.Request, err error) {
+	loginURL := makeRouterURL(r.authnURL(), "login").String()
+
+	req, err = http.NewRequest("GET", loginURL, nil)
+	if err != nil {
+		return
+	}
+	req.SetBasicAuth(username, password)
+
+	return
+}
+
 func (r RouterV5) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, error) {
 	authenticateURL := makeRouterURL(r.authnURL(), url.QueryEscape(loginPair.Login), "authenticate").String()
 
