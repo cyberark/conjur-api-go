@@ -140,6 +140,10 @@ func (c *Client) GetConfig() Config {
 	return c.config
 }
 
+func (c *Client) GetAuthToken() authn.AuthnToken {
+	return c.authToken
+}
+
 func (c *Client) SubmitRequest(req *http.Request) (resp *http.Response, err error) {
 	err = c.createAuthRequest(req)
 	if err != nil {
