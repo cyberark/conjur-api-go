@@ -1,6 +1,7 @@
 package authn
 
 import (
+	"os"
 	"time"
 )
 
@@ -21,13 +22,13 @@ func (a *TokenFileAuthenticator) RefreshToken() ([]byte, error) {
 
 	bytes, err := waitForTextFile(a.TokenFile, timeout)
 	if err == nil {
-		fi, _ := AppFS.Stat(a.TokenFile)
+		fi, _ := os.Stat(a.TokenFile)
 		a.mTime = fi.ModTime()
 	}
 	return bytes, err
 }
 
 func (a *TokenFileAuthenticator) NeedsTokenRefresh() bool {
-	fi, _ := AppFS.Stat(a.TokenFile)
+	fi, _ := os.Stat(a.TokenFile)
 	return a.mTime != fi.ModTime()
 }
