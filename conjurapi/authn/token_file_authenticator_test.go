@@ -2,20 +2,21 @@ package authn
 
 import (
 	. "github.com/smartystreets/goconvey/convey"
-	"io/ioutil"
-	"os"
 	"testing"
 	"time"
+	"github.com/spf13/afero"
 )
 
 func TestTokenFileAuthenticator_RefreshToken(t *testing.T) {
+	AppFS = afero.NewMemMapFs()
+
 	Convey("Given existent token filename", t, func() {
-		token_file, _ := ioutil.TempFile("", "existent-token-file")
+		token_file, _ := afero.TempFile(AppFS, "", "existent-token-file")
 		token_file_name := token_file.Name()
 		token_file_contents := "token-from-file-contents"
 		token_file.Write([]byte(token_file_contents))
 		token_file.Close()
-		defer os.Remove(token_file_name)
+		defer AppFS.Remove(token_file_name)
 
 		Convey("Return the token from the file", func() {
 			authenticator := TokenFileAuthenticator{
@@ -30,15 +31,15 @@ func TestTokenFileAuthenticator_RefreshToken(t *testing.T) {
 	})
 
 	Convey("Given an eventually existent token filename", t, func() {
-		token_file, _ := ioutil.TempFile("", "existent-token-file")
+		token_file, _ := afero.TempFile(AppFS, "", "existent-token-file")
 		token_file_name := token_file.Name()
 
 		token_file_contents := "token-from-file-contents"
-		os.Remove(token_file_name)
+		AppFS.Remove(token_file_name)
 		go func() {
-			ioutil.WriteFile(token_file_name, []byte(token_file_contents), 0600)
+			afero.WriteFile(AppFS, token_file_name, []byte(token_file_contents), 0600)
 		}()
-		defer os.Remove(token_file_name)
+		defer AppFS.Remove(token_file_name)
 
 		Convey("Return the token from the file", func() {
 			authenticator := TokenFileAuthenticator{
@@ -71,12 +72,14 @@ func TestTokenFileAuthenticator_RefreshToken(t *testing.T) {
 }
 
 func TestTokenFileAuthenticator_NeedsTokenRefresh(t *testing.T) {
+	AppFS = afero.NewMemMapFs()
+
 	Convey("Given existent token filename", t, func() {
-		token_file, _ := ioutil.TempFile("", "existent-token-file")
+		token_file, _ := afero.TempFile(AppFS, "", "existent-token-file")
 		token_file_name := token_file.Name()
 		token_file_contents := "token-from-file-contents"
 		token_file.Write([]byte(token_file_contents))
-		defer os.Remove(token_file_name)
+		defer AppFS.Remove(token_file_name)
 
 		Convey("Return true for recently modified file", func() {
 			authenticator := TokenFileAuthenticator{
