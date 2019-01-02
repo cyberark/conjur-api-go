@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+* Modify configuration loading to skip options that check home dirs if there is
+  an error retrieving the home dir
+
 # [0.5.0]
 
 * Add support for passing fully qualified variable id to `RetrieveSecret` API method in v4 mode
