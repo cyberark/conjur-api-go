@@ -119,26 +119,38 @@ func (c *Config) mergeEnv() {
 }
 
 func LoadConfig() (config Config, err error) {
-	usr, err := user.Current()
-	if err != nil {
-		return
-	}
+	home := getHomeDir()
+
 	// Default to using ~/.netrc, subsequent configuration can
-	// override it.
-	config = Config{NetRCPath: path.Join(usr.HomeDir, ".netrc")}
+	// override it if the home dir is set.
+	if home != "" {
+		config = Config{NetRCPath: path.Join(home, ".netrc")}
+	}
 
 	config.mergeYAML(path.Join(getSystemPath(), "conjur.conf"))
 
 	conjurrc := os.Getenv("CONJURRC")
-	if conjurrc == "" {
-		conjurrc = path.Join(usr.HomeDir, ".conjurrc")
+	if conjurrc == "" && home != "" {
+		conjurrc = path.Join(home, ".conjurrc")
 	}
-	config.mergeYAML(conjurrc)
+	if conjurrc != "" {
+		config.mergeYAML(conjurrc)
+	}
 
 	config.mergeEnv()
 
 	logging.ApiLog.Debugf("Final config: %+v\n", config)
 	return
+}
+
+func getHomeDir() string {
+	usr, err := user.Current()
+	if err != nil {
+		// Return an empty value
+		return ""
+	}
+
+	return usr.HomeDir
 }
 
 func getSystemPath() string {
