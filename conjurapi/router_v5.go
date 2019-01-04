@@ -79,6 +79,21 @@ func (r RouterV5) ResourcesRequest(filter *ResourceFilter) (*http.Request, error
 		if filter.Kind != "" {
 			query = append(query, fmt.Sprintf("kind=%s", url.QueryEscape(filter.Kind)))
 		}
+		if filter.Search != "" {
+			query = append(query, fmt.Sprintf("search=%s", url.QueryEscape(filter.Search)))
+		}
+
+		if filter.Limit != 0 {
+			query = append(query, fmt.Sprintf("limit=%v", filter.Limit))
+		}
+
+		if filter.Offset != 0 {
+			query = append(query, fmt.Sprintf("offset=%v", filter.Offset))
+		}
+
+		if filter.Count {
+			query = append(query, fmt.Sprintf("count=%v", filter.Count))
+		}
 	}
 
 	requestURL := makeRouterURL(r.resourcesURL(r.Config.Account)).withQuery(strings.Join(query, "&"))

@@ -110,6 +110,7 @@ func TestClient_Resources(t *testing.T) {
 
 		Convey("Lists all resources", listResources(conjur, nil))
 		Convey("Lists resources by kind", listResources(conjur, &ResourceFilter{Kind: "variable"}))
+		Convey("Lists resources that start with db", listResources(conjur, &ResourceFilter{Search: "db"}))
 	})
 
 	if os.Getenv("TEST_VERSION") != "oss" {
