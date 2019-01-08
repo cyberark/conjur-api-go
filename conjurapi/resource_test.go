@@ -98,7 +98,7 @@ func TestClient_CheckPermission(t *testing.T) {
 }
 
 func TestClient_Resources(t *testing.T) {
-	listResources := func(conjur *Client, filter *ResourceFilter, int expected) func() {
+	listResources := func(conjur *Client, filter *ResourceFilter, expected int) func() {
 		return func() {
 			resources, err := conjur.Resources(filter)
 			So(err, ShouldBeNil)
