@@ -81,12 +81,15 @@ func (c *Client) Resources(filter *ResourceFilter) (resources []map[string]inter
 	resources = make([]map[string]interface{}, 1)
 
 	// When count is enabled, the result is not an array
-	if filter.Count {
-		value := make(map[string]interface{})
-		err = json.Unmarshal(data, &value)
-		resources[0] = value
-	} else {
-		err = json.Unmarshal(data, &resources)
+	// so we have to add the result to an array to match the resulting type
+	if filter != nil {
+		if filter.Count {
+			value := make(map[string]interface{})
+			err = json.Unmarshal(data, &value)
+			resources[0] = value
+		} else {
+			err = json.Unmarshal(data, &resources)
+		}
 	}
 	return
 }
