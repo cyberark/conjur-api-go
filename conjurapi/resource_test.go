@@ -102,7 +102,7 @@ func TestClient_Resources(t *testing.T) {
 		return func() {
 			resources, err := conjur.Resources(filter)
 			So(err, ShouldBeNil)
-			So(len(resources), ShouldBe, expected)
+			So(len(resources), ShouldEqual, expected)
 		}
 	}
 
@@ -110,11 +110,11 @@ func TestClient_Resources(t *testing.T) {
 		conjur, err := v5Setup()
 		So(err, ShouldBeNil)
 
-		Convey("Lists all resources", listResources(conjur, nil, 3))
+		Convey("Lists all resources", listResources(conjur, nil, 5))
 		Convey("Lists resources by kind", listResources(conjur, &ResourceFilter{Kind: "variable"}, 3))
 		Convey("Lists resources that start with db", listResources(conjur, &ResourceFilter{Search: "db"}, 2))
 		Convey("Lists resources and limit result to 1", listResources(conjur, &ResourceFilter{Limit: 1}, 1))
-		Convey("Lists resources after the first", listResources(conjur, &ResourceFilter{Offset: 1}, 2))
+		Convey("Lists resources after the first", listResources(conjur, &ResourceFilter{Offset: 1}, 4))
 		Convey("Count number of resources", listResources(conjur, &ResourceFilter{Count: true}, 1))
 	})
 
