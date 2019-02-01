@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+# [0.5.1]
+
 * Fix path generation of variables with spaces
 * Modify configuration loading to skip options that check home dirs if there is
   an error retrieving the home dir
