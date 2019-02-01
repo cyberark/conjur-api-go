@@ -92,6 +92,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 				"research+development": "secret",
 				"sales&marketing":      "strings!",
 				"onemore":              "{\"json\": \"object\"}",
+				"a/ b /c":              "somevalue",
 			}
 
 			policy := ""
@@ -241,6 +242,19 @@ func TestClient_RetrieveSecret(t *testing.T) {
 			Convey("Returns existent variable's defined value", func() {
 				variableIdentifier := "existent-variable-with-defined-value"
 				secretValue := "existent-variable-defined-value"
+
+				conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
+				So(err, ShouldBeNil)
+
+				obtainedSecretValue, err := conjur.RetrieveSecret(variableIdentifier)
+				So(err, ShouldBeNil)
+
+				So(string(obtainedSecretValue), ShouldEqual, secretValue)
+			})
+
+			Convey("Returns space-pathed existent variable's defined value", func() {
+				variableIdentifier := "a/ b/c"
+				secretValue := "a/ b/c"
 
 				conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
 				So(err, ShouldBeNil)

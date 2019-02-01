@@ -114,7 +114,7 @@ func (r RouterV4) variableURL(variableID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s/variables/%s/value", r.Config.ApplianceURL, url.QueryEscape(id)), nil
+	return fmt.Sprintf("%s/variables/%s/value", r.Config.ApplianceURL, url.PathEscape(id)), nil
 }
 
 func (r RouterV4) batchVariableURL(variableIDs []string) string {

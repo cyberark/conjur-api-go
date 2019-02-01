@@ -48,9 +48,9 @@ if ! oss_only; then
   exec_on cuke-master conjur host create --as-group security_admin bob
   exec_on cuke-master conjur variable create existent-variable-with-undefined-value
 
-
   vars=(
     'existent-variable-with-defined-value'
+    'a/ b/c'
     'myapp-01'
     'alice@devops'
     'prod/aws/db-password'
@@ -61,6 +61,7 @@ if ! oss_only; then
 
   secrets=(
     'existent-variable-defined-value'
+    'a/ b/c'
     'these'
     'are'
     'all'

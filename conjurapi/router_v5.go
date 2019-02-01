@@ -167,7 +167,7 @@ func (r RouterV5) variableURL(variableID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return makeRouterURL(r.secretsURL(account), kind, url.QueryEscape(id)).String(), nil
+	return makeRouterURL(r.secretsURL(account), kind, url.PathEscape(id)).String(), nil
 }
 
 func (r RouterV5) batchVariableURL(variableIDs []string) string {
