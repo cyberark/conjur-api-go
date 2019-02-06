@@ -32,9 +32,9 @@ func init() {
 	default:
 		out, err = os.OpenFile(dest, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			logrus.Fatalf("Failed to %s", err.Error())
+			logrus.Fatalf("Failed to open %s: %v", dest, err.Error())
 		}
-		logrus.Info("Logging to %s", dest)
+		logrus.Infof("Logging to %s", dest)
 	}
 
 	ApiLog.Out = out

@@ -14,6 +14,5 @@ CONJUR_AUTHN_API_KEY="$api_key" \
 
 # When we start the dev container, it mounts the current directory in
 # the container. This hides the vendored dependencies that got
-# installed during the build, so reinstall them. dep caches them, so
-# this is quick.
-exec_on dev dep ensure --vendor-only
+# installed during the build, so reinstall them.
+exec_on dev go mod download

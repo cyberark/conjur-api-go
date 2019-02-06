@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+* Converted from Godep to native go modules for dependency management.
+
 # [0.5.1]
 
 * Fix path generation of variables with spaces
