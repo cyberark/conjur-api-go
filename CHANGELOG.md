@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+# [0.5.2]
+
+* Fixed homedir pathing for Darwin/Linux
 * Converted from Godep to native go modules for dependency management.
 
 # [0.5.1]
