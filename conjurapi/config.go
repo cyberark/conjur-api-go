@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/user"
 	"path"
 	"runtime"
 	"strings"
 
-	"github.com/cyberark/conjur-api-go/conjurapi/logging"
+	"github.com/mitchellh/go-homedir"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
+
+	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 )
 
 type Config struct {
@@ -119,7 +120,7 @@ func (c *Config) mergeEnv() {
 }
 
 func LoadConfig() (config Config, err error) {
-	home := getHomeDir()
+	home, _ := homedir.Dir()
 
 	// Default to using ~/.netrc, subsequent configuration can
 	// override it if the home dir is set.
@@ -141,16 +142,6 @@ func LoadConfig() (config Config, err error) {
 
 	logging.ApiLog.Debugf("Final config: %+v\n", config)
 	return
-}
-
-func getHomeDir() string {
-	usr, err := user.Current()
-	if err != nil {
-		// Return an empty value
-		return ""
-	}
-
-	return usr.HomeDir
 }
 
 func getSystemPath() string {
