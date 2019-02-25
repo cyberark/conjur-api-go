@@ -115,7 +115,6 @@ func TestClient_Resources(t *testing.T) {
 		Convey("Lists resources that start with db", listResources(conjur, &ResourceFilter{Search: "db"}, 2))
 		Convey("Lists resources and limit result to 1", listResources(conjur, &ResourceFilter{Limit: 1}, 1))
 		Convey("Lists resources after the first", listResources(conjur, &ResourceFilter{Offset: 1}, 4))
-		Convey("Count number of resources", listResources(conjur, &ResourceFilter{Count: true}, 1))
 	})
 
 	if os.Getenv("TEST_VERSION") != "oss" {

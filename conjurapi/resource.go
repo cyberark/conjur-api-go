@@ -12,7 +12,6 @@ type ResourceFilter struct {
 	Search string
 	Limit  int
 	Offset int
-	Count  bool
 }
 
 // CheckPermission determines whether the authenticated user has a specified privilege
@@ -80,14 +79,7 @@ func (c *Client) Resources(filter *ResourceFilter) (resources []map[string]inter
 
 	resources = make([]map[string]interface{}, 1)
 
-	// When count is enabled, the result is not an array
-	// so we have to add the result to an array to match the resulting type
-	if filter != nil && filter.Count {
-		value := make(map[string]interface{})
-		err = json.Unmarshal(data, &value)
-		resources[0] = value
-	} else {
-		err = json.Unmarshal(data, &resources)
-	}
+	err = json.Unmarshal(data, &resources)
+
 	return
 }
