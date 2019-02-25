@@ -21,6 +21,8 @@ func v5Setup() (*Client, error) {
 - !user alice
 
 - !variable db-password
+- !variable db-password-2
+- !variable password
 
 - !permit
   role: !user alice
@@ -96,11 +98,11 @@ func TestClient_CheckPermission(t *testing.T) {
 }
 
 func TestClient_Resources(t *testing.T) {
-	listResources := func(conjur *Client, filter *ResourceFilter) func() {
+	listResources := func(conjur *Client, filter *ResourceFilter, expected int) func() {
 		return func() {
 			resources, err := conjur.Resources(filter)
 			So(err, ShouldBeNil)
-			So(len(resources), ShouldBeGreaterThan, 0)
+			So(len(resources), ShouldEqual, expected)
 		}
 	}
 
@@ -108,8 +110,11 @@ func TestClient_Resources(t *testing.T) {
 		conjur, err := v5Setup()
 		So(err, ShouldBeNil)
 
-		Convey("Lists all resources", listResources(conjur, nil))
-		Convey("Lists resources by kind", listResources(conjur, &ResourceFilter{Kind: "variable"}))
+		Convey("Lists all resources", listResources(conjur, nil, 5))
+		Convey("Lists resources by kind", listResources(conjur, &ResourceFilter{Kind: "variable"}, 3))
+		Convey("Lists resources that start with db", listResources(conjur, &ResourceFilter{Search: "db"}, 2))
+		Convey("Lists resources and limit result to 1", listResources(conjur, &ResourceFilter{Limit: 1}, 1))
+		Convey("Lists resources after the first", listResources(conjur, &ResourceFilter{Offset: 1}, 4))
 	})
 
 	if os.Getenv("TEST_VERSION") != "oss" {
@@ -118,7 +123,7 @@ func TestClient_Resources(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			// v4 router doesn't support it yet.
-			SkipConvey("Lists resources", listResources(conjur, nil))
+			SkipConvey("Lists resources", listResources(conjur, nil, 1))
 		})
 	}
 }

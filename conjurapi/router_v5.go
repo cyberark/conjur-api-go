@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
@@ -74,14 +75,26 @@ func (r RouterV5) ResourceRequest(resourceID string) (*http.Request, error) {
 }
 
 func (r RouterV5) ResourcesRequest(filter *ResourceFilter) (*http.Request, error) {
-	var query []string
+	query := url.Values{}
+
 	if filter != nil {
 		if filter.Kind != "" {
-			query = append(query, fmt.Sprintf("kind=%s", url.QueryEscape(filter.Kind)))
+			query.Add("kind", filter.Kind)
+		}
+		if filter.Search != "" {
+			query.Add("search", filter.Search)
+		}
+
+		if filter.Limit != 0 {
+			query.Add("limit", strconv.Itoa(filter.Limit))
+		}
+
+		if filter.Offset != 0 {
+			query.Add("offset", strconv.Itoa(filter.Offset))
 		}
 	}
 
-	requestURL := makeRouterURL(r.resourcesURL(r.Config.Account)).withQuery(strings.Join(query, "&"))
+	requestURL := makeRouterURL(r.resourcesURL(r.Config.Account)).withQuery(query.Encode())
 
 	return http.NewRequest(
 		"GET",
