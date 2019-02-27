@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
@@ -120,7 +119,10 @@ func (c *Config) mergeEnv() {
 }
 
 func LoadConfig() (config Config, err error) {
-	home, _ := homedir.Dir()
+	home, err := os.UserHomeDir()
+	if err != nil {
+		logging.ApiLog.Warningf("Could not detect homedir.")
+	}
 
 	// Default to using ~/.netrc, subsequent configuration can
 	// override it if the home dir is set.
