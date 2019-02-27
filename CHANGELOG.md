@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+# [0.6.0]
+
+* Converted to Golang 1.12
+* Started using os.UserHomeDir() built-in instead of go-homedir module
+
 # [0.5.2]
 
 * Fixed homedir pathing for Darwin/Linux
