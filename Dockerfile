@@ -1,4 +1,4 @@
-FROM golang:1.11-alpine
+FROM golang:1.12-alpine
 MAINTAINER Conjur Inc.
 
 CMD /bin/bash
@@ -12,7 +12,7 @@ RUN apk add --no-cache bash \
                        libc-dev
 
 RUN go get -u github.com/jstemmer/go-junit-report && \
-    go get github.com/smartystreets/goconvey
+    go get -u github.com/smartystreets/goconvey
 
 WORKDIR /conjur-api-go
 
