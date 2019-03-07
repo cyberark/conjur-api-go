@@ -92,7 +92,7 @@ Kick off your TDD (i.e. goconvey powered) development environment as follows:
 
 ```bash
 # goconvey will run as a background process
-./dev
+./dev.sh
 ```
 
 Visit localhost:8080 to see the test results in real time.
