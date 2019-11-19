@@ -53,6 +53,25 @@ func NewClientFromKey(config Config, loginPair authn.LoginPair) (*Client, error)
 	return client, err
 }
 
+// NewClientFromOIDC creates a new OIDC client
+// We use the full OIDCAuthenticator object, so in theory
+// it can be updated with a new ID Token while running
+func NewClientFromOIDCAuthenticator(config Config, oidcAuthn authn.OIDCAuthenticator) (*Client, error) {
+	client, err := newClientWithAuthenticator(
+		config,
+		&oidcAuthn,
+	)
+
+	return client, err
+}
+
+func OIDCAuthenticatorFromEnv() (*authn.OIDCAuthenticator, error) {
+	return &authn.OIDCAuthenticator{
+		AuthenticateURL: os.Getenv("CONJUR_AUTHN_OIDC_URL"),
+		IDToken:         os.Getenv("CONJUR_AUTHN_OIDC_ID_TOKEN"),
+	}, nil
+}
+
 // ReadResponseBody fully reads a response and closes it.
 func ReadResponseBody(response io.ReadCloser) ([]byte, error) {
 	defer response.Close()
@@ -124,10 +143,15 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 		return NewClientFromKey(config, *loginPair)
 	}
 
+	oidcAuthenticater, err := OIDCAuthenticatorFromEnv()
+	if err == nil && oidcAuthenticater.AuthenticateURL != "" && oidcAuthenticater.IDToken != "" {
+		return NewClientFromOIDCAuthenticator(config, *oidcAuthenticater)
+	}
+
 	return nil, fmt.Errorf("Environment variables and machine identity files satisfying at least one authentication strategy must be present!")
 }
 
-func (c *Client) GetHttpClient() (*http.Client) {
+func (c *Client) GetHttpClient() *http.Client {
 	return c.httpClient
 }
 
@@ -135,7 +159,7 @@ func (c *Client) SetHttpClient(httpClient *http.Client) {
 	c.httpClient = httpClient
 }
 
-func (c *Client) GetConfig() (Config) {
+func (c *Client) GetConfig() Config {
 	return c.config
 }
 
