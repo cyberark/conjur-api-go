@@ -1,5 +1,3 @@
-[![pipeline status](https://gitlab.com/cyberark/conjur-api-go/badges/master/pipeline.svg)](https://gitlab.com/cyberark/conjur-api-go/commits/master)
-
 # conjurapi
 
 Programmatic Golang access to the Conjur API.
