@@ -84,18 +84,7 @@ Connecting to Conjur is a two-step process:
 * **Configuration** Instruct the API where to find the Conjur endpoint and how to secure the connection.
 * **Authentication** Provide the API with credentials that it can use to authenticate.
 
-# Development (docker-compose)
-
-Kick off your TDD (i.e. goconvey powered) development environment as follows:
-
-```bash
-# goconvey will run as a background process
-./dev
-```
-
-Visit localhost:8080 to see the test results in real time.
-
-# Development
+## Contributing
 
 We welcome contributions of all kinds to this repository. For instructions on how to get started and descriptions of our development workflows, please see our [contributing
 guide][contrib].
