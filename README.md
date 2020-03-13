@@ -84,24 +84,12 @@ Connecting to Conjur is a two-step process:
 * **Configuration** Instruct the API where to find the Conjur endpoint and how to secure the connection.
 * **Authentication** Provide the API with credentials that it can use to authenticate.
 
-# Development (docker-compose)
+## Contributing
 
-Kick off your TDD (i.e. goconvey powered) development environment as follows:
+We welcome contributions of all kinds to this repository. For instructions on how to get started and descriptions of our development workflows, please see our [contributing
+guide][contrib].
 
-```bash
-# goconvey will run as a background process
-./dev
-```
-
-Visit localhost:8080 to see the test results in real time.
-
-# Contributing
-
-1. Fork it
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Added some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create new Pull Request
+[contrib]: https://github.com/cyberark/conjur-api-go/blob/master/CONTRIBUTING.md
 
 ## License
 
