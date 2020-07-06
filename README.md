@@ -2,13 +2,24 @@
 
 Programmatic Golang access to the Conjur API.
 
-# Installation
+## Using conjur-api-go with Conjur OSS 
+
+Are you using this project with [Conjur OSS](https://github.com/cyberark/conjur)? Then we 
+**strongly** recommend choosing the version of this project to use from the latest [Conjur OSS 
+suite release](https://docs.conjur.org/Latest/en/Content/Overview/Conjur-OSS-Suite-Overview.html). 
+Conjur maintainers perform additional testing on the suite release versions to ensure 
+compatibility. When possible, upgrade your Conjur version to match the 
+[latest suite release](https://docs.conjur.org/Latest/en/Content/ReleaseNotes/ConjurOSS-suite-RN.htm); 
+when using integrations, choose the latest suite release that matches your Conjur version. For any 
+questions, please contact us on [Discourse](https://discuss.cyberarkcommons.org/c/conjur/5).
+
+## Installation
 
 ```
 $ go get github.com/cyberark/conjur-api-go/conjurapi
 ```
 
-# Quick start
+## Quick start
 
 Fetching a Secret, for example:
 
@@ -77,7 +88,7 @@ $ export CONJUR_AUTHN_API_KEY=myapikey
 $ go run main.go
 The secret value is: fde5c4a45ce573f9768987cd
 ```
-# Usage
+## Usage
 
 Connecting to Conjur is a two-step process:
 
