@@ -25,8 +25,9 @@ CONJUR_AUTHN_API_KEY="$api_key" \
   docker-compose run test \
     bash -c 'set -o pipefail;
              echo "Running tests...";
-             go test -v ./... | tee output/junit.output;
+             go test -coverprofile="output/c.out" -v ./... | tee output/junit.output;
              exit_code=$?;
              echo "Tests finished - aggregating results...";
              cat output/junit.output | go-junit-report > output/junit.xml;
+             gocov convert ./output/c.out | gocov-xml > output/coverage.xml;
              [ "$exit_code" -eq 0 ]' || failed
