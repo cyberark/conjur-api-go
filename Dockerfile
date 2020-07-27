@@ -12,7 +12,9 @@ RUN apk add --no-cache bash \
                        libc-dev
 
 RUN go get -u github.com/jstemmer/go-junit-report && \
-    go get -u github.com/smartystreets/goconvey
+    go get -u github.com/smartystreets/goconvey && \
+    go get -u github.com/axw/gocov/gocov && \
+    go get -u github.com/AlekSi/gocov-xml
 
 WORKDIR /conjur-api-go
 
