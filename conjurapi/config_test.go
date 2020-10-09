@@ -165,4 +165,21 @@ netrc_path: "/path/to/netrc/file%v"
 			})
 		})
 	}
+
+	Convey("Throws errors when conjurrc is present but unparsable", t, func() {
+		badConjurrc := `
+---
+appliance_url: http://path/to/appliance
+account: some account
+cert_file: "C:\badly\escaped\path"
+`
+
+		tmpFileName, err := TempFileForTesting("TestConfigParsingErroHandling", badConjurrc)
+		defer os.Remove(tmpFileName) // clean up
+		So(err, ShouldBeNil)
+
+		config := &Config{}
+		err = config.mergeYAML(tmpFileName)
+		So(err, ShouldNotBeNil)
+	})
 }
