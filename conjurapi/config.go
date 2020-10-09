@@ -81,25 +81,30 @@ func (c *Config) merge(o *Config) {
 	c.V4 = c.V4 || o.V4
 }
 
-func (c *Config) mergeYAML(filename string) {
+func (c *Config) mergeYAML(filename string) error {
 	buf, err := ioutil.ReadFile(filename)
 
 	if err != nil {
 		logging.ApiLog.Debugf("Failed reading %s, %v\n", filename, err)
-		return
+		// It is not an error if this file does not exist
+		return nil
 	}
 
 	aux := struct {
 		ConjurVersion string `yaml:"version"`
 		Config        `yaml:",inline"`
 	}{}
+
 	if err := yaml.Unmarshal(buf, &aux); err != nil {
-		return
+		logging.ApiLog.Errorf("Parsing error %s: %s\n", filename, err)
+		return err
 	}
 	aux.Config.V4 = aux.ConjurVersion == "4"
 
 	logging.ApiLog.Debugf("Config from %s: %+v\n", filename, aux.Config)
 	c.merge(&aux.Config)
+
+	return nil
 }
 
 func (c *Config) mergeEnv() {
@@ -118,7 +123,9 @@ func (c *Config) mergeEnv() {
 	c.merge(&env)
 }
 
-func LoadConfig() (config Config, err error) {
+func LoadConfig() (Config, error) {
+	config := Config{}
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		logging.ApiLog.Warningf("Could not detect homedir.")
@@ -130,7 +137,10 @@ func LoadConfig() (config Config, err error) {
 		config = Config{NetRCPath: path.Join(home, ".netrc")}
 	}
 
-	config.mergeYAML(path.Join(getSystemPath(), "conjur.conf"))
+	err = config.mergeYAML(path.Join(getSystemPath(), "conjur.conf"))
+	if err != nil {
+		return config, err
+	}
 
 	conjurrc := os.Getenv("CONJURRC")
 	if conjurrc == "" && home != "" {
@@ -143,7 +153,7 @@ func LoadConfig() (config Config, err error) {
 	config.mergeEnv()
 
 	logging.ApiLog.Debugf("Final config: %+v\n", config)
-	return
+	return config, nil
 }
 
 func getSystemPath() string {
