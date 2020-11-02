@@ -128,6 +128,16 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 	return nil, fmt.Errorf("Environment variables and machine identity files satisfying at least one authentication strategy must be present!")
 }
 
+func (c *Client) GetUsername() string {
+	username, err := c.authenticator.Username()
+	if err != nil {
+		logging.ApiLog.Warnf("Username was unable to be deduced: %s\n", err.Error())
+		return ""
+	}
+
+	return username
+}
+
 func (c *Client) GetHttpClient() *http.Client {
 	return c.httpClient
 }
