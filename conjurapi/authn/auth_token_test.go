@@ -12,6 +12,7 @@ import (
 func TestTokenV5_Parse(t *testing.T) {
 
 	token_s := `{"protected":"eyJhbGciOiJjb25qdXIub3JnL3Nsb3NpbG8vdjIiLCJraWQiOiI5M2VjNTEwODRmZTM3Zjc3M2I1ODhlNTYyYWVjZGMxMSJ9","payload":"eyJzdWIiOiJhZG1pbiIsImlhdCI6MTUxMDc1MzI1OX0=","signature":"raCufKOf7sKzciZInQTphu1mBbLhAdIJM72ChLB4m5wKWxFnNz_7LawQ9iYEI_we1-tdZtTXoopn_T1qoTplR9_Bo3KkpI5Hj3DB7SmBpR3CSRTnnEwkJ0_aJ8bql5Cbst4i4rSftyEmUqX-FDOqJdAztdi9BUJyLfbeKTW9OGg-QJQzPX1ucB7IpvTFCEjMoO8KUxZpbHj-KpwqAMZRooG4ULBkxp5nSfs-LN27JupU58oRgIfaWASaDmA98O2x6o88MFpxK_M0FeFGuDKewNGrRc8lCOtTQ9cULA080M5CSnruCqu1Qd52r72KIOAfyzNIiBCLTkblz2fZyEkdSKQmZ8J3AakxQE2jyHmMT-eXjfsEIzEt-IRPJIirI3Qm"}`
+	token_no_sub := `{"protected":"eyJhbGciOiJjb25qdXIub3JnL3Nsb3NpbG8vdjIiLCJraWQiOiI5M2VjNTEwODRmZTM3Zjc3M2I1ODhlNTYyYWVjZGMxMSJ9","payload":"eyJpYXQiOjE1MTA3NTMyNTl9","signature":"raCufKOf7sKzciZInQTphu1mBbLhAdIJM72ChLB4m5wKWxFnNz_7LawQ9iYEI_we1-tdZtTXoopn_T1qoTplR9_Bo3KkpI5Hj3DB7SmBpR3CSRTnnEwkJ0_aJ8bql5Cbst4i4rSftyEmUqX-FDOqJdAztdi9BUJyLfbeKTW9OGg-QJQzPX1ucB7IpvTFCEjMoO8KUxZpbHj-KpwqAMZRooG4ULBkxp5nSfs-LN27JupU58oRgIfaWASaDmA98O2x6o88MFpxK_M0FeFGuDKewNGrRc8lCOtTQ9cULA080M5CSnruCqu1Qd52r72KIOAfyzNIiBCLTkblz2fZyEkdSKQmZ8J3AakxQE2jyHmMT-eXjfsEIzEt-IRPJIirI3Qm"}`
 	token_with_exp_s := `{"protected":"eyJhbGciOiJjb25qdXIub3JnL3Nsb3NpbG8vdjIiLCJraWQiOiI5M2VjNTEwODRmZTM3Zjc3M2I1ODhlNTYyYWVjZGMxMSJ9","payload":"eyJzdWIiOiJhZG1pbiIsImlhdCI6MTUxMDc1MzI1OSwiZXhwIjoxNTEwNzUzMzU5fQo=","signature":"raCufKOf7sKzciZInQTphu1mBbLhAdIJM72ChLB4m5wKWxFnNz_7LawQ9iYEI_we1-tdZtTXoopn_T1qoTplR9_Bo3KkpI5Hj3DB7SmBpR3CSRTnnEwkJ0_aJ8bql5Cbst4i4rSftyEmUqX-FDOqJdAztdi9BUJyLfbeKTW9OGg-QJQzPX1ucB7IpvTFCEjMoO8KUxZpbHj-KpwqAMZRooG4ULBkxp5nSfs-LN27JupU58oRgIfaWASaDmA98O2x6o88MFpxK_M0FeFGuDKewNGrRc8lCOtTQ9cULA080M5CSnruCqu1Qd52r72KIOAfyzNIiBCLTkblz2fZyEkdSKQmZ8J3AakxQE2jyHmMT-eXjfsEIzEt-IRPJIirI3Qm"}`
 	token_mangled_s := `{"protected":"eyJhbGciOiJjb25qdXIub3JnL3Nsb3NpbG8vdjIiLCJraWQiOiI5M2VjNTEwODRmZTM3Zjc3M2I1ODhlNTYyYWVjZGMxMSJ9","payload":"WIiOiJhZG1","signature":"raCufKOf7sKzciZInQTphu1mBbLhAdIJM72ChLB4m5wKWxFnNz_7LawQ9iYEI_we1-tdZtTXoopn_T1qoTplR9_Bo3KkpI5Hj3DB7SmBpR3CSRTnnEwkJ0_aJ8bql5Cbst4i4rSftyEmUqX-FDOqJdAztdi9BUJyLfbeKTW9OGg-QJQzPX1ucB7IpvTFCEjMoO8KUxZpbHj-KpwqAMZRooG4ULBkxp5nSfs-LN27JupU58oRgIfaWASaDmA98O2x6o88MFpxK_M0FeFGuDKewNGrRc8lCOtTQ9cULA080M5CSnruCqu1Qd52r72KIOAfyzNIiBCLTkblz2fZyEkdSKQmZ8J3AakxQE2jyHmMT-eXjfsEIzEt-IRPJIirI3Qm"}`
 	token_mangled_2_s := `{"protected":"eyJhbGciOiJjb25qdXIub3JnL3Nsb3NpbG8vdjIiLCJraWQiOiI5M2VjNTEwODRmZTM3Zjc3M2I1ODhlNTYyYWVjZGMxMSJ9","payload":"Zm9vYmFyCg==","signature":"raCufKOf7sKzciZInQTphu1mBbLhAdIJM72ChLB4m5wKWxFnNz_7LawQ9iYEI_we1-tdZtTXoopn_T1qoTplR9_Bo3KkpI5Hj3DB7SmBpR3CSRTnnEwkJ0_aJ8bql5Cbst4i4rSftyEmUqX-FDOqJdAztdi9BUJyLfbeKTW9OGg-QJQzPX1ucB7IpvTFCEjMoO8KUxZpbHj-KpwqAMZRooG4ULBkxp5nSfs-LN27JupU58oRgIfaWASaDmA98O2x6o88MFpxK_M0FeFGuDKewNGrRc8lCOtTQ9cULA080M5CSnruCqu1Qd52r72KIOAfyzNIiBCLTkblz2fZyEkdSKQmZ8J3AakxQE2jyHmMT-eXjfsEIzEt-IRPJIirI3Qm"}`
@@ -32,9 +33,11 @@ func TestTokenV5_Parse(t *testing.T) {
 
 		token_v5 := token.(*AuthnToken5)
 		So(token_v5.iat.String(), ShouldEqual, time.Unix(1510753259, 0).String())
+		So(token_v5.sub, ShouldEqual, "admin")
 		So(token_v5.exp, ShouldBeNil)
 
 		So(token.ShouldRefresh(), ShouldEqual, true)
+		So(token.Username(), ShouldEqual, "admin")
 	})
 
 	Convey("Token exp is supported", t, func() {
@@ -44,8 +47,10 @@ func TestTokenV5_Parse(t *testing.T) {
 		token_v5 := token.(*AuthnToken5)
 		So(token_v5.iat.String(), ShouldEqual, time.Unix(1510753259, 0).String())
 		So(token_v5.exp.String(), ShouldEqual, time.Unix(1510753359, 0).String())
+		So(token_v5.sub, ShouldEqual, "admin")
 
 		So(token.ShouldRefresh(), ShouldEqual, true)
+		So(token.Username(), ShouldEqual, "admin")
 	})
 
 	Convey("Malformed base64 in token is reported", t, func() {
@@ -56,6 +61,15 @@ func TestTokenV5_Parse(t *testing.T) {
 	Convey("Malformed JSON in token is reported", t, func() {
 		_, err := NewToken([]byte(token_mangled_2_s))
 		So(err.Error(), ShouldEqual, "Unable to unmarshal v5 access token field 'payload' : invalid character 'o' in literal false (expecting 'a')")
+	})
+
+	Convey("Missing 'sub' field does not result in an error", t, func() {
+		token, err := NewToken([]byte(token_no_sub))
+		So(err, ShouldBeNil)
+
+		token_v5 := token.(*AuthnToken5)
+		So(token_v5.sub, ShouldEqual, "")
+		So(token.Username(), ShouldEqual, "")
 	})
 }
 
@@ -92,6 +106,9 @@ func TestTokenV4_Parse(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(reflect.TypeOf(token).String(), ShouldEqual, "*authn.AuthnToken4")
 		So(token4.Timestamp.IsZero(), ShouldEqual, false)
+		So(token4.Data, ShouldEqual, "admin")
+
+		So(token.Username(), ShouldEqual, "admin")
 		So(token.ShouldRefresh(), ShouldEqual, false)
 		So(token.Raw(), ShouldNotBeNil)
 	})
