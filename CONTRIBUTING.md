@@ -25,3 +25,23 @@ Kick off your TDD (i.e. goconvey powered) development environment as follows:
 ```
 
 Visit localhost:8080 to see the test results in real time.
+
+## Releasing
+
+This project follows the standard [Conjur community release guidelines](https://github.com/cyberark/community/blob/master/Conjur/CONTRIBUTING.md#release-process).
+
+In particular, for each release you should:
+
+- Review the changes since the last release, and update the [version](./VERSION)
+  following [semantic versioning](https://semver.org/).
+- Determine whether any dependencies were added, removed, or updated in
+  [`go.mod`](./go.mod) since the last release. If any changes have been made,
+  update the [NOTICES](./NOTICES.txt) file.
+- Update the [CHANGELOG](./CHANGELOG.md) to reflect the new version.
+- Commit the changes to the files above in a branch and submit a version bump PR
+- Once the PR has been merged, tag the version using
+  `git tag -s vx.y.z -m vx.y.z`. Note: this requires you to be able to sign
+  releases. Consult the [github documentation on signing commits](https://help.github.com/articles/signing-commits-with-gpg/).
+- Push the tag by running `git push origin vx.y.z`
+- Create a GitHub release for the tag, and copy the changelog for this version
+  into the GitHub release description

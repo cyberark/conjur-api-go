@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.6.1] - 2020-12-02
 ### Changed
 - Errors from YAML parsing are now breaking and visible in logs.
   [cyberark/conjur-api-go#74](https://github.com/cyberark/conjur-api-go/issues/74)
@@ -69,7 +70,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/cyberark/conjur-api-go/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/cyberark/conjur-api-go/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/cyberark/conjur-api-go/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/cyberark/conjur-api-go/compare/v0.5.0...v0.5.1
