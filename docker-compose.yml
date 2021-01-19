@@ -34,6 +34,7 @@ services:
   test:
     container_name: api-go-test
     build: .
+    image: golang:1.13-alpine
     ports:
         - 8080
     depends_on:

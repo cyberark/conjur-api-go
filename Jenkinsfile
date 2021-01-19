@@ -16,14 +16,14 @@ pipeline {
     stage('Validate') {
       parallel {
         stage('Changelog') {
-          steps { sh './parse-changelog.sh' }
+          steps { sh './bin/parse-changelog.sh' }
         }
       }
     }
 
     stage('Run tests') {
       steps {
-        sh './test.sh'
+        sh './bin/test.sh'
         sh 'mv output/c.out .'
         junit 'output/junit.xml'
         cobertura autoUpdateHealth: true, autoUpdateStability: true, coberturaReportFile: 'output/coverage.xml', conditionalCoverageTargets: '30, 0, 0', failUnhealthy: true, failUnstable: false, lineCoverageTargets: '30, 0, 0', maxNumberOfBuilds: 0, methodCoverageTargets: '30, 0, 0', onlyStable: false, sourceEncoding: 'ASCII', zoomCoverageChart: false
@@ -33,7 +33,7 @@ pipeline {
 
     stage('Package distribution tarballs') {
       steps {
-        sh './package.sh'
+        sh './bin/package.sh'
         archiveArtifacts artifacts: 'output/dist/*', fingerprint: true
       }
     }
