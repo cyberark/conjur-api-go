@@ -15,16 +15,61 @@ From here your pull request will be reviewed and once you've responded to all
 feedback it will be merged into the project. Congratulations, you're a
 contributor!
 
-## Development (docker-compose)
+## Development
+To start developing and testing using our development scripts ,
+the following tools need to be installed:
 
-Kick off your TDD (i.e. goconvey powered) development environment as follows:
+  - Docker
+  - docker-compose
 
-```bash
-# goconvey will run as a background process
-./dev
+### Running tests
+
+To run the test suite, run:
+```shell
+./bin/test.sh
 ```
 
-Visit localhost:8080 to see the test results in real time.
+This will spin up a containerized Conjur environment and build the test containers,
+and will run all tests.
+
+To run the tests against a specific version of Golang, you can run the following:
+```shell
+./bin/test.sh 1.14
+```
+
+This will spin up a containerized Conjur environment and build the test containers,
+and will run the tests in a `golang:1.14` container
+
+Supported arguments are `1.14` and `1.15`, with the
+default being `1.15` if no argument is given.
+
+To run just the tests against just the OSS version of Conjur, run:
+
+```shell
+export TEST_VERSION="oss"
+# This will spin up a containerized Conjur oss
+./bin/test.sh <version>
+```
+
+Possible values for `TEST_VERSION` are `oss` and `all`, with `all`
+being the default.
+
+### Setting up a development environment
+To start a container with terminal access, and the necessary
+test running dependencies installed, run:
+
+```shell
+./bin/dev.sh
+```
+
+You can then run the following command from the container terminal to run
+all tests:
+
+```shell
+go test -coverprofile="output/c.out" -v ./... | tee output/junit.output;
+exit_code=$?;
+echo "Exit code: $exit_code"
+```
 
 ## Releasing
 

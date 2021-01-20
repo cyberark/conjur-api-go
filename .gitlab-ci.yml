@@ -13,12 +13,13 @@ test:
   artifacts:
     untracked: true
     reports:
-      junit: output/junit.xml
+      junit: output/junit-1.15.xml
     when: always
   script:
     - apk add --no-cache py-pip
     - pip install docker-compose
-    - ./test.sh oss
+    - export TEST_VERSION=oss
+    - ./test.sh 1.15
   only:
     - branches
 
@@ -29,7 +30,7 @@ package:
   variables:
     DOCKER_DRIVER: overlay2
   script:
-    - ./package.sh
+    - ./bin/package.sh
   only:
     - branches
   dependencies:

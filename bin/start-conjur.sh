@@ -1,61 +1,33 @@
-#!/bin/bash -e
+#!/bin/bash -ex
 
-test_image="test"
-while getopts :d opt; do
-    case $opt in
-        d) test_image="dev";;
-       \?) echo "Unknown option -$OPTARG"; exit 1;;
-    esac
-done
+. ./utils.sh
 
-function announce() {
-    BLUE='\033[0;34m'
-    NC='\033[0m' # No Color
-    echo -e "$BLUE
-    ================================
-     ${1}
-    ================================
-    $NC"
-}
+trap teardown EXIT
 
-export COMPOSE_PROJECT_NAME="conjurapigo_$(openssl rand -hex 3)"
-export TEST_VERSION="${TEST_VERSION:-all}"  # Type of Conjur to test against, 'all' or 'oss'
+# Type of Conjur to test against, 'all' or 'oss'
+export TEST_VERSION="${TEST_VERSION:-all}"
 announce "Compose Project Name: $COMPOSE_PROJECT_NAME
-      Conjur Test Version: $TEST_VERSION"
-
-exec_on() {
-  local container="$1"; shift
-
-  docker exec "$(docker-compose ps -q $container)" "$@"
-}
-
-oss_only(){
-  [ "$TEST_VERSION" == "oss" ]
-}
-
-build() {
-  docker-compose build "$test_image"
-}
+     Conjur Test Version: $TEST_VERSION"
 
 main() {
-  # Build test container & start the cluster
-  announce "Pulling images..."
+  # If oss only, we don't run v4 tests
   if oss_only; then
-      docker-compose pull conjur
+      images=("conjur")
   else
-      docker-compose pull conjur cuke-master
+      images=("conjur" "cuke-master" )
   fi
-  docker-compose build postgres conjur cli5 cuke-master
+
+  announce "Pulling images..."
+  docker-compose -p $COMPOSE_PROJECT_NAME pull ${images[@]} "postgres" "cli5"
   echo "Done!"
 
-  announce "Starting Conjur and other images..."
-  if oss_only; then
-    export CONJUR_DATA_KEY="$(docker-compose run -T --no-deps conjur data-key generate)"
-    docker-compose up --no-deps -d postgres conjur
-  else
-    export CONJUR_DATA_KEY="$(docker-compose run -T --no-deps conjur data-key generate)"
-    docker-compose up --no-deps -d postgres conjur cuke-master
-  fi
+  announce "Building images..."
+  docker-compose -p $COMPOSE_PROJECT_NAME build ${images[@]} "postgres"
+  echo "Done!"
+
+  announce "Starting Conjur environment..."
+  export CONJUR_DATA_KEY="$(docker-compose -p $COMPOSE_PROJECT_NAME run -T --no-deps conjur data-key generate)"
+  docker-compose -p $COMPOSE_PROJECT_NAME up --no-deps -d ${images[@]} "postgres"
   echo "Done!"
 
   announce "Waiting for conjur to start..."
@@ -74,6 +46,8 @@ main() {
     exec_on cuke-master conjur host create --as-group security_admin bob
     exec_on cuke-master conjur variable create existent-variable-with-undefined-value
 
+    # These variables will be checked for during the go testing
+    # For example, see conjurapi/variable_test.go
     vars=(
       'existent-variable-with-defined-value'
       'a/ b/c'
@@ -110,12 +84,10 @@ main() {
     echo "Done!"
   fi
 
+  # Export values needed for tests to access Conjur instance
   export CONJUR_AUTHN_API_KEY="$api_key"
   export CONJUR_V4_AUTHN_API_KEY="$api_key_v4"
   export CONJUR_V4_SSL_CERTIFICATE="$ssl_cert_v4"
-
-  announce "Building test container ($test_image)..."
-  build
 }
 
 main

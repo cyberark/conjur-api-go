@@ -1,16 +1,15 @@
-#!/usr/bin/env bash -e
+#!/usr/bin/env bash -ex
 
 cd "$(dirname "$0")"
+. ./utils.sh
 
-function finish {
-  docker-compose -f "../docker-compose.yml" down -v
-}
-trap finish EXIT
+source ./start-conjur.sh
 
-source ./build.sh -d
+docker-compose build dev
+docker-compose run --no-deps -d dev
 
-# When we start the dev container, it mounts the current directory in
-# the container. This hides the vendored dependencies that got
+# When we start the dev container, it mounts the top-level directory in
+# the container. This excludes the vendored dependencies that got
 # installed during the build, so reinstall them.
 exec_on dev go mod download
 
