@@ -36,7 +36,7 @@ type Router interface {
 	LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader) (*http.Request, error)
 	ResourceRequest(resourceID string) (*http.Request, error)
 	ResourcesRequest(filter *ResourceFilter) (*http.Request, error)
-	RetrieveBatchSecretsRequest(variableIDs []string) (*http.Request, error)
+	RetrieveBatchSecretsRequest(variableIDs []string, base64Flag bool) (*http.Request, error)
 	RetrieveSecretRequest(variableID string) (*http.Request, error)
 	RotateAPIKeyRequest(roleID string) (*http.Request, error)
 }
