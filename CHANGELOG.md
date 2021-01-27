@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Updated Go versions to 1.15
 
+### Added
+- RetrieveBatchSecretsSafe method which allows the user to specify use of the `Accept: base64`
+  header in batch retrieval requests. This allows for the retrieval of binary secrets from Conjur.
+  [cyberark/conjur-api-go#88](https://github.com/cyberark/conjur-api-go/issues/88)
+
 ## [0.6.1] - 2020-12-02
 ### Changed
 - Errors from YAML parsing are now breaking and visible in logs.
