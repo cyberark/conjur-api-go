@@ -168,11 +168,16 @@ func (r RouterV5) AddSecretRequest(variableID, secretValue string) (*http.Reques
 		return nil, err
 	}
 
-	return http.NewRequest(
+	request, err := http.NewRequest(
 		"POST",
 		variableURL,
 		strings.NewReader(secretValue),
 	)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	return request, nil
 }
 
 func (r RouterV5) variableURL(variableID string) (string, error) {
