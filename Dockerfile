@@ -1,15 +1,17 @@
-FROM golang:1.13-alpine
+ARG FROM_IMAGE="golang:1.15"
+FROM ${FROM_IMAGE}
 MAINTAINER Conjur Inc.
 
 CMD /bin/bash
 EXPOSE 8080
 
-RUN apk add --no-cache bash \
-                       gcc \
-                       git \
-                       jq \
-                       less \
-                       libc-dev
+RUN apt update -y && \
+    apt install -y bash \
+                   gcc \
+                   git \
+                   jq \
+                   less \
+                   libc-dev
 
 RUN go get -u github.com/jstemmer/go-junit-report && \
     go get -u github.com/smartystreets/goconvey && \
