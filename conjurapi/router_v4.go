@@ -86,7 +86,11 @@ func (r RouterV4) AddSecretRequest(variableID, secretValue string) (*http.Reques
 	return nil, fmt.Errorf("AddSecret is not supported for Conjur V4")
 }
 
-func (r RouterV4) RetrieveBatchSecretsRequest(variableIDs []string) (*http.Request, error) {
+func (r RouterV4) RetrieveBatchSecretsRequest(variableIDs []string, base64Flag bool) (*http.Request, error) {
+	if base64Flag {
+		return nil, fmt.Errorf("Batch retrieving Base64-encoded secrets is not supported in Conjur V4")
+	}
+
 	return http.NewRequest(
 		"GET",
 		r.batchVariableURL(variableIDs),

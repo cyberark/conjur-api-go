@@ -131,18 +131,28 @@ func (r RouterV5) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.
 	)
 }
 
-func (r RouterV5) RetrieveBatchSecretsRequest(variableIDs []string) (*http.Request, error) {
+func (r RouterV5) RetrieveBatchSecretsRequest(variableIDs []string, base64Flag bool) (*http.Request, error) {
 	fullVariableIDs := []string{}
 	for _, variableID := range variableIDs {
 		fullVariableID := makeFullId(r.Config.Account, "variable", variableID)
 		fullVariableIDs = append(fullVariableIDs, fullVariableID)
 	}
 
-	return http.NewRequest(
+	request, err := http.NewRequest(
 		"GET",
 		r.batchVariableURL(fullVariableIDs),
 		nil,
 	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if base64Flag {
+		request.Header.Add("Accept", "base64")
+	}
+
+	return request, nil
 }
 
 func (r RouterV5) RetrieveSecretRequest(variableID string) (*http.Request, error) {
@@ -168,11 +178,17 @@ func (r RouterV5) AddSecretRequest(variableID, secretValue string) (*http.Reques
 		return nil, err
 	}
 
-	return http.NewRequest(
+	request, err := http.NewRequest(
 		"POST",
 		variableURL,
 		strings.NewReader(secretValue),
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	return request, nil
 }
 
 func (r RouterV5) variableURL(variableID string) (string, error) {

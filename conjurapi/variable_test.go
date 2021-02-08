@@ -94,9 +94,18 @@ func TestClient_RetrieveSecret(t *testing.T) {
 				"onemore":              "{\"json\": \"object\"}",
 				"a/ b /c":              "somevalue",
 			}
+			binaryVariables := map[string]string{
+				"binary1":              "test\xf0\xf1",
+				"binary2":              "tes\xf0t\xf1i\xf2ng",
+				"nonBinary":            "testing",
+			}
 
 			policy := ""
 			for id := range variables {
+				policy = fmt.Sprintf("%s- !variable %s\n", policy, id)
+			}
+
+			for id := range binaryVariables {
 				policy = fmt.Sprintf("%s- !variable %s\n", policy, id)
 			}
 
@@ -110,6 +119,11 @@ func TestClient_RetrieveSecret(t *testing.T) {
 			)
 
 			for id, value := range variables {
+				err = conjur.AddSecret(id, value)
+				So(err, ShouldBeNil)
+			}
+
+			for id, value := range binaryVariables {
 				err = conjur.AddSecret(id, value)
 				So(err, ShouldBeNil)
 			}
@@ -129,6 +143,36 @@ func TestClient_RetrieveSecret(t *testing.T) {
 					So(ok, ShouldBeTrue)
 					So(string(fetchedValue), ShouldEqual, value)
 				}
+			})
+
+			Convey("Fetch binary secrets in a batch request", func(){
+				variableIds := []string{}
+				for id := range binaryVariables {
+					variableIds = append(variableIds, id)
+				}
+
+				secrets, err := conjur.RetrieveBatchSecretsSafe(variableIds)
+				So(err, ShouldBeNil)
+
+				for id, value := range binaryVariables {
+					fullyQualifiedID := fmt.Sprintf("%s:variable:%s", config.Account, id)
+					fetchedValue, ok := secrets[fullyQualifiedID]
+					So(ok, ShouldBeTrue)
+					So(string(fetchedValue), ShouldEqual, value)
+				}
+			})
+
+			Convey("Fail to fetch binary secrets in batch request", func(){
+				variableIds := []string{}
+				for id := range binaryVariables {
+					variableIds = append(variableIds, id)
+				}
+
+				_, err := conjur.RetrieveBatchSecrets(variableIds)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldContainSubstring, "Issue encoding secret into JSON format")
+				conjurError := err.(*response.ConjurError)
+				So(conjurError.Code, ShouldEqual, 500)
 			})
 		})
 
