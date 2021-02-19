@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+- Resources method no longer sends improperly URL-encoded query strings when
+  filtering resources with the "Search" parameter. Previously, if you used a
+  "Search" value that included a slash "/", the client would return no results
+  even if the server had matching resources due to an issue with the URL-encoding.
+  [cyberark/conjur-api-go#93](https://github.com/cyberark/conjur-api-go/issues/93)
+
 ## [0.7.0] - 2021-02-10
 ### Changed
 - Updated Go versions to 1.15
