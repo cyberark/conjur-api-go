@@ -28,6 +28,18 @@ func v5Setup() (*Client, error) {
   role: !user alice
   privilege: [ execute ]
   resource: !variable db-password
+
+- !policy
+  id: prod
+  body:
+  - !variable cluster-admin
+  - !variable cluster-admin-password
+
+  - !policy
+    id: database
+    body:
+    - !variable username
+    - !variable password
 `)
 
 	conjur, err := NewClientFromKey(*config, authn.LoginPair{Login: login, APIKey: apiKey})
@@ -110,11 +122,13 @@ func TestClient_Resources(t *testing.T) {
 		conjur, err := v5Setup()
 		So(err, ShouldBeNil)
 
-		Convey("Lists all resources", listResources(conjur, nil, 5))
-		Convey("Lists resources by kind", listResources(conjur, &ResourceFilter{Kind: "variable"}, 3))
+		Convey("Lists all resources", listResources(conjur, nil, 11))
+		Convey("Lists resources by kind", listResources(conjur, &ResourceFilter{Kind: "variable"}, 7))
 		Convey("Lists resources that start with db", listResources(conjur, &ResourceFilter{Search: "db"}, 2))
+		Convey("Lists variables that start with prod/database", listResources(conjur, &ResourceFilter{Search: "prod/database", Kind: "variable"}, 2))
+		Convey("Lists variables that start with prod", listResources(conjur, &ResourceFilter{Search: "prod", Kind: "variable"}, 4))
 		Convey("Lists resources and limit result to 1", listResources(conjur, &ResourceFilter{Limit: 1}, 1))
-		Convey("Lists resources after the first", listResources(conjur, &ResourceFilter{Offset: 1}, 4))
+		Convey("Lists resources after the first", listResources(conjur, &ResourceFilter{Offset: 1}, 10))
 	})
 
 	if os.Getenv("TEST_VERSION") != "oss" {

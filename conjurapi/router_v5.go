@@ -36,7 +36,7 @@ func (r RouterV5) RotateAPIKeyRequest(roleID string) (*http.Request, error) {
 		return nil, fmt.Errorf("Account of '%s' must match the configured account '%s'", roleID, r.Config.Account)
 	}
 
-	rotateURL := makeRouterURL(r.authnURL(), "api_key").withQuery("role=%s", roleID).String()
+	rotateURL := makeRouterURL(r.authnURL(), "api_key").withFormattedQuery("role=%s", roleID).String()
 
 	return http.NewRequest(
 		"PUT",
@@ -50,7 +50,7 @@ func (r RouterV5) CheckPermissionRequest(resourceID, privilege string) (*http.Re
 	if err != nil {
 		return nil, err
 	}
-	checkURL := makeRouterURL(r.resourcesURL(account), kind, url.QueryEscape(id)).withQuery("check=true&privilege=%s", url.QueryEscape(privilege)).String()
+	checkURL := makeRouterURL(r.resourcesURL(account), kind, url.QueryEscape(id)).withFormattedQuery("check=true&privilege=%s", url.QueryEscape(privilege)).String()
 
 	return http.NewRequest(
 		"GET",
@@ -201,7 +201,7 @@ func (r RouterV5) variableURL(variableID string) (string, error) {
 
 func (r RouterV5) batchVariableURL(variableIDs []string) string {
 	queryString := url.QueryEscape(strings.Join(variableIDs, ","))
-	return makeRouterURL(r.globalSecretsURL()).withQuery("variable_ids=%s", queryString).String()
+	return makeRouterURL(r.globalSecretsURL()).withFormattedQuery("variable_ids=%s", queryString).String()
 }
 
 func (r RouterV5) authnURL() string {
