@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.7.1] - 2021-03-01
 ### Fixed
 - Resources method no longer sends improperly URL-encoded query strings when
   filtering resources with the "Search" parameter. Previously, if you used a
@@ -86,7 +87,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/cyberark/conjur-api-go/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/cyberark/conjur-api-go/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/cyberark/conjur-api-go/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/cyberark/conjur-api-go/compare/v0.5.2...v0.6.0
