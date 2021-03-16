@@ -149,7 +149,7 @@ func (r RouterV5) RetrieveBatchSecretsRequest(variableIDs []string, base64Flag b
 	}
 
 	if base64Flag {
-		request.Header.Add("Accept", "base64")
+		request.Header.Add("Accept-Encoding", "base64")
 	}
 
 	return request, nil
