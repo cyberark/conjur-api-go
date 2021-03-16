@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Changed RetrieveBatchSecretsSafe method to use the `Accept-Encoding` header from `Accept`
+  [cyberark/conjur-api-go#99](https://github.com/cyberark/conjur-api-go/issues/99)
 
 ## [0.7.1] - 2021-03-01
 ### Fixed
