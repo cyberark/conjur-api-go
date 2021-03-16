@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Changed
 - Changed RetrieveBatchSecretsSafe method to use the `Accept-Encoding` header from `Accept`
-  [cyberark/conjur-api-go#99](https://github.com/cyberark/conjur-api-go/issues/74)
+  [cyberark/conjur-api-go#99](https://github.com/cyberark/conjur-api-go/issues/99)
 
 ## [0.7.0] - 2021-02-10
 ### Changed
