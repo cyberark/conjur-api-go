@@ -222,7 +222,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 			_, err = conjur.RetrieveSecret(variableIdentifier)
 
 			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldContainSubstring, "Requested version does not exist")
+			So(err.Error(), ShouldContainSubstring, "CONJ00076E Variable cucumber:variable:existent-variable-with-undefined-value is empty or not found")
 			conjurError := err.(*response.ConjurError)
 			So(conjurError.Code, ShouldEqual, 404)
 			So(conjurError.Details.Code, ShouldEqual, "not_found")
@@ -235,7 +235,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 			_, err = conjur.RetrieveSecret("non-existent-variable")
 
 			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldContainSubstring, "Variable 'non-existent-variable' not found in account 'cucumber'")
+			So(err.Error(), ShouldContainSubstring, "CONJ00076E Variable cucumber:variable:non-existent-variable is empty or not found")
 			conjurError := err.(*response.ConjurError)
 			So(conjurError.Code, ShouldEqual, 404)
 			So(conjurError.Details.Code, ShouldEqual, "not_found")
