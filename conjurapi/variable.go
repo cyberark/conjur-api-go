@@ -3,6 +3,7 @@ package conjurapi
 import (
 	"io"
 	"net/http"
+	"errors"
 
 	"encoding/json"
 	"encoding/base64"
@@ -92,6 +93,13 @@ func (c *Client) retrieveBatchSecrets(variableIDs []string, base64Flag bool) (ma
 	data, err := response.DataResponse(resp)
 	if err != nil {
 		return nil, err
+	}
+
+	if base64Flag && resp.Header.Get("Content-Encoding") != "base64" {
+		return nil, errors.New(
+			"Conjur response is not Base64-encoded. " +
+			"The Conjur version may not be compatible with this function - " +
+			"try using RetrieveBatchSecrets instead." )
 	}
 
 	jsonResponse := map[string]string{}

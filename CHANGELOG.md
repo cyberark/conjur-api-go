@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   instead of `Accept`, consistent with [recent updates on the Conjur server](https://github.com/cyberark/conjur/pull/2065).
   [cyberark/conjur-api-go#99](https://github.com/cyberark/conjur-api-go/issues/99)
 
+### Added
+- New check in RetrieveBatchSecretSafe method which will return an error if the `Content-Type` header
+  is not set in the response (this indicates Conjur is out of date with the client).
+  [cyberark/conjur-api-go#104](https://github.com/cyberark/conjur-api-go/issues/104)
+
 ## [0.7.1] - 2021-03-01
 ### Fixed
 - Resources method no longer sends improperly URL-encoded query strings when
