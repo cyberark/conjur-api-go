@@ -136,8 +136,12 @@ func TestClient_Resources(t *testing.T) {
 			conjur, err := v4Setup()
 			So(err, ShouldBeNil)
 
-			// v4 router doesn't support it yet.
-			SkipConvey("Lists resources", listResources(conjur, nil, 1))
+			Convey("Lists all resources", listResources(conjur, nil, 35))
+			Convey("Lists resources by kind", listResources(conjur, &ResourceFilter{Kind: "variable"}, 16))
+			Convey("Lists resources that start with db", listResources(conjur, &ResourceFilter{Search: "db"}, 1))
+			Convey("Lists variables that start with prod", listResources(conjur, &ResourceFilter{Search: "authn-tv/api-key", Kind: "variable"}, 1))
+			Convey("Lists resources and limit result to 1", listResources(conjur, &ResourceFilter{Limit: 1}, 1))
+			Convey("Lists resources after the first", listResources(conjur, &ResourceFilter{Offset: 1}, 10))
 		})
 	}
 }

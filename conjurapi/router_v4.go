@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
@@ -63,8 +64,48 @@ func (r RouterV4) ResourceRequest(resourceID string) (*http.Request, error) {
 }
 
 func (r RouterV4) ResourcesRequest(filter *ResourceFilter) (*http.Request, error) {
-	logrus.Panic("ResourcesRequest not implemented yet")
-	return nil, nil
+	query := url.Values{}
+
+	if filter != nil {
+		if filter.Search != "" {
+			query.Add("search", filter.Search)
+		}
+
+		if filter.Limit != 0 {
+			query.Add("limit", strconv.Itoa(filter.Limit))
+		}
+
+		if filter.Offset != 0 {
+			query.Add("offset", strconv.Itoa(filter.Offset))
+		}
+	}
+
+	baseResourceURL := r.resourcesURL(r.Config.Account)
+
+	if filter != nil {
+		if filter.Kind != "" {
+			baseResourceURL = fmt.Sprintf("%s/%s", baseResourceURL, filter.Kind)
+		}
+		if filter.Search != "" {
+			query.Add("search", filter.Search)
+		}
+
+		if filter.Limit != 0 {
+			query.Add("limit", strconv.Itoa(filter.Limit))
+		}
+
+		if filter.Offset != 0 {
+			query.Add("offset", strconv.Itoa(filter.Offset))
+		}
+	}
+
+	requestURL := makeRouterURL(baseResourceURL).withQuery(query.Encode())
+
+	return http.NewRequest(
+		"GET",
+		requestURL.String(),
+		nil,
+	)
 }
 
 func (r RouterV4) CheckPermissionRequest(resourceID, privilege string) (*http.Request, error) {
@@ -124,4 +165,8 @@ func (r RouterV4) variableURL(variableID string) (string, error) {
 func (r RouterV4) batchVariableURL(variableIDs []string) string {
 	queryString := url.QueryEscape(strings.Join(variableIDs, ","))
 	return fmt.Sprintf("%s/variables/values?vars=%s", r.Config.ApplianceURL, queryString)
+}
+
+func (r RouterV4) resourcesURL(account string) string {
+	return fmt.Sprintf("%s/authz/%s/resources", r.Config.ApplianceURL, account)
 }
