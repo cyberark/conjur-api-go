@@ -207,8 +207,8 @@ func TestClient_RetrieveSecret(t *testing.T) {
 		Convey("Returns 404 on existent variable with undefined value", func() {
 			variableIdentifier := "existent-variable-with-undefined-value"
 			policy := fmt.Sprintf(`
-- !variable %s
-`, variableIdentifier)
+				- !variable %s
+				`, variableIdentifier)
 
 			conjur, err := NewClientFromKey(*config, authn.LoginPair{Login: login, APIKey: apiKey})
 			So(err, ShouldBeNil)
@@ -351,6 +351,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 				for id := range variables {
 					variableIds = append(variableIds, id)
 				}
+
 				secrets, err := conjur.RetrieveBatchSecrets(variableIds)
 				So(err, ShouldBeNil)
 
@@ -359,6 +360,19 @@ func TestClient_RetrieveSecret(t *testing.T) {
 					So(ok, ShouldBeTrue)
 					So(string(fetchedValue), ShouldEqual, value)
 				}
+
+				Convey("Fail to use the safe method for batch retrieval", func() {
+					_, err := conjur.RetrieveBatchSecretsSafe(variableIds)
+					So(err.Error(), ShouldContainSubstring, "not supported in Conjur V4")
+				})
+
+				Convey("Fail to retrieve binary secret in batch retrieval", func() {
+					variableIds = append(variableIds, "binary")
+
+					_, err := conjur.RetrieveBatchSecrets(variableIds)
+					conjurError := err.(*response.ConjurError)
+					So(conjurError.Code, ShouldEqual, 500)
+				})
 			})
 
 			Convey("Given configuration has invalid login credentials", func() {

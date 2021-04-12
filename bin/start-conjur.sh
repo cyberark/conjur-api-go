@@ -57,6 +57,7 @@ main() {
       'research+development'
       'sales&marketing'
       'onemore'
+      'binary'
     )
 
     secrets=(
@@ -68,6 +69,7 @@ main() {
       'secret'
       'strings'
       '{"json": "object"}'
+      "$(openssl rand 10)"
     )
 
     count=${#vars[@]}
