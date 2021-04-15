@@ -258,7 +258,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 		})
 	})
 
-	if os.Getenv("TEST_VERSION") != "oss" {
+	if os.Getenv("CONJUR_EDITION") == "v4" {
 		Convey("V4", t, func() {
 			config := &Config{
 				ApplianceURL: os.Getenv("CONJUR_V4_APPLIANCE_URL"),

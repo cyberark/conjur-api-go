@@ -26,44 +26,31 @@ the following tools need to be installed:
 
 To run the test suite, run:
 ```shell
-./bin/test.sh
+./bin/test_integration
 ```
 
-This will spin up a containerized Conjur environment and build the test containers,
-and will run all tests.
+This will spin up a containerized Conjur Open Source environment and build the
+test containers, and will run all tests against the default Go version.
 
-To run the tests against a specific version of Golang, you can run the following:
+To run the tests against a specific version of Golang or a specific edition of
+Conjur, you can run:
 ```shell
-./bin/test.sh 1.14
+./bin/test_integration --conjur=EDITION --go=VERSION
 ```
-
-This will spin up a containerized Conjur environment and build the test containers,
-and will run the tests in a `golang:1.14` container
-
-Supported arguments are `1.14` and `1.15`, with the
-default being `1.15` if no argument is given.
-
-To run just the tests against just the OSS version of Conjur, run:
-
-```shell
-export TEST_VERSION="oss"
-# This will spin up a containerized Conjur oss
-./bin/test.sh <version>
-```
-
-Possible values for `TEST_VERSION` are `oss` and `all`, with `all`
-being the default.
+where `EDITION` can be `v4` or `oss` and `VERSION` should be a valid Go version,
+like 1.14.
 
 ### Setting up a development environment
 To start a container with terminal access, and the necessary
 test running dependencies installed, run:
 
 ```shell
-./bin/dev.sh
+./bin/dev
 ```
 
-You can then run the following command from the container terminal to run
-all tests:
+This stands up a local Conjur Open Source instance in addition to your dev
+container. You can then run the following command from the container terminal
+to run all tests:
 
 ```shell
 go test -coverprofile="output/c.out" -v ./... | tee output/junit.output;

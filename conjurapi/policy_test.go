@@ -86,7 +86,7 @@ func TestClient_LoadPolicy(t *testing.T) {
 		})
 	})
 
-	if os.Getenv("TEST_VERSION") != "oss" {
+	if os.Getenv("CONJUR_EDITION") == "v4" {
 		Convey("V4", t, func() {
 
 			config := &Config{

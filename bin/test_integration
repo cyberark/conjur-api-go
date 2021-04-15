@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+function print_help() {
+  echo "Usage: $0 [OPTION...]"
+  echo " --go=VERSION; Go version to run the tests against, defaults to 1.15"
+  echo " --conjur=STRING; Conjur edition to run the tests against - currently supports \"v4\" and \"oss\" as options, defaults to \"oss\""
+}
+
+cd "$(dirname "$0")"
+. ./utils.sh
+
+# Set defaults
+export COMPOSE_PROJECT_NAME="conjurapigo_$(openssl rand -hex 3)"
+export GO_VERSION="1.15"
+export CONJUR_EDITION="oss"
+
+# Read arguments
+for arg in "$@"; do
+  case $arg in
+    --go=* )
+      GO_VERSION="${arg#*=}"
+      shift
+      ;;
+    --go )
+      echo "You must supply a Go version"
+      print_help
+      exit 1
+      ;;
+    --conjur=* )
+      CONJUR_EDITION="${arg#*=}"
+      shift
+      ;;
+    --conjur )
+      echo "You must supply a Conjur edition"
+      print_help
+      exit 1
+      ;;
+    * )
+      echo "Unknown option: ${arg}"
+      print_help
+      exit 1
+      ;;
+    esac
+done
+
+# Validate arguments
+if [[ ! ${GO_VERSION} =~ ^[0-9]\.[0-9]*$ ]]; then
+  echo "Unknown go version: ${GO_VERSION}"
+  print_help
+  exit 1
+fi
+
+if [[ "${CONJUR_EDITION}" != "oss" && "${CONJUR_EDITION}" != "v4" ]]; then
+  echo "Unknown Conjur edition: ${CONJUR_EDITION}"
+  print_help
+  exit 1
+fi
+
+announce "Starting tests with:
+     Compose Project Name: ${COMPOSE_PROJECT_NAME}
+     Conjur Test Version: ${CONJUR_EDITION}"
+
+# Spin up Conjur environment
+./start-conjur --conjur="${CONJUR_EDITION}"
+
+announce "Building test containers..."
+docker-compose -p $COMPOSE_PROJECT_NAME build "test-$GO_VERSION"
+echo "Done!"
+
+# generate output folder locally, if needed
+output_dir="../output/$GO_VERSION"
+mkdir -p $output_dir
+
+# Golang container version to use: `1.14` or `1.15`
+announce "Running tests for Go version: $GO_VERSION...";
+docker-compose -p $COMPOSE_PROJECT_NAME run \
+  -e CONJUR_AUTHN_API_KEY \
+  -e CONJUR_V4_AUTHN_API_KEY \
+  -e CONJUR_V4_SSL_CERTIFICATE \
+  -e CONJUR_EDITION \
+  -e GO_VERSION \
+  "test-$GO_VERSION" bash -c 'set -o pipefail;
+           echo "Go version: $(go version)"
+           output_dir="./output/$GO_VERSION"
+           go test -coverprofile="$output_dir/c.out" -v ./... | tee "$output_dir/junit.output";
+           exit_code=$?;
+           echo "Tests finished - aggregating results...";
+           cat "$output_dir/junit.output" | go-junit-report > "$output_dir/junit.xml";
+           gocov convert "$output_dir/c.out" | gocov-xml > "$output_dir/coverage.xml";
+           [ "$exit_code" -eq 0 ]' || announce_failure

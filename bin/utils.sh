@@ -18,10 +18,12 @@ exec_on() {
   docker exec "$(docker-compose -p $COMPOSE_PROJECT_NAME ps -q $container)" "$@"
 }
 
-oss_only(){
-  [ "$TEST_VERSION" == "oss" ]
+function teardown() {
+  docker-compose -p $COMPOSE_PROJECT_NAME down -v
 }
 
-function teardown {
-  docker-compose -p $COMPOSE_PROJECT_NAME down -v
+function announce_failure() {
+  announce "TESTS FAILED"
+  docker logs "$(docker-compose -p ${COMPOSE_PROJECT_NAME} ps -q conjur-${CONJUR_EDITION})"
+  exit 1
 }

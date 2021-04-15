@@ -97,7 +97,7 @@ func TestClient_CheckPermission(t *testing.T) {
 		Convey("Check a permission on a non-existent resource", checkNonExisting(conjur, "cucumber:variable:foobar"))
 	})
 
-	if os.Getenv("TEST_VERSION") != "oss" {
+	if os.Getenv("CONJUR_EDITION") == "v4" {
 		Convey("V4", t, func() {
 			conjur, err := v4Setup()
 			So(err, ShouldBeNil)
@@ -131,7 +131,7 @@ func TestClient_Resources(t *testing.T) {
 		Convey("Lists resources after the first", listResources(conjur, &ResourceFilter{Offset: 1}, 10))
 	})
 
-	if os.Getenv("TEST_VERSION") != "oss" {
+	if os.Getenv("CONJUR_EDITION") == "v4" {
 		Convey("V4", t, func() {
 			conjur, err := v4Setup()
 			So(err, ShouldBeNil)
@@ -157,7 +157,7 @@ func TestClient_Resource(t *testing.T) {
 		Convey("Shows a resource", showResource(conjur, "cucumber:variable:db-password"))
 	})
 
-	if os.Getenv("TEST_VERSION") != "oss" {
+	if os.Getenv("CONJUR_EDITION") == "v4" {
 		Convey("V4", t, func() {
 			conjur, err := v4Setup()
 			So(err, ShouldBeNil)
