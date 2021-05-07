@@ -172,7 +172,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldContainSubstring, "Issue encoding secret into JSON format")
 				conjurError := err.(*response.ConjurError)
-				So(conjurError.Code, ShouldEqual, 500)
+				So(conjurError.Code, ShouldEqual, 406)
 			})
 		})
 
