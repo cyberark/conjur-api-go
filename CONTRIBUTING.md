@@ -73,7 +73,7 @@ echo "Exit code: $exit_code"
 
 ## Releasing
 
-This project follows the standard [Conjur community release guidelines](https://github.com/cyberark/community/blob/master/Conjur/CONTRIBUTING.md#release-process).
+This project follows the standard [Conjur community release guidelines](https://github.com/cyberark/community/blob/main/Conjur/CONTRIBUTING.md#release-process).
 
 In particular, for each release you should:
 
