@@ -43,7 +43,7 @@ and will run the tests in a `golang:1.14` container
 Supported arguments are `1.14` and `1.15`, with the
 default being `1.15` if no argument is given.
 
-To run just the tests against just the OSS version of Conjur, run:
+To run just the tests against just the Conjur Open Source, run:
 
 ```shell
 export TEST_VERSION="oss"
