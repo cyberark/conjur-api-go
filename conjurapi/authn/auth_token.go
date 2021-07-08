@@ -18,6 +18,8 @@ type AuthnToken interface {
 	Raw() []byte
 	// Whether the token will expire soon.
 	ShouldRefresh() bool
+	// Synthesize the username from the token fields
+	Username() string
 }
 
 type AuthnToken4 struct {
@@ -38,6 +40,7 @@ type AuthnToken5 struct {
 	Signature string `json:"signature"`
 	iat       time.Time
 	exp       *time.Time
+	sub       string
 }
 
 func hasField(fields map[string]string, name string) (hasField bool) {
@@ -91,6 +94,11 @@ func (t *AuthnToken5) FromJSON(data []byte) (err error) {
 		return
 	}
 
+	sub, ok := payloadFields["sub"]
+	if ok {
+		t.sub = sub.(string)
+	}
+
 	iat_v, ok := payloadFields["iat"]
 	if !ok {
 		err = fmt.Errorf("v5 access token field 'payload' does not contain 'iat'")
@@ -139,6 +147,7 @@ func (t *AuthnToken4) UnmarshalJSON(data []byte) (err error) {
 		return
 	}
 
+	t.Data = x.Data
 	t.Timestamp, err = time.Parse(TimeFormatToken4, x.Timestamp)
 	t.bytes = data
 
@@ -161,10 +170,18 @@ func (t *AuthnToken5) ShouldRefresh() bool {
 	}
 }
 
+func (t *AuthnToken5) Username() string {
+	return t.sub
+}
+
 func (t *AuthnToken4) Raw() []byte {
 	return t.bytes
 }
 
 func (t *AuthnToken4) ShouldRefresh() bool {
 	return time.Now().After(t.Timestamp.Add(5 * time.Minute))
+}
+
+func (t *AuthnToken4) Username() string {
+	return t.Data
 }

@@ -17,8 +17,9 @@ import (
 )
 
 type Authenticator interface {
-	RefreshToken() ([]byte, error)
 	NeedsTokenRefresh() bool
+	RefreshToken() ([]byte, error)
+	Username() (string, error)
 }
 
 type Client struct {
@@ -127,7 +128,17 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 	return nil, fmt.Errorf("Environment variables and machine identity files satisfying at least one authentication strategy must be present!")
 }
 
-func (c *Client) GetHttpClient() (*http.Client) {
+func (c *Client) GetUsername() string {
+	username, err := c.authenticator.Username()
+	if err != nil {
+		logging.ApiLog.Warnf("Username was unable to be deduced: %s\n", err.Error())
+		return ""
+	}
+
+	return username
+}
+
+func (c *Client) GetHttpClient() *http.Client {
 	return c.httpClient
 }
 
@@ -135,7 +146,7 @@ func (c *Client) SetHttpClient(httpClient *http.Client) {
 	c.httpClient = httpClient
 }
 
-func (c *Client) GetConfig() (Config) {
+func (c *Client) GetConfig() Config {
 	return c.config
 }
 

@@ -61,3 +61,35 @@ func Test_newClientWithAuthenticator(t *testing.T) {
 		So(client, ShouldNotBeNil)
 	})
 }
+
+func Test_GetUsername(t *testing.T) {
+	Convey("Returns empty string on errors", t, func() {
+		client, err := NewClientFromToken(Config{
+			Account:      "account",
+			ApplianceURL: "http://localhost",
+		}, "token-file")
+		So(err, ShouldBeNil)
+
+		So(client.GetUsername(), ShouldEqual, "")
+	})
+
+	Convey("Can return token v5 username string", t, func() {
+		client, err := NewClientFromTokenFile(Config{
+			Account:      "account",
+			ApplianceURL: "http://localhost",
+		}, "testdata/token_v5.json")
+		So(err, ShouldBeNil)
+
+		So(client.GetUsername(), ShouldEqual, "admin")
+	})
+
+	Convey("Can return token v4 username string", t, func() {
+		client, err := NewClientFromTokenFile(Config{
+			Account:      "account",
+			ApplianceURL: "http://localhost",
+		}, "testdata/token_v4.json")
+		So(err, ShouldBeNil)
+
+		So(client.GetUsername(), ShouldEqual, "admin")
+	})
+}
