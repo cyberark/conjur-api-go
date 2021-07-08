@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - New check in RetrieveBatchSecretSafe method which will return an error if the `Content-Type` header
   is not set in the response (this indicates Conjur is out of date with the client).
   [cyberark/conjur-api-go#104](https://github.com/cyberark/conjur-api-go/issues/104)
+- ResourcesRequest is now supported for v4 conjur instances.
 
 ## [0.7.1] - 2021-03-01
 ### Fixed
