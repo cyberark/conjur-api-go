@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+- Update Golang version to 1.16.
+  [cyberark/conjur-api-go#117](https://github.com/cyberark/conjur-api-go/pull/117)
+
 ## [0.8.0] - 2021-09-10
 ### Changed
 - RetrieveBatchSecretsSafe method is updated to use the `Accept-Encoding` header
