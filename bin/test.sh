@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 . ./utils.sh
 
 export COMPOSE_PROJECT_NAME="conjurapigo_$(openssl rand -hex 3)"
-export GO_VERSION="${1:-"1.15"}"
+export GO_VERSION="${1:-"1.16"}"
 
 # Spin up Conjur environment
 source ./start-conjur.sh
@@ -23,7 +23,7 @@ failed() {
   exit 1
 }
 
-# Golang container version to use: `1.14` or `1.15`
+# Golang container version to use: `1.16` or `1.17`
 announce "Running tests for Go version: $GO_VERSION...";
 docker-compose -p $COMPOSE_PROJECT_NAME run \
   -e CONJUR_AUTHN_API_KEY \
