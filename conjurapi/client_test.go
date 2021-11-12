@@ -1,25 +1,26 @@
 package conjurapi
 
 import (
-	"github.com/cyberark/conjur-api-go/conjurapi/authn"
-	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+
+	"github.com/cyberark/conjur-api-go/conjurapi/authn"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewClientFromKey(t *testing.T) {
-	Convey("Has authenticator of type APIKeyAuthenticator", t, func() {
+	t.Run("Has authenticator of type APIKeyAuthenticator", func(t *testing.T) {
 		client, err := NewClientFromKey(
 			Config{Account: "account", ApplianceURL: "appliance-url"},
-			authn.LoginPair{"login", "api-key"},
+			authn.LoginPair{Login: "login", APIKey: "api-key"},
 		)
 
-		So(err, ShouldBeNil)
-		So(client.authenticator, ShouldHaveSameTypeAs, &authn.APIKeyAuthenticator{})
+		assert.NoError(t, err)
+		assert.IsType(t, &authn.APIKeyAuthenticator{}, client.authenticator)
 	})
 }
 
 func TestClient_GetConfig(t *testing.T) {
-	Convey("Returns Client Config", t, func() {
+	t.Run("Returns Client Config", func(t *testing.T) {
 		expectedConfig := Config{
 			Account:      "some-account",
 			ApplianceURL: "some-appliance-url",
@@ -32,32 +33,32 @@ func TestClient_GetConfig(t *testing.T) {
 			config: expectedConfig,
 		}
 
-		So(client.GetConfig(), ShouldResemble, expectedConfig)
+		assert.EqualValues(t, client.GetConfig(), expectedConfig)
 	})
 }
 
 func TestNewClientFromTokenFile(t *testing.T) {
-	Convey("Has authenticator of type TokenFileAuthenticator", t, func() {
+	t.Run("Has authenticator of type TokenFileAuthenticator", func(t *testing.T) {
 		client, err := NewClientFromTokenFile(Config{Account: "account", ApplianceURL: "appliance-url"}, "token-file")
 
-		So(err, ShouldBeNil)
-		So(client.authenticator, ShouldHaveSameTypeAs, &authn.TokenFileAuthenticator{})
+		assert.NoError(t, err)
+		assert.IsType(t, &authn.TokenFileAuthenticator{}, client.authenticator)
 	})
 }
 
 func Test_newClientWithAuthenticator(t *testing.T) {
-	Convey("Returns nil and error for invalid config", t, func() {
+	t.Run("Returns nil and error for invalid config", func(t *testing.T) {
 		client, err := newClientWithAuthenticator(Config{}, nil)
 
-		So(client, ShouldBeNil)
-		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldContainSubstring, "Must specify")
+		assert.Nil(t, client)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "Must specify")
 	})
 
-	Convey("Returns client without error for valid config", t, func() {
+	t.Run("Returns client without error for valid config", func(t *testing.T) {
 		client, err := newClientWithAuthenticator(Config{Account: "account", ApplianceURL: "appliance-url"}, nil)
 
-		So(err, ShouldBeNil)
-		So(client, ShouldNotBeNil)
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
 	})
 }

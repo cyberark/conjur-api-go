@@ -2,15 +2,16 @@ package conjurapi
 
 import (
 	"fmt"
-	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TempFileForTesting(prefix string, fileContents string) (string, error) {
-	tmpfile, err := ioutil.TempFile(os.TempDir(), prefix)
+func TempFileForTesting(prefix string, fileContents string, t *testing.T) (string, error) {
+	tmpfile, err := ioutil.TempFile(t.TempDir(), prefix)
 	if err != nil {
 		return "", err
 	}
@@ -26,75 +27,70 @@ func TempFileForTesting(prefix string, fileContents string) (string, error) {
 }
 
 func TestConfig_IsValid(t *testing.T) {
-	Convey("Return without error for valid configuration", t, func() {
+	t.Run("Return without error for valid configuration", func(t *testing.T) {
 		config := Config{
 			Account:      "account",
 			ApplianceURL: "appliance-url",
 		}
 
 		err := config.validate()
-
-		So(err, ShouldBeNil)
+		assert.NoError(t, err)
 	})
 
-	Convey("Return error for invalid configuration", t, func() {
+	t.Run("Return error for invalid configuration", func(t *testing.T) {
 		config := Config{
 			Account: "account",
 		}
 
 		err := config.validate()
-		So(err, ShouldNotBeNil)
+		assert.Error(t, err)
 
 		errString := err.Error()
-
-		So(errString, ShouldContainSubstring, "Must specify an ApplianceURL")
+		assert.Contains(t, errString, "Must specify an ApplianceURL")
 	})
 }
 
 func TestConfig_IsHttps(t *testing.T) {
-	Convey("Return true for configuration with SSLCert", t, func() {
+	t.Run("Return true for configuration with SSLCert", func(t *testing.T) {
 		config := Config{
 			SSLCert: "cert",
 		}
 
-		err := config.IsHttps()
-
-		So(err, ShouldBeTrue)
+		isHttps := config.IsHttps()
+		assert.True(t, isHttps)
 	})
 
-	Convey("Return true for configuration with SSLCertPath", t, func() {
+	t.Run("Return true for configuration with SSLCertPath", func(t *testing.T) {
 		config := Config{
 			SSLCertPath: "path/to/cert",
 		}
 
-		err := config.IsHttps()
-
-		So(err, ShouldBeTrue)
+		isHttps := config.IsHttps()
+		assert.True(t, isHttps)
 	})
 
-	Convey("Return false for configuration without SSLCert or SSLCertPath", t, func() {
+	t.Run("Return false for configuration without SSLCert or SSLCertPath", func(t *testing.T) {
 		config := Config{}
 
-		err := config.IsHttps()
-
-		So(err, ShouldBeFalse)
+		isHttps := config.IsHttps()
+		assert.False(t, isHttps)
 	})
 
 }
 
 func TestConfig_LoadFromEnv(t *testing.T) {
-	Convey("Given configuration and authentication credentials in env", t, func() {
+	t.Run("Given configuration and authentication credentials in env", func(t *testing.T) {
 		e := ClearEnv()
 		defer e.RestoreEnv()
 
 		os.Setenv("CONJUR_ACCOUNT", "account")
 		os.Setenv("CONJUR_APPLIANCE_URL", "appliance-url")
 
-		Convey("Returns Config loaded with values from env", func() {
+		t.Run("Returns Config loaded with values from env", func(t *testing.T) {
 			config := &Config{}
 			config.mergeEnv()
 
-			So(*config, ShouldResemble, Config{
+			assert.EqualValues(t, *config, Config{
 				Account:      "account",
 				ApplianceURL: "appliance-url",
 			})
@@ -113,9 +109,9 @@ var versiontests = []struct {
 }
 
 func TestConfig_mergeYAML(t *testing.T) {
-	Convey("No other netrc specified", t, func() {
+	t.Run("No other netrc specified", func(t *testing.T) {
 		home := os.Getenv("HOME")
-		So(home, ShouldNotBeBlank)
+		assert.NotEmpty(t, home)
 
 		e := ClearEnv()
 		defer e.RestoreEnv()
@@ -124,11 +120,11 @@ func TestConfig_mergeYAML(t *testing.T) {
 		os.Setenv("CONJUR_ACCOUNT", "account")
 		os.Setenv("CONJUR_APPLIANCE_URL", "appliance-url")
 
-		Convey("Uses $HOME/.netrc by deafult", func() {
+		t.Run("Uses $HOME/.netrc by deafult", func(t *testing.T) {
 			config, err := LoadConfig()
-			So(err, ShouldBeNil)
+			assert.NoError(t, err)
 
-			So(config, ShouldResemble, Config{
+			assert.EqualValues(t, config, Config{
 				Account:      "account",
 				ApplianceURL: "appliance-url",
 				NetRCPath:    path.Join(home, ".netrc"),
@@ -137,7 +133,7 @@ func TestConfig_mergeYAML(t *testing.T) {
 	})
 
 	for index, versiontest := range versiontests {
-		Convey(fmt.Sprintf("Given a filled conjurrc file with %s", versiontest.label), t, func() {
+		t.Run(fmt.Sprintf("Given a filled conjurrc file with %s", versiontest.label), func(t *testing.T) {
 			conjurrcFileContents := fmt.Sprintf(`
 ---
 appliance_url: http://path/to/appliance%v
@@ -147,15 +143,15 @@ netrc_path: "/path/to/netrc/file%v"
 %s
 `, index, index, index, index, versiontest.in)
 
-			tmpFileName, err := TempFileForTesting("TestConfigVersion", conjurrcFileContents)
+			tmpFileName, err := TempFileForTesting("TestConfigVersion", conjurrcFileContents, t)
 			defer os.Remove(tmpFileName) // clean up
-			So(err, ShouldBeNil)
+			assert.NoError(t, err)
 
-			Convey(fmt.Sprintf("Returns Config loaded with values from file and V4: %t", versiontest.out), func() {
+			t.Run(fmt.Sprintf("Returns Config loaded with values from file and V4: %t", versiontest.out), func(t *testing.T) {
 				config := &Config{}
 				config.mergeYAML(tmpFileName)
 
-				So(*config, ShouldResemble, Config{
+				assert.EqualValues(t, *config, Config{
 					Account:      fmt.Sprintf("some account%v", index),
 					ApplianceURL: fmt.Sprintf("http://path/to/appliance%v", index),
 					NetRCPath:    fmt.Sprintf("/path/to/netrc/file%v", index),
@@ -166,7 +162,7 @@ netrc_path: "/path/to/netrc/file%v"
 		})
 	}
 
-	Convey("Throws errors when conjurrc is present but unparsable", t, func() {
+	t.Run("Throws errors when conjurrc is present but unparsable", func(t *testing.T) {
 		badConjurrc := `
 ---
 appliance_url: http://path/to/appliance
@@ -174,12 +170,12 @@ account: some account
 cert_file: "C:\badly\escaped\path"
 `
 
-		tmpFileName, err := TempFileForTesting("TestConfigParsingErroHandling", badConjurrc)
+		tmpFileName, err := TempFileForTesting("TestConfigParsingErroHandling", badConjurrc, t)
 		defer os.Remove(tmpFileName) // clean up
-		So(err, ShouldBeNil)
+		assert.NoError(t, err)
 
 		config := &Config{}
 		err = config.mergeYAML(tmpFileName)
-		So(err, ShouldNotBeNil)
+		assert.Error(t, err)
 	})
 }

@@ -1,15 +1,16 @@
 package authn
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTokenFileAuthenticator_RefreshToken(t *testing.T) {
-	Convey("Given existent token filename", t, func() {
+	t.Run("Given existent token filename", func(t *testing.T) {
 		token_file, _ := ioutil.TempFile("", "existent-token-file")
 		token_file_name := token_file.Name()
 		token_file_contents := "token-from-file-contents"
@@ -17,19 +18,19 @@ func TestTokenFileAuthenticator_RefreshToken(t *testing.T) {
 		token_file.Close()
 		defer os.Remove(token_file_name)
 
-		Convey("Return the token from the file", func() {
+		t.Run("Return the token from the file", func(t *testing.T) {
 			authenticator := TokenFileAuthenticator{
 				TokenFile: token_file_name,
 			}
 
 			token, err := authenticator.RefreshToken()
 
-			So(err, ShouldBeNil)
-			So(string(token), ShouldEqual, "token-from-file-contents")
+			assert.NoError(t, err)
+			assert.Equal(t, "token-from-file-contents", string(token))
 		})
 	})
 
-	Convey("Given an eventually existent token filename", t, func() {
+	t.Run("Given an eventually existent token filename", func(t *testing.T) {
 		token_file, _ := ioutil.TempFile("", "existent-token-file")
 		token_file_name := token_file.Name()
 
@@ -40,7 +41,7 @@ func TestTokenFileAuthenticator_RefreshToken(t *testing.T) {
 		}()
 		defer os.Remove(token_file_name)
 
-		Convey("Return the token from the file", func() {
+		t.Run("Return the token from the file", func(t *testing.T) {
 			authenticator := TokenFileAuthenticator{
 				TokenFile:   token_file_name,
 				MaxWaitTime: 500 * time.Millisecond,
@@ -48,37 +49,37 @@ func TestTokenFileAuthenticator_RefreshToken(t *testing.T) {
 
 			token, err := authenticator.RefreshToken()
 
-			So(err, ShouldBeNil)
-			So(string(token), ShouldEqual, "token-from-file-contents")
+			assert.NoError(t, err)
+			assert.Equal(t, "token-from-file-contents", string(token))
 		})
 	})
 
-	Convey("Given a non-existent token filename", t, func() {
+	t.Run("Given a non-existent token filename", func(t *testing.T) {
 		token_file := "/path/to/non-existent-token-file"
 
-		Convey("Return nil with error", func() {
+		t.Run("Return nil with error", func(t *testing.T) {
 			authenticator := TokenFileAuthenticator{
 				TokenFile: token_file,
 			}
 
 			token, err := authenticator.RefreshToken()
 
-			So(token, ShouldBeNil)
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, "Operation waitForTextFile timed out.")
+			assert.Nil(t, token)
+			assert.Error(t, err)
+			assert.Equal(t, "Operation waitForTextFile timed out.", err.Error())
 		})
 	})
 }
 
 func TestTokenFileAuthenticator_NeedsTokenRefresh(t *testing.T) {
-	Convey("Given existent token filename", t, func() {
+	t.Run("Given existent token filename", func(t *testing.T) {
 		token_file, _ := ioutil.TempFile("", "existent-token-file")
 		token_file_name := token_file.Name()
 		token_file_contents := "token-from-file-contents"
 		token_file.Write([]byte(token_file_contents))
 		defer os.Remove(token_file_name)
 
-		Convey("Return true for recently modified file", func() {
+		t.Run("Return true for recently modified file", func(t *testing.T) {
 			authenticator := TokenFileAuthenticator{
 				TokenFile: token_file_name,
 			}
@@ -87,16 +88,16 @@ func TestTokenFileAuthenticator_NeedsTokenRefresh(t *testing.T) {
 			time.Sleep(1000 * time.Millisecond)
 			token_file.Write([]byte("recent modification"))
 
-			So(authenticator.NeedsTokenRefresh(), ShouldBeTrue)
+			assert.True(t, authenticator.NeedsTokenRefresh())
 		})
 
-		Convey("Return false for unmodified file", func() {
+		t.Run("Return false for unmodified file", func(t *testing.T) {
 			authenticator := TokenFileAuthenticator{
 				TokenFile: token_file_name,
 			}
 			authenticator.RefreshToken()
 
-			So(authenticator.NeedsTokenRefresh(), ShouldBeFalse)
+			assert.False(t, authenticator.NeedsTokenRefresh())
 		})
 	})
 }

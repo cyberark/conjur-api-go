@@ -10,23 +10,23 @@ import (
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestClient_LoadPolicy(t *testing.T) {
-	Convey("V5", t, func() {
+	t.Run("V5", func(t *testing.T) {
 		config := &Config{}
 		config.mergeEnv()
 
 		apiKey := os.Getenv("CONJUR_AUTHN_API_KEY")
 		login := os.Getenv("CONJUR_AUTHN_LOGIN")
 
-		conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
-		So(err, ShouldBeNil)
+		conjur, err := NewClientFromKey(*config, authn.LoginPair{Login: login, APIKey: apiKey})
+		assert.NoError(t, err)
 
 		randomizer := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-		Convey("Successfully load policy", func() {
+		t.Run("Successfully load policy", func(t *testing.T) {
 			username := "alice"
 			policy := fmt.Sprintf(`
 - !user %s
@@ -38,11 +38,11 @@ func TestClient_LoadPolicy(t *testing.T) {
 				strings.NewReader(policy),
 			)
 
-			So(err, ShouldBeNil)
-			So(resp.Version, ShouldBeGreaterThanOrEqualTo, 1)
+			assert.NoError(t, err)
+			assert.GreaterOrEqual(t, resp.Version, uint32(1))
 		})
 
-		Convey("A new role is reported in the policy load response", func() {
+		t.Run("A new role is reported in the policy load response", func(t *testing.T) {
 			const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
 			result := make([]byte, 12)
 			for i := range result {
@@ -60,34 +60,34 @@ func TestClient_LoadPolicy(t *testing.T) {
 				strings.NewReader(policy),
 			)
 
-			So(err, ShouldBeNil)
+			assert.NoError(t, err)
 			createdRole, ok := resp.CreatedRoles["cucumber:user:"+username]
-			So(createdRole.ID, ShouldNotBeBlank)
-			So(createdRole.APIKey, ShouldNotBeBlank)
-			So(ok, ShouldBeTrue)
+			assert.NotEmpty(t, createdRole.ID)
+			assert.NotEmpty(t, createdRole.APIKey)
+			assert.True(t, ok)
 		})
 
-		Convey("Given invalid login credentials", func() {
+		t.Run("Given invalid login credentials", func(t *testing.T) {
 			login = "invalid-user"
 
-			Convey("Returns 401", func() {
-				conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
-				So(err, ShouldBeNil)
+			t.Run("Returns 401", func(t *testing.T) {
+				conjur, err := NewClientFromKey(*config, authn.LoginPair{Login: login, APIKey: apiKey})
+				assert.NoError(t, err)
 
 				resp, err := conjur.LoadPolicy(PolicyModePut, "root", strings.NewReader(""))
 
-				So(err, ShouldNotBeNil)
-				So(resp, ShouldBeNil)
-				So(err, ShouldHaveSameTypeAs, &response.ConjurError{})
+				assert.Error(t, err)
+				assert.Nil(t, resp)
+				assert.IsType(t, &response.ConjurError{}, err)
 				conjurError := err.(*response.ConjurError)
-				So(conjurError.Code, ShouldEqual, 401)
+				assert.Equal(t, 401, conjurError.Code)
 			})
 
 		})
 	})
 
 	if os.Getenv("TEST_VERSION") != "oss" {
-		Convey("V4", t, func() {
+		t.Run("V4", func(t *testing.T) {
 
 			config := &Config{
 				ApplianceURL: os.Getenv("CONJUR_V4_APPLIANCE_URL"),
@@ -99,10 +99,10 @@ func TestClient_LoadPolicy(t *testing.T) {
 			login := os.Getenv("CONJUR_V4_AUTHN_LOGIN")
 			apiKey := os.Getenv("CONJUR_V4_AUTHN_API_KEY")
 
-			conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
-			So(err, ShouldBeNil)
+			conjur, err := NewClientFromKey(*config, authn.LoginPair{Login: login, APIKey: apiKey})
+			assert.NoError(t, err)
 
-			Convey("Policy loading is not supported", func() {
+			t.Run("Policy loading is not supported", func(t *testing.T) {
 				variableIdentifier := "alice"
 				policy := fmt.Sprintf(`
 - !user %s
@@ -114,8 +114,8 @@ func TestClient_LoadPolicy(t *testing.T) {
 					strings.NewReader(policy),
 				)
 
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "LoadPolicy is not supported for Conjur V4")
+				assert.Error(t, err)
+				assert.Equal(t, "LoadPolicy is not supported for Conjur V4", err.Error())
 			})
 		})
 	}

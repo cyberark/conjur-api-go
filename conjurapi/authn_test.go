@@ -1,92 +1,87 @@
 package conjurapi
 
 import (
-	"fmt"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
+type testCase struct {
+	name             string
+	roleId           string
+	login            string
+	readResponseBody bool
+}
+
 func TestClient_RotateAPIKey(t *testing.T) {
-	Convey("V5", t, func() {
-		config := &Config{}
-		config.mergeEnv()
+	testCases := []testCase{
+		{
+			name:             "Rotate the API key of a foreign user role of kind user",
+			roleId:           "cucumber:user:alice",
+			login:            "alice",
+			readResponseBody: false,
+		},
+		{
+			name:             "Rotate the API key of a foreign role of non-user kind",
+			roleId:           "cucumber:host:bob",
+			login:            "host/bob",
+			readResponseBody: false,
+		},
+		{
+			name:             "Rotate the API key of a foreign role and read the data stream",
+			roleId:           "cucumber:user:alice",
+			login:            "alice",
+			readResponseBody: true,
+		},
+	}
 
-		apiKey := os.Getenv("CONJUR_AUTHN_API_KEY")
-		login := os.Getenv("CONJUR_AUTHN_LOGIN")
+	t.Run("V5", func(t *testing.T) {
 
-		policy := fmt.Sprintf(`
-- !user alice
-- !host bob
-`)
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				// SETUP
+				conjur, err := v5Setup()
+				assert.NoError(t, err)
 
-		conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
-		So(err, ShouldBeNil)
-
-		conjur.LoadPolicy(
-			PolicyModePut,
-			"root",
-			strings.NewReader(policy),
-		)
-
-		Convey("Rotate the API key of a foreign user role of kind user", func() {
-			aliceAPIKey, err := conjur.RotateAPIKey("cucumber:user:alice")
-
-			_, err = conjur.Authenticate(authn.LoginPair{"alice", string(aliceAPIKey)})
-			So(err, ShouldBeNil)
-		})
-
-		Convey("Rotate the API key of a foreign role of non-user kind", func() {
-			bobAPIKey, err := conjur.RotateAPIKey("cucumber:host:bob")
-
-			_, err = conjur.Authenticate(authn.LoginPair{"host/bob", string(bobAPIKey)})
-			So(err, ShouldBeNil)
-		})
-
-		Convey("Rotate the API key of a foreign role and read the data stream", func() {
-			rotateResponse, err := conjur.RotateAPIKeyReader("cucumber:user:alice")
-
-			So(err, ShouldBeNil)
-			aliceAPIKey, err := ReadResponseBody(rotateResponse)
-			So(err, ShouldBeNil)
-
-			_, err = conjur.Authenticate(authn.LoginPair{"alice", string(aliceAPIKey)})
-			So(err, ShouldBeNil)
-		})
+				// EXERCISE
+				runAssertions(t, tc, conjur)
+			})
+		}
 	})
 
 	if os.Getenv("TEST_VERSION") != "oss" {
-		Convey("V4", t, func() {
+		t.Run("V4", func(t *testing.T) {
 
-			config := &Config{
-				ApplianceURL: os.Getenv("CONJUR_V4_APPLIANCE_URL"),
-				SSLCert:      os.Getenv("CONJUR_V4_SSL_CERTIFICATE"),
-				Account:      os.Getenv("CONJUR_V4_ACCOUNT"),
-				V4:           true,
+			for _, tc := range testCases {
+				t.Run(tc.name, func(t *testing.T) {
+					// SETUP
+					conjur, err := v4Setup()
+					assert.NoError(t, err)
+
+					// EXERCISE
+					runAssertions(t, tc, conjur)
+				})
+
 			}
-
-			login := os.Getenv("CONJUR_V4_AUTHN_LOGIN")
-			apiKey := os.Getenv("CONJUR_V4_AUTHN_API_KEY")
-
-			conjur, err := NewClientFromKey(*config, authn.LoginPair{login, apiKey})
-			So(err, ShouldBeNil)
-
-			Convey("Rotate the API key of a foreign role of kind user", func() {
-				aliceAPIKey, err := conjur.RotateAPIKey("cucumber:user:alice")
-
-				_, err = conjur.Authenticate(authn.LoginPair{"alice", string(aliceAPIKey)})
-				So(err, ShouldBeNil)
-			})
-
-			Convey("Rotate the API key of a foreign role of non-user kind", func() {
-				bobAPIKey, err := conjur.RotateAPIKey("cucumber:host:bob")
-
-				_, err = conjur.Authenticate(authn.LoginPair{"host/bob", string(bobAPIKey)})
-				So(err, ShouldBeNil)
-			})
 		})
 	}
+}
+
+func runAssertions(t *testing.T, tc testCase, conjur *Client) {
+	var userApiKey []byte
+	var err error
+	if tc.readResponseBody {
+		rotateResponse, e := conjur.RotateAPIKeyReader("cucumber:user:alice")
+		assert.NoError(t, e)
+		userApiKey, err = ReadResponseBody(rotateResponse)
+	} else {
+		userApiKey, err = conjur.RotateAPIKey(tc.roleId)
+	}
+
+	assert.NoError(t, err)
+
+	_, err = conjur.Authenticate(authn.LoginPair{Login: tc.login, APIKey: string(userApiKey)})
+	assert.NoError(t, err)
 }

@@ -2,63 +2,60 @@ package authn
 
 import (
 	"fmt"
-	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAPIKeyAuthenticator_RefreshToken(t *testing.T) {
-	Convey("Given valid credentials", t, func() {
-		Login := "valid-login"
-		APIKey := "valid-api-key"
-		Authenticate := func(loginPair LoginPair) ([]byte, error) {
-			if loginPair.Login == "valid-login" && loginPair.APIKey == "valid-api-key" {
-				return []byte("data"), nil
-			} else {
-				return nil, fmt.Errorf("401 Invalid")
-			}
+	var login string
+	apiKey := "valid-api-key"
+	authenticate := func(loginPair LoginPair) ([]byte, error) {
+		if loginPair.Login == "valid-login" && loginPair.APIKey == "valid-api-key" {
+			return []byte("data"), nil
+		} else {
+			return nil, fmt.Errorf("401 Invalid")
+		}
+	}
+
+	t.Run("Given valid credentials returns the token bytes", func(t *testing.T) {
+		login := "valid-login"
+		authenticator := APIKeyAuthenticator{
+			Authenticate: authenticate,
+			LoginPair: LoginPair{
+				Login:  login,
+				APIKey: apiKey,
+			},
 		}
 
-		Convey("Return the token bytes", func() {
-			authenticator := APIKeyAuthenticator{
-				Authenticate: Authenticate,
-				LoginPair: LoginPair{
-					Login:  Login,
-					APIKey: APIKey,
-				},
-			}
+		token, err := authenticator.RefreshToken()
 
-			token, err := authenticator.RefreshToken()
+		assert.NoError(t, err)
+		assert.Contains(t, string(token), "data")
+	})
 
-			So(err, ShouldBeNil)
-			So(string(token), ShouldContainSubstring, "data")
-		})
+	t.Run("Given invalid credentials returns nil with error", func(t *testing.T) {
+		login = "invalid-login"
+		authenticator := APIKeyAuthenticator{
+			Authenticate: authenticate,
+			LoginPair: LoginPair{
+				Login:  login,
+				APIKey: apiKey,
+			},
+		}
 
-		Convey("Given invalid credentials", func() {
-			Login = "invalid-login"
+		token, err := authenticator.RefreshToken()
 
-			Convey("Return nil with error", func() {
-				authenticator := APIKeyAuthenticator{
-					Authenticate: Authenticate,
-					LoginPair: LoginPair{
-						Login:  Login,
-						APIKey: APIKey,
-					},
-				}
-
-				token, err := authenticator.RefreshToken()
-
-				So(token, ShouldBeNil)
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, "401")
-			})
-		})
+		assert.Nil(t, token)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "401")
 	})
 }
 
 func TestAPIKeyAuthenticator_NeedsTokenRefresh(t *testing.T) {
-	Convey("Returns false", t, func() {
+	t.Run("Returns false", func(t *testing.T) {
 		authenticator := APIKeyAuthenticator{}
 
-		So(authenticator.NeedsTokenRefresh(), ShouldBeFalse)
+		assert.False(t, authenticator.NeedsTokenRefresh())
 	})
 }
