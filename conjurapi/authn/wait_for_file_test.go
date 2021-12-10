@@ -1,22 +1,23 @@
 package authn
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_waitForTextFile(t *testing.T) {
-	Convey("Times out for non-existent filename", t, func() {
+	t.Run("Times out for non-existent filename", func(t *testing.T) {
 		bytes, err := waitForTextFile("path/to/non-existent/file", time.After(0))
-		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldEqual, "Operation waitForTextFile timed out.")
-		So(bytes, ShouldBeNil)
+		assert.Error(t, err)
+		assert.Equal(t, err.Error(), "Operation waitForTextFile timed out.")
+		assert.Nil(t, bytes)
 	})
 
-	Convey("Returns bytes for eventually existent filename", t, func() {
+	t.Run("Returns bytes for eventually existent filename", func(t *testing.T) {
 		file_to_exist, _ := ioutil.TempFile("", "existent-file")
 		file_to_exist_name := file_to_exist.Name()
 
@@ -28,8 +29,8 @@ func Test_waitForTextFile(t *testing.T) {
 
 		bytes, err := waitForTextFile(file_to_exist_name, nil)
 
-		So(err, ShouldBeNil)
-		So(string(bytes), ShouldEqual, "some random stuff")
+		assert.NoError(t, err)
+		assert.Equal(t, "some random stuff", string(bytes))
 
 	})
 }

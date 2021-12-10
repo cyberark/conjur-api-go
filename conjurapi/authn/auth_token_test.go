@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTokenV5_Parse(t *testing.T) {
@@ -16,46 +16,46 @@ func TestTokenV5_Parse(t *testing.T) {
 	token_mangled_s := `{"protected":"eyJhbGciOiJjb25qdXIub3JnL3Nsb3NpbG8vdjIiLCJraWQiOiI5M2VjNTEwODRmZTM3Zjc3M2I1ODhlNTYyYWVjZGMxMSJ9","payload":"WIiOiJhZG1","signature":"raCufKOf7sKzciZInQTphu1mBbLhAdIJM72ChLB4m5wKWxFnNz_7LawQ9iYEI_we1-tdZtTXoopn_T1qoTplR9_Bo3KkpI5Hj3DB7SmBpR3CSRTnnEwkJ0_aJ8bql5Cbst4i4rSftyEmUqX-FDOqJdAztdi9BUJyLfbeKTW9OGg-QJQzPX1ucB7IpvTFCEjMoO8KUxZpbHj-KpwqAMZRooG4ULBkxp5nSfs-LN27JupU58oRgIfaWASaDmA98O2x6o88MFpxK_M0FeFGuDKewNGrRc8lCOtTQ9cULA080M5CSnruCqu1Qd52r72KIOAfyzNIiBCLTkblz2fZyEkdSKQmZ8J3AakxQE2jyHmMT-eXjfsEIzEt-IRPJIirI3Qm"}`
 	token_mangled_2_s := `{"protected":"eyJhbGciOiJjb25qdXIub3JnL3Nsb3NpbG8vdjIiLCJraWQiOiI5M2VjNTEwODRmZTM3Zjc3M2I1ODhlNTYyYWVjZGMxMSJ9","payload":"Zm9vYmFyCg==","signature":"raCufKOf7sKzciZInQTphu1mBbLhAdIJM72ChLB4m5wKWxFnNz_7LawQ9iYEI_we1-tdZtTXoopn_T1qoTplR9_Bo3KkpI5Hj3DB7SmBpR3CSRTnnEwkJ0_aJ8bql5Cbst4i4rSftyEmUqX-FDOqJdAztdi9BUJyLfbeKTW9OGg-QJQzPX1ucB7IpvTFCEjMoO8KUxZpbHj-KpwqAMZRooG4ULBkxp5nSfs-LN27JupU58oRgIfaWASaDmA98O2x6o88MFpxK_M0FeFGuDKewNGrRc8lCOtTQ9cULA080M5CSnruCqu1Qd52r72KIOAfyzNIiBCLTkblz2fZyEkdSKQmZ8J3AakxQE2jyHmMT-eXjfsEIzEt-IRPJIirI3Qm"}`
 
-	Convey("Token type V5 is detected", t, func() {
+	t.Run("Token type V5 is detected", func(t *testing.T) {
 		token, err := NewToken([]byte(token_s))
 
-		So(err, ShouldBeNil)
-		So(reflect.TypeOf(token).String(), ShouldEqual, "*authn.AuthnToken5")
-		So(token.Raw(), ShouldNotBeNil)
+		assert.NoError(t, err)
+		assert.Equal(t, "*authn.AuthnToken5", reflect.TypeOf(token).String())
+		assert.NotNil(t, token.Raw())
 	})
 
-	Convey("Token fields are parsed as expected", t, func() {
+	t.Run("Token fields are parsed as expected", func(t *testing.T) {
 		token, err := NewToken([]byte(token_s))
-		So(err, ShouldBeNil)
+		assert.NoError(t, err)
 
-		So(string(token.Raw()), ShouldEqual, token_s)
+		assert.Equal(t, token_s, string(token.Raw()))
 
 		token_v5 := token.(*AuthnToken5)
-		So(token_v5.iat.String(), ShouldEqual, time.Unix(1510753259, 0).String())
-		So(token_v5.exp, ShouldBeNil)
+		assert.Equal(t, time.Unix(1510753259, 0).String(), token_v5.iat.String())
+		assert.Nil(t, token_v5.exp)
 
-		So(token.ShouldRefresh(), ShouldEqual, true)
+		assert.True(t, token.ShouldRefresh())
 	})
 
-	Convey("Token exp is supported", t, func() {
+	t.Run("Token exp is supported", func(t *testing.T) {
 		token, err := NewToken([]byte(token_with_exp_s))
-		So(err, ShouldBeNil)
+		assert.NoError(t, err)
 
 		token_v5 := token.(*AuthnToken5)
-		So(token_v5.iat.String(), ShouldEqual, time.Unix(1510753259, 0).String())
-		So(token_v5.exp.String(), ShouldEqual, time.Unix(1510753359, 0).String())
+		assert.Equal(t, time.Unix(1510753259, 0).String(), token_v5.iat.String())
+		assert.Equal(t, time.Unix(1510753359, 0).String(), token_v5.exp.String())
 
-		So(token.ShouldRefresh(), ShouldEqual, true)
+		assert.True(t, token.ShouldRefresh())
 	})
 
-	Convey("Malformed base64 in token is reported", t, func() {
+	t.Run("Malformed base64 in token is reported", func(t *testing.T) {
 		_, err := NewToken([]byte(token_mangled_s))
-		So(err.Error(), ShouldEqual, "v5 access token field 'payload' is not valid base64")
+		assert.Equal(t, "v5 access token field 'payload' is not valid base64", err.Error())
 	})
 
-	Convey("Malformed JSON in token is reported", t, func() {
+	t.Run("Malformed JSON in token is reported", func(t *testing.T) {
 		_, err := NewToken([]byte(token_mangled_2_s))
-		So(err.Error(), ShouldEqual, "Unable to unmarshal v5 access token field 'payload' : invalid character 'o' in literal false (expecting 'a')")
+		assert.Equal(t, "Unable to unmarshal v5 access token field 'payload' : invalid character 'o' in literal false (expecting 'a')", err.Error())
 	})
 }
 
@@ -67,32 +67,32 @@ func TestTokenV4_Parse(t *testing.T) {
 
 	var expired_token *AuthnToken4
 
-	Convey("Token type V4 is detected", t, func() {
+	t.Run("Token type V4 is detected", func(t *testing.T) {
 		token, err := NewToken(expired_token_bytes)
 
-		So(err, ShouldBeNil)
-		So(reflect.TypeOf(token).String(), ShouldEqual, "*authn.AuthnToken4")
-		So(token.Raw(), ShouldNotBeNil)
+		assert.NoError(t, err)
+		assert.Equal(t, "*authn.AuthnToken4", reflect.TypeOf(token).String())
+		assert.NotNil(t, token.Raw())
 
 		expired_token, _ = token.(*AuthnToken4)
 	})
 
-	Convey("Token timestamp is non-zero", t, func() {
-		So(expired_token.Timestamp.IsZero(), ShouldEqual, false)
+	t.Run("Token timestamp is non-zero", func(t *testing.T) {
+		assert.False(t, expired_token.Timestamp.IsZero())
 	})
 
-	Convey("Expired token should be refreshed", t, func() {
-		So(expired_token.ShouldRefresh(), ShouldEqual, true)
+	t.Run("Expired token should be refreshed", func(t *testing.T) {
+		assert.True(t, expired_token.ShouldRefresh())
 	})
 
-	Convey("New token can be parsed and fields are valid", t, func() {
+	t.Run("New token can be parsed and fields are valid", func(t *testing.T) {
 		token, err := NewToken([]byte(new_token_bytes))
 		token4, _ := token.(*AuthnToken4)
 
-		So(err, ShouldBeNil)
-		So(reflect.TypeOf(token).String(), ShouldEqual, "*authn.AuthnToken4")
-		So(token4.Timestamp.IsZero(), ShouldEqual, false)
-		So(token.ShouldRefresh(), ShouldEqual, false)
-		So(token.Raw(), ShouldNotBeNil)
+		assert.NoError(t, err)
+		assert.Equal(t, "*authn.AuthnToken4", reflect.TypeOf(token).String())
+		assert.False(t, token4.Timestamp.IsZero())
+		assert.False(t, token4.ShouldRefresh())
+		assert.NotNil(t, token4.Raw())
 	})
 }
