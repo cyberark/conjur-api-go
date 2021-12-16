@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ### Changed
+- Update Golang version to 1.17
+  [cyberark/conjur-api-go#121](https://github.com/cyberark/conjur-api-go/pull/121)
 - Update Golang version to 1.16.
   [cyberark/conjur-api-go#117](https://github.com/cyberark/conjur-api-go/pull/117)
 
