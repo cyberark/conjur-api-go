@@ -20,7 +20,8 @@ func TestTokenFileAuthenticator_RefreshToken(t *testing.T) {
 
 		t.Run("Return the token from the file", func(t *testing.T) {
 			authenticator := TokenFileAuthenticator{
-				TokenFile: token_file_name,
+				TokenFile:   token_file_name,
+				MaxWaitTime: 500 * time.Millisecond,
 			}
 
 			token, err := authenticator.RefreshToken()
@@ -77,17 +78,23 @@ func TestTokenFileAuthenticator_NeedsTokenRefresh(t *testing.T) {
 		token_file_name := token_file.Name()
 		token_file_contents := "token-from-file-contents"
 		token_file.Write([]byte(token_file_contents))
+		// Ensure the file is written to the disk
+		token_file.Sync()
 		defer os.Remove(token_file_name)
 
 		t.Run("Return true for recently modified file", func(t *testing.T) {
 			authenticator := TokenFileAuthenticator{
 				TokenFile: token_file_name,
 			}
-			authenticator.RefreshToken()
+			_, err := authenticator.RefreshToken()
+			assert.NoError(t, err)
 
-			time.Sleep(1000 * time.Millisecond)
+			time.Sleep(time.Second)
 			token_file.Write([]byte("recent modification"))
+			// Ensure the modification is written to the disk
+			token_file.Sync()
 
+			time.Sleep(time.Second)
 			assert.True(t, authenticator.NeedsTokenRefresh())
 		})
 
@@ -95,7 +102,8 @@ func TestTokenFileAuthenticator_NeedsTokenRefresh(t *testing.T) {
 			authenticator := TokenFileAuthenticator{
 				TokenFile: token_file_name,
 			}
-			authenticator.RefreshToken()
+			_, err := authenticator.RefreshToken()
+			assert.NoError(t, err)
 
 			assert.False(t, authenticator.NeedsTokenRefresh())
 		})
