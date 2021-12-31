@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Add `CONJUR_AUTHN_JWT_SERVICE_ID` & `JWT_TOKEN_PATH` environment variables as configuration to support authn-jwt 
 
 ## [0.8.1] - 2021-12-16
 ### Changed
