@@ -10,7 +10,7 @@ export GO_VERSION="${1:-"1.16"}"
 source ./start-conjur.sh
 
 announce "Building test containers..."
-docker-compose -p $COMPOSE_PROJECT_NAME build "test-$GO_VERSION"
+docker-compose build "test-$GO_VERSION"
 echo "Done!"
 
 # generate output folder locally, if needed
@@ -19,13 +19,13 @@ mkdir -p $output_dir
 
 failed() {
   announce "TESTS FAILED"
-  docker logs "$(docker-compose -p $COMPOSE_PROJECT_NAME ps -q cuke-master)"
+  docker logs "$(docker-compose ps -q cuke-master)"
   exit 1
 }
 
 # Golang container version to use: `1.16` or `1.17`
 announce "Running tests for Go version: $GO_VERSION...";
-docker-compose -p $COMPOSE_PROJECT_NAME run \
+docker-compose run \
   -e CONJUR_AUTHN_API_KEY \
   -e CONJUR_V4_AUTHN_API_KEY \
   -e CONJUR_V4_SSL_CERTIFICATE \
