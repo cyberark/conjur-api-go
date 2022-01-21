@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Update Dockerfile to use Go 1.17 base image
+  [cyberark/conjur-api-go#126](https://github.com/cyberark/conjur-api-go/pull/126)
 
 ## [0.8.1] - 2021-12-16
 ### Changed
