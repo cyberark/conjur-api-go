@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Update Dockerfile to use Go 1.17 base image
   [cyberark/conjur-api-go#126](https://github.com/cyberark/conjur-api-go/pull/126)
 
+### Added
+- New `CONJUR_AUTHN_JWT_SERVICE_ID` & `JWT_TOKEN_PATH` environment variables as configuration to support authn-jwt
+  [cyberark/conjur-api-go#124](https://github.com/cyberark/conjur-api-go/pull/124)
+
 ## [0.8.1] - 2021-12-16
 ### Changed
 - Update Golang version to 1.17
