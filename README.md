@@ -2,6 +2,12 @@
 
 Programmatic Golang access to the Conjur API.
 
+## Certification level
+![](https://img.shields.io/badge/Certification%20Level-Community-28A745?link=https://github.com/cyberark/community/blob/master/Conjur/conventions/certification-levels.md)
+
+This repo is a **Community** level project. It's a community contributed project that **is not reviewed or supported
+by CyberArk**. For more detailed information on our certification levels, see [our community guidelines](https://github.com/cyberark/community/blob/master/Conjur/conventions/certification-levels.md#community).
+
 ## Using conjur-api-go with Conjur Open Source 
 
 Are you using this project with [Conjur Open Source](https://github.com/cyberark/conjur)? Then we 
