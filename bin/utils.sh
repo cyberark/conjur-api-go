@@ -15,7 +15,7 @@ function announce() {
 exec_on() {
   local container="$1"; shift
 
-  docker exec "$(docker-compose -p $COMPOSE_PROJECT_NAME ps -q $container)" "$@"
+  docker exec "$(docker-compose ps -q $container)" "$@"
 }
 
 oss_only(){
@@ -23,5 +23,5 @@ oss_only(){
 }
 
 function teardown {
-  docker-compose -p $COMPOSE_PROJECT_NAME down -v
+  docker-compose down -v
 }

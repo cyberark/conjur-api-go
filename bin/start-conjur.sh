@@ -18,16 +18,16 @@ main() {
   fi
 
   announce "Pulling images..."
-  docker-compose -p $COMPOSE_PROJECT_NAME pull ${images[@]} "postgres" "cli5"
+  docker-compose pull ${images[@]} "postgres" "cli5"
   echo "Done!"
 
   announce "Building images..."
-  docker-compose -p $COMPOSE_PROJECT_NAME build ${images[@]} "postgres"
+  docker-compose build ${images[@]} "postgres"
   echo "Done!"
 
   announce "Starting Conjur environment..."
-  export CONJUR_DATA_KEY="$(docker-compose -p $COMPOSE_PROJECT_NAME run -T --no-deps conjur data-key generate)"
-  docker-compose -p $COMPOSE_PROJECT_NAME up --no-deps -d ${images[@]} "postgres"
+  export CONJUR_DATA_KEY="$(docker-compose run -T --no-deps conjur data-key generate)"
+  docker-compose up --no-deps -d ${images[@]} "postgres"
   echo "Done!"
 
   announce "Waiting for conjur to start..."
