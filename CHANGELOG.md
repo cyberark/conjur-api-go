@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- New `CONJUR_AUTHN_JWT_HOST_ID` environment variable for authn-jwt [cyberark/conjur-api-go#130](https://github.com/cyberark/conjur-api-go/pull/130)
+
 ## [0.9.0] - 2022-02-20
 ### Changed
 - Update Dockerfile to use Go 1.17 base image
