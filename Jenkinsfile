@@ -21,20 +21,20 @@ pipeline {
       }
     }
 
+    stage('Run tests: Golang 1.18') {
+      steps {
+        sh './bin/test.sh 1.18'
+        junit 'output/1.18/junit.xml'
+      }
+    }
+
     stage('Run tests: Golang 1.17') {
       steps {
         sh './bin/test.sh 1.17'
         junit 'output/1.17/junit.xml'
-      }
-    }
-
-    stage('Run tests: Golang 1.16') {
-      steps {
-        sh './bin/test.sh 1.16'
-        junit 'output/1.16/junit.xml'
         cobertura autoUpdateHealth: false,
                   autoUpdateStability: false,
-                  coberturaReportFile: 'output/1.16/coverage.xml',
+                  coberturaReportFile: 'output/1.17/coverage.xml',
                   conditionalCoverageTargets: '30, 0, 0',
                   failUnhealthy: true,
                   failUnstable: false,
@@ -44,7 +44,7 @@ pipeline {
                   onlyStable: false,
                   sourceEncoding: 'ASCII',
                   zoomCoverageChart: false
-        sh 'cp output/1.16/c.out .'
+        sh 'cp output/1.17/c.out .'
         ccCoverage("gocov", "--prefix github.com/cyberark/conjur-api-go")
       }
     }

@@ -23,8 +23,8 @@ questions, please contact us on [Discourse](https://discuss.cyberarkcommons.org/
 
 The `conjur-api-go` has been tested against the following Go versions:
 
-    - 1.16
     - 1.17
+    - 1.18
 
 ## Installation
 
@@ -117,6 +117,6 @@ guide][contrib].
 
 ## License
 
-Copyright (c) 2020 CyberArk Software Ltd. All rights reserved.
+Copyright (c) 2022 CyberArk Software Ltd. All rights reserved.
 
 This repository is licensed under Apache License 2.0 - see [`LICENSE`](LICENSE) for more details.
