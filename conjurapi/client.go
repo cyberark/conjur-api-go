@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -148,7 +149,13 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 			httpClient = &http.Client{Timeout: time.Second * 10}
 		}
 
-		authnJwtUrl := makeRouterURL(config.ApplianceURL, "authn-jwt", authnJwtServiceID, config.Account, "authenticate").String()
+		authnJwtHostID := os.Getenv("CONJUR_AUTHN_JWT_HOST_ID")
+		authnJwtUrl := ""
+		if authnJwtHostID != "" {
+			authnJwtUrl = makeRouterURL(config.ApplianceURL, "authn-jwt", authnJwtServiceID, config.Account, "authenticate").String()
+		} else {
+			authnJwtUrl = makeRouterURL(config.ApplianceURL, "authn-jwt", authnJwtServiceID, config.Account, url.PathEscape(authnJwtHostID), "authenticate").String()
+		}
 
 		req, err := http.NewRequest("POST", authnJwtUrl, strings.NewReader(jwtTokenString))
 		if err != nil {
