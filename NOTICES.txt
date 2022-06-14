@@ -22,7 +22,7 @@ SECTION 2: MIT License
     https://github.com/sirupsen/logrus/blob/v1.8.1/LICENSE
 
 >>> github.com/stretchr/testify-v1.7.0
-    https://github.com/stretchr/testify/blob/v1.7.0/LICENSE
+    https://github.com/stretchr/testify/blob/v1.7.2/LICENSE
 
 >>> gopkg.in/yaml.v2-v2.4.0
     https://github.com/go-yaml/yaml/blob/v2.4.0/LICENSE.libyaml
@@ -108,7 +108,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 
->>> github.com/stretchr/testify-v1.7.0
+>>> github.com/stretchr/testify-v1.7.2
 
 MIT License
 
