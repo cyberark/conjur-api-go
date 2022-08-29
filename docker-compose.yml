@@ -26,32 +26,6 @@ services:
     ports:
       - 443
 
-  test-1.16:
-    build:
-      context: .
-      args:
-        FROM_IMAGE: "golang:1.16"
-    ports:
-      - 8080
-    depends_on:
-      - conjur
-    volumes:
-      - ./output:/conjur-api-go/output
-    environment:
-      CONJUR_DATA_KEY:
-      CONJUR_APPLIANCE_URL: http://conjur
-      CONJUR_ACCOUNT: cucumber
-      CONJUR_AUTHN_LOGIN: admin
-      CONJUR_AUTHN_API_KEY:
-      CONJUR_V4_APPLIANCE_URL: https://cuke-master/api
-      CONJUR_V4_HEALTH_URL: https://cuke-master/health
-      CONJUR_V4_ACCOUNT: cucumber
-      CONJUR_V4_AUTHN_LOGIN: admin
-      CONJUR_V4_AUTHN_API_KEY:
-      CONJUR_V4_SSL_CERTIFICATE:
-      TEST_VERSION:
-      GO_VERSION:
-
   test-1.17:
     build:
       context: .
@@ -78,11 +52,37 @@ services:
       TEST_VERSION:
       GO_VERSION:
 
+  test-1.18:
+    build:
+      context: .
+      args:
+        FROM_IMAGE: "golang:1.18"
+    ports:
+      - 8080
+    depends_on:
+      - conjur
+    volumes:
+      - ./output:/conjur-api-go/output
+    environment:
+      CONJUR_DATA_KEY:
+      CONJUR_APPLIANCE_URL: http://conjur
+      CONJUR_ACCOUNT: cucumber
+      CONJUR_AUTHN_LOGIN: admin
+      CONJUR_AUTHN_API_KEY:
+      CONJUR_V4_APPLIANCE_URL: https://cuke-master/api
+      CONJUR_V4_HEALTH_URL: https://cuke-master/health
+      CONJUR_V4_ACCOUNT: cucumber
+      CONJUR_V4_AUTHN_LOGIN: admin
+      CONJUR_V4_AUTHN_API_KEY:
+      CONJUR_V4_SSL_CERTIFICATE:
+      TEST_VERSION:
+      GO_VERSION:
+
   dev:
     build:
       context: .
       args:
-        FROM_IMAGE: "golang:1.16"
+        FROM_IMAGE: "golang:1.17"
     ports:
       - 8080
     depends_on:

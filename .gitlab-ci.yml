@@ -13,13 +13,13 @@ test:
   artifacts:
     untracked: true
     reports:
-      junit: output/junit-1.16.xml
+      junit: output/junit-1.17.xml
     when: always
   script:
     - apk add --no-cache py-pip
     - pip install docker-compose
     - export TEST_VERSION=oss
-    - ./test.sh 1.16
+    - ./test.sh 1.17
   only:
     - branches
 
