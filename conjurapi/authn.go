@@ -72,6 +72,21 @@ func (c *Client) InternalAuthenticate() ([]byte, error) {
 	return c.authenticator.RefreshToken()
 }
 
+// WhoAmI obtains information on the current user.
+func (c *Client) WhoAmI() ([]byte, error) {
+	req, err := c.router.WhoAmIRequest()
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := c.SubmitRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return response.DataResponse(res)
+}
+
 // Authenticate obtains a new access token.
 func (c *Client) Authenticate(loginPair authn.LoginPair) ([]byte, error) {
 	resp, err := c.authenticate(loginPair)

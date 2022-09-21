@@ -213,6 +213,10 @@ func (c *Client) SubmitRequest(req *http.Request) (resp *http.Response, err erro
 	return
 }
 
+func (c *Client) WhoAmIRequest() (*http.Request, error) {
+	return http.NewRequest("GET", makeRouterURL(c.config.ApplianceURL, "whoami").String(), nil)
+}
+
 func (c *Client) LoginRequest(loginPair authn.LoginPair) (*http.Request, error) {
 	authenticateURL := makeRouterURL(c.authnURL(), "login").String()
 
