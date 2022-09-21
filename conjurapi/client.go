@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bgentry/go-netrc/netrc"
@@ -34,7 +34,7 @@ func NewClientFromKey(config Config, loginPair authn.LoginPair) (*Client, error)
 	authenticator := &authn.APIKeyAuthenticator{
 		LoginPair: loginPair,
 	}
-	client, err := newClientWithAuthenticator(
+	client, err := NewClientWithAuthenticator(
 		config,
 		authenticator,
 	)
@@ -49,14 +49,14 @@ func ReadResponseBody(response io.ReadCloser) ([]byte, error) {
 }
 
 func NewClientFromToken(config Config, token string) (*Client, error) {
-	return newClientWithAuthenticator(
+	return NewClientWithAuthenticator(
 		config,
 		&authn.TokenAuthenticator{token},
 	)
 }
 
 func NewClientFromTokenFile(config Config, tokenFile string) (*Client, error) {
-	return newClientWithAuthenticator(
+	return NewClientWithAuthenticator(
 		config,
 		&authn.TokenFileAuthenticator{
 			TokenFile:   tokenFile,
@@ -91,6 +91,7 @@ func LoginPairFromNetRC(config Config) (*authn.LoginPair, error) {
 	return &authn.LoginPair{Login: m.Login, APIKey: m.Password}, nil
 }
 
+// TODO: Create a version of this function for creating an authenticator from environment
 func NewClientFromEnvironment(config Config) (*Client, error) {
 	err := config.validate()
 
@@ -177,6 +178,14 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 	return nil, fmt.Errorf("Environment variables and machine identity files satisfying at least one authentication strategy must be present!")
 }
 
+func (c *Client) GetAuthenticator() Authenticator {
+	return c.authenticator
+}
+
+func (c *Client) SetAuthenticator(authenticator Authenticator) {
+	c.authenticator = authenticator
+}
+
 func (c *Client) GetHttpClient() *http.Client {
 	return c.httpClient
 }
@@ -202,6 +211,19 @@ func (c *Client) SubmitRequest(req *http.Request) (resp *http.Response, err erro
 	}
 
 	return
+}
+
+func (c *Client) LoginRequest(loginPair authn.LoginPair) (*http.Request, error) {
+	authenticateURL := makeRouterURL(c.authnURL(), "login").String()
+
+	req, err := http.NewRequest("GET", authenticateURL, nil)
+	req.SetBasicAuth(loginPair.Login, loginPair.APIKey)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "text/plain")
+
+	return req, nil
 }
 
 func (c *Client) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, error) {
@@ -433,7 +455,7 @@ func parseID(fullID string) (account, kind, id string, err error) {
 	return tokens[0], tokens[1], tokens[2], nil
 }
 
-func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Client, error) {
+func NewClient(config Config) (*Client, error) {
 	var (
 		err error
 	)
@@ -460,10 +482,19 @@ func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Cl
 	}
 
 	return &Client{
-		config:        config,
-		authenticator: authenticator,
-		httpClient:    httpClient,
+		config:     config,
+		httpClient: httpClient,
 	}, nil
+}
+
+func NewClientWithAuthenticator(config Config, authenticator Authenticator) (*Client, error) {
+	client, err := NewClient(config)
+	if err != nil {
+		return nil, err
+	}
+
+	client.authenticator = authenticator
+	return client, nil
 }
 
 func newHTTPSClient(cert []byte) (*http.Client, error) {

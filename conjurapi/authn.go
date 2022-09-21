@@ -48,6 +48,30 @@ func (c *Client) createAuthRequest(req *http.Request) error {
 	return nil
 }
 
+// Login obtains an API key.
+func (c *Client) Login(loginPair authn.LoginPair) ([]byte, error) {
+	req, err := c.router.LoginRequest(loginPair)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return response.DataResponse(res)
+}
+
+// Authenticate obtains a new access token using the internal authenticator.
+func (c *Client) InternalAuthenticate() ([]byte, error) {
+	if c.authenticator == nil {
+		return nil, fmt.Errorf("%s", "unable to authenticate using client without authenticator")
+	}
+
+	return c.authenticator.RefreshToken()
+}
+
 // Authenticate obtains a new access token.
 func (c *Client) Authenticate(loginPair authn.LoginPair) ([]byte, error) {
 	resp, err := c.authenticate(loginPair)
