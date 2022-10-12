@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+- Fixed bug with `CONJUR_AUTHN_JWT_HOST_ID` environment variable not being read
+  [cyberark/conjur-api-go#136](https://github.com/cyberark/conjur-api-go/pull/136)
+
 ## [0.10.1] - 2022-06-14
 ### Changed
 - Update testify to 1.7.2
