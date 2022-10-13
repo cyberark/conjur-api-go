@@ -152,9 +152,9 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 		authnJwtHostID := os.Getenv("CONJUR_AUTHN_JWT_HOST_ID")
 		authnJwtUrl := ""
 		if authnJwtHostID != "" {
-			authnJwtUrl = makeRouterURL(config.ApplianceURL, "authn-jwt", authnJwtServiceID, config.Account, "authenticate").String()
-		} else {
 			authnJwtUrl = makeRouterURL(config.ApplianceURL, "authn-jwt", authnJwtServiceID, config.Account, url.PathEscape(authnJwtHostID), "authenticate").String()
+		} else {
+			authnJwtUrl = makeRouterURL(config.ApplianceURL, "authn-jwt", authnJwtServiceID, config.Account, "authenticate").String()
 		}
 
 		req, err := http.NewRequest("POST", authnJwtUrl, strings.NewReader(jwtTokenString))
