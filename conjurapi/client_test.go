@@ -62,3 +62,12 @@ func Test_newClientWithAuthenticator(t *testing.T) {
 		assert.NotNil(t, client)
 	})
 }
+
+func TestNewClientFromToken(t *testing.T) {
+	t.Run("Has authenticator of type TokenAuthenticator", func(t *testing.T) {
+		client, err := NewClientFromToken(Config{Account: "account", ApplianceURL: "appliance-url"}, "token")
+
+		assert.NoError(t, err)
+		assert.IsType(t, &authn.TokenAuthenticator{}, client.authenticator)
+	})
+}
