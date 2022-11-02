@@ -50,7 +50,7 @@ func (c *Client) createAuthRequest(req *http.Request) error {
 
 // Login obtains an API key.
 func (c *Client) Login(loginPair authn.LoginPair) ([]byte, error) {
-	req, err := c.router.LoginRequest(loginPair)
+	req, err := c.LoginRequest(loginPair)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (c *Client) InternalAuthenticate() ([]byte, error) {
 
 // WhoAmI obtains information on the current user.
 func (c *Client) WhoAmI() ([]byte, error) {
-	req, err := c.router.WhoAmIRequest()
+	req, err := c.WhoAmIRequest()
 	if err != nil {
 		return nil, err
 	}
@@ -127,6 +127,17 @@ func (c *Client) RotateAPIKey(roleID string) ([]byte, error) {
 	}
 
 	return response.DataResponse(resp)
+}
+
+// RotateHostAPIKey constructs a role ID from a given host ID then replaces the
+// API key of the role with a new random secret.
+//
+// The authenticated user must have update privilege on the role.
+func (c *Client) RotateHostAPIKey(hostID string) ([]byte, error) {
+	config := c.GetConfig()
+	roleID := fmt.Sprintf("%s:host:%s", config.Account, hostID)
+	
+	return c.RotateAPIKey(roleID)
 }
 
 // RotateAPIKeyReader replaces the API key of a role on the server with a new

@@ -34,7 +34,7 @@ func NewClientFromKey(config Config, loginPair authn.LoginPair) (*Client, error)
 	authenticator := &authn.APIKeyAuthenticator{
 		LoginPair: loginPair,
 	}
-	client, err := NewClientWithAuthenticator(
+	client, err := newClientWithAuthenticator(
 		config,
 		authenticator,
 	)
@@ -49,14 +49,14 @@ func ReadResponseBody(response io.ReadCloser) ([]byte, error) {
 }
 
 func NewClientFromToken(config Config, token string) (*Client, error) {
-	return NewClientWithAuthenticator(
+	return newClientWithAuthenticator(
 		config,
 		&authn.TokenAuthenticator{token},
 	)
 }
 
 func NewClientFromTokenFile(config Config, tokenFile string) (*Client, error) {
-	return NewClientWithAuthenticator(
+	return newClientWithAuthenticator(
 		config,
 		&authn.TokenFileAuthenticator{
 			TokenFile:   tokenFile,
@@ -491,7 +491,7 @@ func NewClient(config Config) (*Client, error) {
 	}, nil
 }
 
-func NewClientWithAuthenticator(config Config, authenticator Authenticator) (*Client, error) {
+func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Client, error) {
 	client, err := NewClient(config)
 	if err != nil {
 		return nil, err
