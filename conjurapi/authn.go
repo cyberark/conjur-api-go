@@ -129,6 +129,17 @@ func (c *Client) RotateAPIKey(roleID string) ([]byte, error) {
 	return response.DataResponse(resp)
 }
 
+// RotateUserAPIKey constructs a role ID from a given user ID then replaces the
+// API key of the role with a new random secret.
+//
+// The authenticated user must have update privilege on the role.
+func (c *Client) RotateUserAPIKey(userID string) ([]byte, error) {
+	config := c.GetConfig()
+	roleID := fmt.Sprintf("%s:user:%s", config.Account, userID)
+
+	return c.RotateAPIKey(roleID)
+}
+
 // RotateHostAPIKey constructs a role ID from a given host ID then replaces the
 // API key of the role with a new random secret.
 //
@@ -136,7 +147,7 @@ func (c *Client) RotateAPIKey(roleID string) ([]byte, error) {
 func (c *Client) RotateHostAPIKey(hostID string) ([]byte, error) {
 	config := c.GetConfig()
 	roleID := fmt.Sprintf("%s:host:%s", config.Account, hostID)
-	
+
 	return c.RotateAPIKey(roleID)
 }
 
