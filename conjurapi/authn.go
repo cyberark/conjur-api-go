@@ -136,7 +136,6 @@ func (c *Client) RotateAPIKey(roleID string) ([]byte, error) {
 func (c *Client) RotateUserAPIKey(userID string) ([]byte, error) {
 	config := c.GetConfig()
 	roleID := fmt.Sprintf("%s:user:%s", config.Account, userID)
-
 	return c.RotateAPIKey(roleID)
 }
 
