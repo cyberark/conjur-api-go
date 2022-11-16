@@ -1,7 +1,6 @@
 package conjurapi
 
 import (
-	"os"
 	"testing"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
@@ -37,34 +36,14 @@ func TestClient_RotateAPIKey(t *testing.T) {
 		},
 	}
 
-	t.Run("V5", func(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// SETUP
+			conjur, err := conjurSetup()
+			assert.NoError(t, err)
 
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				// SETUP
-				conjur, err := v5Setup()
-				assert.NoError(t, err)
-
-				// EXERCISE
-				runAssertions(t, tc, conjur)
-			})
-		}
-	})
-
-	if os.Getenv("TEST_VERSION") != "oss" {
-		t.Run("V4", func(t *testing.T) {
-
-			for _, tc := range testCases {
-				t.Run(tc.name, func(t *testing.T) {
-					// SETUP
-					conjur, err := v4Setup()
-					assert.NoError(t, err)
-
-					// EXERCISE
-					runAssertions(t, tc, conjur)
-				})
-
-			}
+			// EXERCISE
+			runAssertions(t, tc, conjur)
 		})
 	}
 }
@@ -72,6 +51,7 @@ func TestClient_RotateAPIKey(t *testing.T) {
 func runAssertions(t *testing.T, tc testCase, conjur *Client) {
 	var userApiKey []byte
 	var err error
+
 	if tc.readResponseBody {
 		rotateResponse, e := conjur.RotateAPIKeyReader("cucumber:user:alice")
 		assert.NoError(t, e)

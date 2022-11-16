@@ -19,7 +19,6 @@ mkdir -p $output_dir
 
 failed() {
   announce "TESTS FAILED"
-  docker logs "$(docker-compose ps -q cuke-master)"
   exit 1
 }
 
@@ -27,8 +26,6 @@ failed() {
 announce "Running tests for Go version: $GO_VERSION...";
 docker-compose run \
   -e CONJUR_AUTHN_API_KEY \
-  -e CONJUR_V4_AUTHN_API_KEY \
-  -e CONJUR_V4_SSL_CERTIFICATE \
   -e GO_VERSION \
   "test-$GO_VERSION" bash -c 'set -o pipefail;
            echo "Go version: $(go version)"
