@@ -27,7 +27,6 @@ func TestClient_GetConfig(t *testing.T) {
 			NetRCPath:    "some-netrc-path",
 			SSLCert:      "some-ssl-cert",
 			SSLCertPath:  "some-ssl-cert-path",
-			V4:           true,
 		}
 		client := Client{
 			config: expectedConfig,

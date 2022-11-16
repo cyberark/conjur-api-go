@@ -20,7 +20,6 @@ type Config struct {
 	NetRCPath    string `yaml:"netrc_path,omitempty"`
 	SSLCert      string `yaml:"-"`
 	SSLCertPath  string `yaml:"cert_file,omitempty"`
-	V4           bool   `yaml:"v4"`
 }
 
 func (c *Config) IsHttps() bool {
@@ -78,7 +77,6 @@ func (c *Config) merge(o *Config) {
 	c.SSLCert = mergeValue(c.SSLCert, o.SSLCert)
 	c.SSLCertPath = mergeValue(c.SSLCertPath, o.SSLCertPath)
 	c.NetRCPath = mergeValue(c.NetRCPath, o.NetRCPath)
-	c.V4 = c.V4 || o.V4
 }
 
 func (c *Config) mergeYAML(filename string) error {
@@ -99,7 +97,6 @@ func (c *Config) mergeYAML(filename string) error {
 		logging.ApiLog.Errorf("Parsing error %s: %s\n", filename, err)
 		return err
 	}
-	aux.Config.V4 = aux.ConjurVersion == "4"
 
 	logging.ApiLog.Debugf("Config from %s: %+v\n", filename, aux.Config)
 	c.merge(&aux.Config)
@@ -108,15 +105,12 @@ func (c *Config) mergeYAML(filename string) error {
 }
 
 func (c *Config) mergeEnv() {
-	majorVersion4 := os.Getenv("CONJUR_MAJOR_VERSION") == "4" || os.Getenv("CONJUR_VERSION") == "4"
-
 	env := Config{
 		ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL"),
 		SSLCert:      os.Getenv("CONJUR_SSL_CERTIFICATE"),
 		SSLCertPath:  os.Getenv("CONJUR_CERT_FILE"),
 		Account:      os.Getenv("CONJUR_ACCOUNT"),
 		NetRCPath:    os.Getenv("CONJUR_NETRC_PATH"),
-		V4:           majorVersion4,
 	}
 
 	logging.ApiLog.Debugf("Config from environment: %+v\n", env)

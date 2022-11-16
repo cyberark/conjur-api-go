@@ -16,6 +16,4 @@ exec_on dev go mod download
 # Start interactive container
 docker exec -it \
   -e CONJUR_AUTHN_API_KEY \
-  -e CONJUR_V4_AUTHN_API_KEY \
-  -e CONJUR_V4_SSL_CERTIFICATE \
   "$(docker-compose ps -q dev)" /bin/bash

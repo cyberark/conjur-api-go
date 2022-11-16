@@ -263,11 +263,7 @@ func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Cl
 		httpClient = &http.Client{Timeout: time.Second * 10}
 	}
 
-	if config.V4 {
-		router = RouterV4{&config}
-	} else {
-		router = RouterV5{&config}
-	}
+	router = RouterV5{&config}
 
 	return &Client{
 		config:        config,
