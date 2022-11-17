@@ -19,7 +19,7 @@ func TestToken_Parse(t *testing.T) {
 		token, err := NewToken([]byte(token_s))
 
 		assert.NoError(t, err)
-		assert.Equal(t, "*authn.AuthnToken5", reflect.TypeOf(token).String())
+		assert.Equal(t, "*authn.AuthnToken", reflect.TypeOf(token).String())
 		assert.NotNil(t, token.Raw())
 	})
 
@@ -29,9 +29,8 @@ func TestToken_Parse(t *testing.T) {
 
 		assert.Equal(t, token_s, string(token.Raw()))
 
-		token_v5 := token.(*AuthnToken5)
-		assert.Equal(t, time.Unix(1510753259, 0).String(), token_v5.iat.String())
-		assert.Nil(t, token_v5.exp)
+		assert.Equal(t, time.Unix(1510753259, 0).String(), token.iat.String())
+		assert.Nil(t, token.exp)
 
 		assert.True(t, token.ShouldRefresh())
 	})
@@ -40,20 +39,19 @@ func TestToken_Parse(t *testing.T) {
 		token, err := NewToken([]byte(token_with_exp_s))
 		assert.NoError(t, err)
 
-		token_v5 := token.(*AuthnToken5)
-		assert.Equal(t, time.Unix(1510753259, 0).String(), token_v5.iat.String())
-		assert.Equal(t, time.Unix(1510753359, 0).String(), token_v5.exp.String())
+		assert.Equal(t, time.Unix(1510753259, 0).String(), token.iat.String())
+		assert.Equal(t, time.Unix(1510753359, 0).String(), token.exp.String())
 
 		assert.True(t, token.ShouldRefresh())
 	})
 
 	t.Run("Malformed base64 in token is reported", func(t *testing.T) {
 		_, err := NewToken([]byte(token_mangled_s))
-		assert.Equal(t, "v5 access token field 'payload' is not valid base64", err.Error())
+		assert.Equal(t, "access token field 'payload' is not valid base64", err.Error())
 	})
 
 	t.Run("Malformed JSON in token is reported", func(t *testing.T) {
 		_, err := NewToken([]byte(token_mangled_2_s))
-		assert.Equal(t, "Unable to unmarshal v5 access token field 'payload' : invalid character 'o' in literal false (expecting 'a')", err.Error())
+		assert.Equal(t, "Unable to unmarshal access token field 'payload' : invalid character 'o' in literal false (expecting 'a')", err.Error())
 	})
 }

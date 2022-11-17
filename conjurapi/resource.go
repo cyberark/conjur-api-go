@@ -17,7 +17,7 @@ type ResourceFilter struct {
 // CheckPermission determines whether the authenticated user has a specified privilege
 // on a resource.
 func (c *Client) CheckPermission(resourceID, privilege string) (bool, error) {
-	req, err := c.router.CheckPermissionRequest(resourceID, privilege)
+	req, err := c.CheckPermissionRequest(resourceID, privilege)
 	if err != nil {
 		return false, err
 	}
@@ -38,7 +38,7 @@ func (c *Client) CheckPermission(resourceID, privilege string) (bool, error) {
 
 // Resource fetches a single user-visible resource by id.
 func (c *Client) Resource(resourceID string) (resource map[string]interface{}, err error) {
-	req, err := c.router.ResourceRequest(resourceID)
+	req, err := c.ResourceRequest(resourceID)
 	if err != nil {
 		return
 	}
@@ -62,7 +62,7 @@ func (c *Client) Resource(resourceID string) (resource map[string]interface{}, e
 // be limited by the given ResourceFilter. If filter is non-nil, only
 // non-zero-valued members of the filter will be applied.
 func (c *Client) Resources(filter *ResourceFilter) (resources []map[string]interface{}, err error) {
-	req, err := c.router.ResourcesRequest(filter)
+	req, err := c.ResourcesRequest(filter)
 	if err != nil {
 		return
 	}

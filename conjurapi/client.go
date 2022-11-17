@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"strconv"
 	"time"
 
 	"github.com/bgentry/go-netrc/netrc"
@@ -24,22 +25,9 @@ type Authenticator interface {
 
 type Client struct {
 	config        Config
-	authToken     authn.AuthnToken
+	authToken     *authn.AuthnToken
 	httpClient    *http.Client
 	authenticator Authenticator
-	router        Router
-}
-
-type Router interface {
-	AddSecretRequest(variableID, secretValue string) (*http.Request, error)
-	AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, error)
-	CheckPermissionRequest(resourceID, privilege string) (*http.Request, error)
-	LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader) (*http.Request, error)
-	ResourceRequest(resourceID string) (*http.Request, error)
-	ResourcesRequest(filter *ResourceFilter) (*http.Request, error)
-	RetrieveBatchSecretsRequest(variableIDs []string, base64Flag bool) (*http.Request, error)
-	RetrieveSecretRequest(variableID string) (*http.Request, error)
-	RotateAPIKeyRequest(roleID string) (*http.Request, error)
 }
 
 func NewClientFromKey(config Config, loginPair authn.LoginPair) (*Client, error) {
@@ -216,6 +204,215 @@ func (c *Client) SubmitRequest(req *http.Request) (resp *http.Response, err erro
 	return
 }
 
+func (c *Client) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, error) {
+	authenticateURL := makeRouterURL(c.authnURL(), url.QueryEscape(loginPair.Login), "authenticate").String()
+
+	req, err := http.NewRequest("POST", authenticateURL, strings.NewReader(loginPair.APIKey))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "text/plain")
+
+	return req, nil
+}
+
+func (c *Client) RotateAPIKeyRequest(roleID string) (*http.Request, error) {
+	account, _, _, err := parseID(roleID)
+	if err != nil {
+		return nil, err
+	}
+	if account != c.config.Account {
+		return nil, fmt.Errorf("Account of '%s' must match the configured account '%s'", roleID, c.config.Account)
+	}
+
+	rotateURL := makeRouterURL(c.authnURL(), "api_key").withFormattedQuery("role=%s", roleID).String()
+
+	return http.NewRequest(
+		"PUT",
+		rotateURL,
+		nil,
+	)
+}
+
+func (c *Client) CheckPermissionRequest(resourceID string, privilege string) (*http.Request, error) {
+	account, kind, id, err := parseID(resourceID)
+	if err != nil {
+		return nil, err
+	}
+	checkURL := makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id)).withFormattedQuery("check=true&privilege=%s", url.QueryEscape(privilege)).String()
+
+	return http.NewRequest(
+		"GET",
+		checkURL,
+		nil,
+	)
+}
+
+func (c *Client) ResourceRequest(resourceID string) (*http.Request, error) {
+	account, kind, id, err := parseID(resourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	requestURL := makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id))
+
+	return http.NewRequest(
+		"GET",
+		requestURL.String(),
+		nil,
+	)
+}
+
+func (c *Client) ResourcesRequest(filter *ResourceFilter) (*http.Request, error) {
+	query := url.Values{}
+
+	if filter != nil {
+		if filter.Kind != "" {
+			query.Add("kind", filter.Kind)
+		}
+		if filter.Search != "" {
+			query.Add("search", filter.Search)
+		}
+
+		if filter.Limit != 0 {
+			query.Add("limit", strconv.Itoa(filter.Limit))
+		}
+
+		if filter.Offset != 0 {
+			query.Add("offset", strconv.Itoa(filter.Offset))
+		}
+	}
+
+	requestURL := makeRouterURL(c.resourcesURL(c.config.Account)).withQuery(query.Encode())
+
+	return http.NewRequest(
+		"GET",
+		requestURL.String(),
+		nil,
+	)
+}
+
+func (c *Client) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader) (*http.Request, error) {
+	fullPolicyID := makeFullId(c.config.Account, "policy", policyID)
+
+	account, kind, id, err := parseID(fullPolicyID)
+	if err != nil {
+		return nil, err
+	}
+	policyURL := makeRouterURL(c.policiesURL(account), kind, url.QueryEscape(id)).String()
+
+	var method string
+	switch mode {
+	case PolicyModePost:
+		method = "POST"
+	case PolicyModePatch:
+		method = "PATCH"
+	case PolicyModePut:
+		method = "PUT"
+	default:
+		return nil, fmt.Errorf("Invalid PolicyMode : %d", mode)
+	}
+
+	return http.NewRequest(
+		method,
+		policyURL,
+		policy,
+	)
+}
+
+func (c *Client) RetrieveBatchSecretsRequest(variableIDs []string, base64Flag bool) (*http.Request, error) {
+	fullVariableIDs := []string{}
+	for _, variableID := range variableIDs {
+		fullVariableID := makeFullId(c.config.Account, "variable", variableID)
+		fullVariableIDs = append(fullVariableIDs, fullVariableID)
+	}
+
+	request, err := http.NewRequest(
+		"GET",
+		c.batchVariableURL(fullVariableIDs),
+		nil,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if base64Flag {
+		request.Header.Add("Accept-Encoding", "base64")
+	}
+
+	return request, nil
+}
+
+func (c *Client) RetrieveSecretRequest(variableID string) (*http.Request, error) {
+	fullVariableID := makeFullId(c.config.Account, "variable", variableID)
+
+	variableURL, err := c.variableURL(fullVariableID)
+	if err != nil {
+		return nil, err
+	}
+
+	return http.NewRequest(
+		"GET",
+		variableURL,
+		nil,
+	)
+}
+
+func (c *Client) AddSecretRequest(variableID, secretValue string) (*http.Request, error) {
+	fullVariableID := makeFullId(c.config.Account, "variable", variableID)
+
+	variableURL, err := c.variableURL(fullVariableID)
+	if err != nil {
+		return nil, err
+	}
+
+	request, err := http.NewRequest(
+		"POST",
+		variableURL,
+		strings.NewReader(secretValue),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	return request, nil
+}
+
+func (c *Client) variableURL(variableID string) (string, error) {
+	account, kind, id, err := parseID(variableID)
+	if err != nil {
+		return "", err
+	}
+	return makeRouterURL(c.secretsURL(account), kind, url.PathEscape(id)).String(), nil
+}
+
+func (c *Client) batchVariableURL(variableIDs []string) string {
+	queryString := url.QueryEscape(strings.Join(variableIDs, ","))
+	return makeRouterURL(c.globalSecretsURL()).withFormattedQuery("variable_ids=%s", queryString).String()
+}
+
+func (c *Client) authnURL() string {
+	return makeRouterURL(c.config.ApplianceURL, "authn", c.config.Account).String()
+}
+
+func (c *Client) resourcesURL(account string) string {
+	return makeRouterURL(c.config.ApplianceURL, "resources", account).String()
+}
+
+func (c *Client) secretsURL(account string) string {
+	return makeRouterURL(c.config.ApplianceURL, "secrets", account).String()
+}
+
+func (c *Client) globalSecretsURL() string {
+	return makeRouterURL(c.config.ApplianceURL, "secrets").String()
+}
+
+func (c *Client) policiesURL(account string) string {
+	return makeRouterURL(c.config.ApplianceURL, "policies", account).String()
+}
+
 func makeFullId(account, kind, id string) string {
 	tokens := strings.SplitN(id, ":", 3)
 	switch len(tokens) {
@@ -248,7 +445,6 @@ func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Cl
 	}
 
 	var httpClient *http.Client
-	var router Router
 
 	if config.IsHttps() {
 		cert, err := config.ReadSSLCert()
@@ -263,13 +459,10 @@ func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Cl
 		httpClient = &http.Client{Timeout: time.Second * 10}
 	}
 
-	router = RouterV5{&config}
-
 	return &Client{
 		config:        config,
 		authenticator: authenticator,
 		httpClient:    httpClient,
-		router:        router,
 	}, nil
 }
 

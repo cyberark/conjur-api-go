@@ -11,7 +11,7 @@ import (
 )
 
 func (c *Client) RefreshToken() (err error) {
-	var token authn.AuthnToken
+	var token *authn.AuthnToken
 
 	if c.NeedsTokenRefresh() {
 		var tokenBytes []byte
@@ -69,7 +69,7 @@ func (c *Client) AuthenticateReader(loginPair authn.LoginPair) (io.ReadCloser, e
 }
 
 func (c *Client) authenticate(loginPair authn.LoginPair) (*http.Response, error) {
-	req, err := c.router.AuthenticateRequest(loginPair)
+	req, err := c.AuthenticateRequest(loginPair)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func (c *Client) RotateAPIKeyReader(roleID string) (io.ReadCloser, error) {
 }
 
 func (c *Client) rotateAPIKey(roleID string) (*http.Response, error) {
-	req, err := c.router.RotateAPIKeyRequest(roleID)
+	req, err := c.RotateAPIKeyRequest(roleID)
 	if err != nil {
 		return nil, err
 	}
