@@ -80,7 +80,7 @@ func (c *Client) RetrieveSecretReader(variableID string) (io.ReadCloser, error) 
 }
 
 func (c *Client) retrieveBatchSecrets(variableIDs []string, base64Flag bool) (map[string]string, error) {
-	req, err := c.router.RetrieveBatchSecretsRequest(variableIDs, base64Flag)
+	req, err := c.RetrieveBatchSecretsRequest(variableIDs, base64Flag)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (c *Client) retrieveBatchSecrets(variableIDs []string, base64Flag bool) (ma
 }
 
 func (c *Client) retrieveSecret(variableID string) (*http.Response, error) {
-	req, err := c.router.RetrieveSecretRequest(variableID)
+	req, err := c.RetrieveSecretRequest(variableID)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (c *Client) retrieveSecret(variableID string) (*http.Response, error) {
 //
 // The authenticated user must have update privilege on the variable.
 func (c *Client) AddSecret(variableID string, secretValue string) error {
-	req, err := c.router.AddSecretRequest(variableID, secretValue)
+	req, err := c.AddSecretRequest(variableID, secretValue)
 	if err != nil {
 		return err
 	}

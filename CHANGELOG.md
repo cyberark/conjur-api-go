@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Removed
+- Remove all usage of Conjur v4
+  [cyberark/conjur-api-go#139](https://github.com/cyberark/conjur-api-go/pull/139)
+
 ## [0.10.2] - 2022-11-14
 
 ### Fixed

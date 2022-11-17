@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func v5Setup() (*Client, error) {
+func conjurSetup() (*Client, error) {
 	config := &Config{}
 	config.mergeEnv()
 
@@ -55,20 +55,6 @@ func v5Setup() (*Client, error) {
 	return conjur, err
 }
 
-func v4Setup() (*Client, error) {
-	config := &Config{
-		ApplianceURL: os.Getenv("CONJUR_V4_APPLIANCE_URL"),
-		SSLCert:      os.Getenv("CONJUR_V4_SSL_CERTIFICATE"),
-		Account:      os.Getenv("CONJUR_V4_ACCOUNT"),
-		V4:           true,
-	}
-
-	login := os.Getenv("CONJUR_V4_AUTHN_LOGIN")
-	apiKey := os.Getenv("CONJUR_V4_AUTHN_API_KEY")
-
-	return NewClientFromKey(*config, authn.LoginPair{Login: login, APIKey: apiKey})
-}
-
 func TestClient_CheckPermission(t *testing.T) {
 	checkAllowed := func(conjur *Client, id string) func(t *testing.T) {
 		return func(t *testing.T) {
@@ -88,25 +74,12 @@ func TestClient_CheckPermission(t *testing.T) {
 		}
 	}
 
-	t.Run("V5", func(t *testing.T) {
-		conjur, err := v5Setup()
-		assert.NoError(t, err)
+	conjur, err := conjurSetup()
+	assert.NoError(t, err)
 
-		t.Run("Check an allowed permission", checkAllowed(conjur, "cucumber:variable:db-password"))
+	t.Run("Check an allowed permission", checkAllowed(conjur, "cucumber:variable:db-password"))
 
-		t.Run("Check a permission on a non-existent resource", checkNonExisting(conjur, "cucumber:variable:foobar"))
-	})
-
-	if os.Getenv("TEST_VERSION") != "oss" {
-		t.Run("V4", func(t *testing.T) {
-			conjur, err := v4Setup()
-			assert.NoError(t, err)
-
-			t.Run("Check an allowed permission", checkAllowed(conjur, "cucumber:variable:existent-variable-with-defined-value"))
-
-			t.Run("Check a permission on a non-existent resource", checkNonExisting(conjur, "cucumber:variable:foobar"))
-		})
-	}
+	t.Run("Check a permission on a non-existent resource", checkNonExisting(conjur, "cucumber:variable:foobar"))
 }
 
 func TestClient_Resources(t *testing.T) {
@@ -118,26 +91,16 @@ func TestClient_Resources(t *testing.T) {
 		}
 	}
 
-	t.Run("V5", func(t *testing.T) {
-		conjur, err := v5Setup()
-		assert.NoError(t, err)
+	conjur, err := conjurSetup()
+	assert.NoError(t, err)
 
-		t.Run("Lists all resources", listResources(conjur, nil, 12))
-		t.Run("Lists resources by kind", listResources(conjur, &ResourceFilter{Kind: "variable"}, 7))
-		t.Run("Lists resources that start with db", listResources(conjur, &ResourceFilter{Search: "db"}, 2))
-		t.Run("Lists variables that start with prod/database", listResources(conjur, &ResourceFilter{Search: "prod/database", Kind: "variable"}, 2))
-		t.Run("Lists variables that start with prod", listResources(conjur, &ResourceFilter{Search: "prod", Kind: "variable"}, 4))
-		t.Run("Lists resources and limit result to 1", listResources(conjur, &ResourceFilter{Limit: 1}, 1))
-		t.Run("Lists resources after the first", listResources(conjur, &ResourceFilter{Offset: 1}, 10))
-	})
-
-	if os.Getenv("TEST_VERSION") != "oss" {
-		t.Run("V4", func(t *testing.T) {
-			_, err := v4Setup()
-			assert.NoError(t, err)
-			// v4 router doesn't support it showResource
-		})
-	}
+	t.Run("Lists all resources", listResources(conjur, nil, 12))
+	t.Run("Lists resources by kind", listResources(conjur, &ResourceFilter{Kind: "variable"}, 7))
+	t.Run("Lists resources that start with db", listResources(conjur, &ResourceFilter{Search: "db"}, 2))
+	t.Run("Lists variables that start with prod/database", listResources(conjur, &ResourceFilter{Search: "prod/database", Kind: "variable"}, 2))
+	t.Run("Lists variables that start with prod", listResources(conjur, &ResourceFilter{Search: "prod", Kind: "variable"}, 4))
+	t.Run("Lists resources and limit result to 1", listResources(conjur, &ResourceFilter{Limit: 1}, 1))
+	t.Run("Lists resources after the first", listResources(conjur, &ResourceFilter{Offset: 1}, 10))
 }
 
 func TestClient_Resource(t *testing.T) {
@@ -148,18 +111,8 @@ func TestClient_Resource(t *testing.T) {
 		}
 	}
 
-	t.Run("V5", func(t *testing.T) {
-		conjur, err := v5Setup()
-		assert.NoError(t, err)
+	conjur, err := conjurSetup()
+	assert.NoError(t, err)
 
-		t.Run("Shows a resource", showResource(conjur, "cucumber:variable:db-password"))
-	})
-
-	if os.Getenv("TEST_VERSION") != "oss" {
-		t.Run("V4", func(t *testing.T) {
-			_, err := v4Setup()
-			assert.NoError(t, err)
-			// v4 router doesn't support it showResource
-		})
-	}
+	t.Run("Shows a resource", showResource(conjur, "cucumber:variable:db-password"))
 }

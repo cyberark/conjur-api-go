@@ -147,7 +147,7 @@ netrc_path: "/path/to/netrc/file%v"
 			defer os.Remove(tmpFileName) // clean up
 			assert.NoError(t, err)
 
-			t.Run(fmt.Sprintf("Returns Config loaded with values from file and V4: %t", versiontest.out), func(t *testing.T) {
+			t.Run(fmt.Sprintf("Returns Config loaded with values from file: %t", versiontest.out), func(t *testing.T) {
 				config := &Config{}
 				config.mergeYAML(tmpFileName)
 
@@ -156,7 +156,6 @@ netrc_path: "/path/to/netrc/file%v"
 					ApplianceURL: fmt.Sprintf("http://path/to/appliance%v", index),
 					NetRCPath:    fmt.Sprintf("/path/to/netrc/file%v", index),
 					SSLCertPath:  fmt.Sprintf("/path/to/cert/file/pem%v", index),
-					V4:           versiontest.out,
 				})
 			})
 		})
