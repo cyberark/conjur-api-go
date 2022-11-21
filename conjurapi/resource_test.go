@@ -116,3 +116,24 @@ func TestClient_Resource(t *testing.T) {
 
 	t.Run("Shows a resource", showResource(conjur, "cucumber:variable:db-password"))
 }
+
+func TestClient_ResourceIDs(t *testing.T) {
+	listResourceIDs := func(conjur *Client, filter *ResourceFilter, expected int) func(t *testing.T) {
+		return func(t *testing.T) {
+			resources, err := conjur.ResourceIDs(filter)
+			assert.NoError(t, err)
+			assert.Len(t, resources, expected)
+		}
+	}
+
+	conjur, err := conjurSetup()
+	assert.NoError(t, err)
+
+	t.Run("Lists all resources", listResourceIDs(conjur, nil, 12))
+	t.Run("Lists resources by kind", listResourceIDs(conjur, &ResourceFilter{Kind: "variable"}, 7))
+	t.Run("Lists resources that start with db", listResourceIDs(conjur, &ResourceFilter{Search: "db"}, 2))
+	t.Run("Lists variables that start with prod/database", listResourceIDs(conjur, &ResourceFilter{Search: "prod/database", Kind: "variable"}, 2))
+	t.Run("Lists variables that start with prod", listResourceIDs(conjur, &ResourceFilter{Search: "prod", Kind: "variable"}, 4))
+	t.Run("Lists resources and limit result to 1", listResourceIDs(conjur, &ResourceFilter{Limit: 1}, 1))
+	t.Run("Lists resources after the first", listResourceIDs(conjur, &ResourceFilter{Offset: 1}, 10))
+}

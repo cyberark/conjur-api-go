@@ -83,3 +83,19 @@ func (c *Client) Resources(filter *ResourceFilter) (resources []map[string]inter
 
 	return
 }
+
+func (c *Client) ResourceIDs(filter *ResourceFilter) ([]string, error) {
+	resources, err := c.Resources(filter)
+
+	if err != nil {
+		return nil, err
+	}
+
+	resourceIDs := make([]string, 0)
+
+	for _, element := range resources {
+		resourceIDs = append(resourceIDs, element["id"].(string))
+	}
+
+	return resourceIDs, nil
+}
