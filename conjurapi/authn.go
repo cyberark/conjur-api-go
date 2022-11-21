@@ -49,8 +49,8 @@ func (c *Client) createAuthRequest(req *http.Request) error {
 }
 
 // Login obtains an API key.
-func (c *Client) Login(loginPair authn.LoginPair) ([]byte, error) {
-	req, err := c.LoginRequest(loginPair)
+func (c *Client) Login(login string, password string) ([]byte, error) {
+	req, err := c.LoginRequest(login, password)
 	if err != nil {
 		return nil, err
 	}

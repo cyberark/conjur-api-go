@@ -217,11 +217,11 @@ func (c *Client) WhoAmIRequest() (*http.Request, error) {
 	return http.NewRequest("GET", makeRouterURL(c.config.ApplianceURL, "whoami").String(), nil)
 }
 
-func (c *Client) LoginRequest(loginPair authn.LoginPair) (*http.Request, error) {
+func (c *Client) LoginRequest(login string, password string) (*http.Request, error) {
 	authenticateURL := makeRouterURL(c.authnURL(), "login").String()
 
 	req, err := http.NewRequest("GET", authenticateURL, nil)
-	req.SetBasicAuth(loginPair.Login, loginPair.APIKey)
+	req.SetBasicAuth(login, password)
 	if err != nil {
 		return nil, err
 	}
