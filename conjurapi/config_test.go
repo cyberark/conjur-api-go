@@ -85,6 +85,8 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 
 		os.Setenv("CONJUR_ACCOUNT", "account")
 		os.Setenv("CONJUR_APPLIANCE_URL", "appliance-url")
+		os.Setenv("CONJUR_AUTHN_TYPE", "ldap")
+		os.Setenv("CONJUR_SERVICE_ID", "service-id")
 
 		t.Run("Returns Config loaded with values from env", func(t *testing.T) {
 			config := &Config{}
@@ -93,6 +95,8 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 			assert.EqualValues(t, *config, Config{
 				Account:      "account",
 				ApplianceURL: "appliance-url",
+				AuthnType:    "ldap",
+				ServiceID:    "service-id",
 			})
 		})
 	})
@@ -140,6 +144,8 @@ appliance_url: http://path/to/appliance%v
 account: some account%v
 cert_file: "/path/to/cert/file/pem%v"
 netrc_path: "/path/to/netrc/file%v"
+authn_type: ldap
+service_id: my-ldap-service
 %s
 `, index, index, index, index, versiontest.in)
 
@@ -156,6 +162,8 @@ netrc_path: "/path/to/netrc/file%v"
 					ApplianceURL: fmt.Sprintf("http://path/to/appliance%v", index),
 					NetRCPath:    fmt.Sprintf("/path/to/netrc/file%v", index),
 					SSLCertPath:  fmt.Sprintf("/path/to/cert/file/pem%v", index),
+					AuthnType:    "ldap",
+					ServiceID:    "my-ldap-service",
 				})
 			})
 		})

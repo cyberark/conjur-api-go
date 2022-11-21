@@ -20,6 +20,8 @@ type Config struct {
 	NetRCPath    string `yaml:"netrc_path,omitempty"`
 	SSLCert      string `yaml:"-"`
 	SSLCertPath  string `yaml:"cert_file,omitempty"`
+	AuthnType    string `yaml:"authn_type,omitempty"`
+	ServiceID    string `yaml:"service_id,omitempty"`
 }
 
 func (c *Config) IsHttps() bool {
@@ -77,6 +79,8 @@ func (c *Config) merge(o *Config) {
 	c.SSLCert = mergeValue(c.SSLCert, o.SSLCert)
 	c.SSLCertPath = mergeValue(c.SSLCertPath, o.SSLCertPath)
 	c.NetRCPath = mergeValue(c.NetRCPath, o.NetRCPath)
+	c.AuthnType = mergeValue(c.AuthnType, o.AuthnType)
+	c.ServiceID = mergeValue(c.ServiceID, o.ServiceID)
 }
 
 func (c *Config) mergeYAML(filename string) error {
@@ -111,6 +115,8 @@ func (c *Config) mergeEnv() {
 		SSLCertPath:  os.Getenv("CONJUR_CERT_FILE"),
 		Account:      os.Getenv("CONJUR_ACCOUNT"),
 		NetRCPath:    os.Getenv("CONJUR_NETRC_PATH"),
+		AuthnType:    os.Getenv("CONJUR_AUTHN_TYPE"),
+		ServiceID:    os.Getenv("CONJUR_SERVICE_ID"),
 	}
 
 	logging.ApiLog.Debugf("Config from environment: %+v\n", env)
