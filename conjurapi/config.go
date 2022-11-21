@@ -14,6 +14,8 @@ import (
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 )
 
+var supportedAuthnTypes = []string{"authn", "ldap"}
+
 type Config struct {
 	Account      string `yaml:"account,omitempty"`
 	ApplianceURL string `yaml:"appliance_url,omitempty"`
@@ -37,6 +39,10 @@ func (c *Config) Validate() error {
 
 	if c.Account == "" {
 		errors = append(errors, "Must specify an Account")
+	}
+
+	if c.AuthnType != "" && !contains(supportedAuthnTypes, c.AuthnType) {
+		errors = append(errors, fmt.Sprintf("AuthnType must be one of %v", supportedAuthnTypes))
 	}
 
 	if c.AuthnType == "ldap" && c.ServiceID == "" {
@@ -168,4 +174,14 @@ func getSystemPath() string {
 	} else {
 		return "/etc"
 	}
+}
+
+func contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
 }

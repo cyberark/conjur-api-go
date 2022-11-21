@@ -62,6 +62,21 @@ func TestConfig_IsValid(t *testing.T) {
 		errString := err.Error()
 		assert.Contains(t, errString, "Must specify a ServiceID when using ")
 	})
+
+	t.Run("Return error for invalid configuration unsupported AuthnType", func(t *testing.T) {
+		config := Config{
+			Account:      "account",
+			ApplianceURL: "appliance-url",
+			AuthnType:    "foobar",
+			ServiceID:    "service-id",
+		}
+
+		err := config.Validate()
+		assert.Error(t, err)
+
+		errString := err.Error()
+		assert.Contains(t, errString, "AuthnType must be one of ")
+	})
 }
 
 func TestConfig_IsHttps(t *testing.T) {
