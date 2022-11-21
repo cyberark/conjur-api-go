@@ -28,7 +28,7 @@ func (c *Config) IsHttps() bool {
 	return c.SSLCertPath != "" || c.SSLCert != ""
 }
 
-func (c *Config) validate() error {
+func (c *Config) Validate() error {
 	errors := []string{}
 
 	if c.ApplianceURL == "" {
@@ -37,6 +37,10 @@ func (c *Config) validate() error {
 
 	if c.Account == "" {
 		errors = append(errors, "Must specify an Account")
+	}
+
+	if c.AuthnType == "ldap" && c.ServiceID == "" {
+		errors = append(errors, "Must specify a ServiceID when using LDAP")
 	}
 
 	if len(errors) == 0 {

@@ -93,7 +93,7 @@ func LoginPairFromNetRC(config Config) (*authn.LoginPair, error) {
 
 // TODO: Create a version of this function for creating an authenticator from environment
 func NewClientFromEnvironment(config Config) (*Client, error) {
-	err := config.validate()
+	err := config.Validate()
 
 	if err != nil {
 		return nil, err
@@ -420,6 +420,9 @@ func (c *Client) batchVariableURL(variableIDs []string) string {
 }
 
 func (c *Client) authnURL() string {
+	if c.config.AuthnType == "ldap" {
+		return makeRouterURL(c.config.ApplianceURL, "authn-ldap", c.config.ServiceID, c.config.Account).String()
+	}
 	return makeRouterURL(c.config.ApplianceURL, "authn", c.config.Account).String()
 }
 
@@ -464,7 +467,7 @@ func NewClient(config Config) (*Client, error) {
 		err error
 	)
 
-	err = config.validate()
+	err = config.Validate()
 
 	if err != nil {
 		return nil, err

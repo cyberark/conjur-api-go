@@ -33,20 +33,34 @@ func TestConfig_IsValid(t *testing.T) {
 			ApplianceURL: "appliance-url",
 		}
 
-		err := config.validate()
+		err := config.Validate()
 		assert.NoError(t, err)
 	})
 
-	t.Run("Return error for invalid configuration", func(t *testing.T) {
+	t.Run("Return error for invalid configuration missing ApplianceUrl", func(t *testing.T) {
 		config := Config{
 			Account: "account",
 		}
 
-		err := config.validate()
+		err := config.Validate()
 		assert.Error(t, err)
 
 		errString := err.Error()
 		assert.Contains(t, errString, "Must specify an ApplianceURL")
+	})
+
+	t.Run("Return error for invalid configuration missing ServiceId", func(t *testing.T) {
+		config := Config{
+			Account:      "account",
+			ApplianceURL: "appliance-url",
+			AuthnType:    "ldap",
+		}
+
+		err := config.Validate()
+		assert.Error(t, err)
+
+		errString := err.Error()
+		assert.Contains(t, errString, "Must specify a ServiceID when using ")
 	})
 }
 
