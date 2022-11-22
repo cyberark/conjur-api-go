@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type testCase struct {
+type rotateAPIKeyTestCase struct {
 	name             string
 	roleId           string
 	login            string
@@ -15,7 +15,7 @@ type testCase struct {
 }
 
 func TestClient_RotateAPIKey(t *testing.T) {
-	testCases := []testCase{
+	testCases := []rotateAPIKeyTestCase{
 		{
 			name:             "Rotate the API key of a foreign user role of kind user",
 			roleId:           "cucumber:user:alice",
@@ -43,12 +43,12 @@ func TestClient_RotateAPIKey(t *testing.T) {
 			assert.NoError(t, err)
 
 			// EXERCISE
-			runAssertions(t, tc, conjur)
+			runRotateAPIKeyAssertions(t, tc, conjur)
 		})
 	}
 }
 
-func runAssertions(t *testing.T, tc testCase, conjur *Client) {
+func runRotateAPIKeyAssertions(t *testing.T, tc rotateAPIKeyTestCase, conjur *Client) {
 	var userApiKey []byte
 	var err error
 
@@ -63,5 +63,85 @@ func runAssertions(t *testing.T, tc testCase, conjur *Client) {
 	assert.NoError(t, err)
 
 	_, err = conjur.Authenticate(authn.LoginPair{Login: tc.login, APIKey: string(userApiKey)})
+	assert.NoError(t, err)
+}
+
+type rotateHostAPIKeyTestCase struct {
+	name   string
+	hostID string
+	login  string
+}
+
+func TestClient_RotateHostAPIKey(t *testing.T) {
+	testCases := []rotateHostAPIKeyTestCase{
+		{
+			name:   "Rotate the API key of a foreign host",
+			hostID: "bob",
+			login:  "host/bob",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// SETUP
+			conjur, err := conjurSetup()
+			assert.NoError(t, err)
+
+			// EXERCISE
+			runRotateHostAPIKeyAssertions(t, tc, conjur)
+		})
+	}
+}
+
+func runRotateHostAPIKeyAssertions(t *testing.T, tc rotateHostAPIKeyTestCase, conjur *Client) {
+	var hostAPIKey []byte
+	var err error
+
+	hostAPIKey, err = conjur.RotateHostAPIKey(tc.hostID)
+
+	assert.NoError(t, err)
+
+	_, err = conjur.Authenticate(authn.LoginPair{Login: tc.login, APIKey: string(hostAPIKey)})
+	assert.NoError(t, err)
+}
+
+// This is probably redundant with the above test case. Just going to keep them
+// separate for expediency for now.
+type rotateUserAPIKeyTestCase struct {
+	name   string
+	userID string
+	login  string
+}
+
+func TestClient_RotateUserAPIKey(t *testing.T) {
+	testCases := []rotateUserAPIKeyTestCase{
+		{
+			name:   "Rotate the API key of a user",
+			userID: "alice",
+			login:  "alice",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// SETUP
+			conjur, err := conjurSetup()
+			assert.NoError(t, err)
+
+			// EXERCISE
+			runRotateUserAPIKeyAssertions(t, tc, conjur)
+		})
+	}
+}
+
+func runRotateUserAPIKeyAssertions(t *testing.T, tc rotateUserAPIKeyTestCase, conjur *Client) {
+	var userAPIKey []byte
+	var err error
+
+	userAPIKey, err = conjur.RotateUserAPIKey(tc.userID)
+
+	assert.NoError(t, err)
+
+	_, err = conjur.Authenticate(authn.LoginPair{Login: tc.login, APIKey: string(userAPIKey)})
 	assert.NoError(t, err)
 }

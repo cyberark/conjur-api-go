@@ -33,20 +33,49 @@ func TestConfig_IsValid(t *testing.T) {
 			ApplianceURL: "appliance-url",
 		}
 
-		err := config.validate()
+		err := config.Validate()
 		assert.NoError(t, err)
 	})
 
-	t.Run("Return error for invalid configuration", func(t *testing.T) {
+	t.Run("Return error for invalid configuration missing ApplianceUrl", func(t *testing.T) {
 		config := Config{
 			Account: "account",
 		}
 
-		err := config.validate()
+		err := config.Validate()
 		assert.Error(t, err)
 
 		errString := err.Error()
 		assert.Contains(t, errString, "Must specify an ApplianceURL")
+	})
+
+	t.Run("Return error for invalid configuration missing ServiceId", func(t *testing.T) {
+		config := Config{
+			Account:      "account",
+			ApplianceURL: "appliance-url",
+			AuthnType:    "ldap",
+		}
+
+		err := config.Validate()
+		assert.Error(t, err)
+
+		errString := err.Error()
+		assert.Contains(t, errString, "Must specify a ServiceID when using ")
+	})
+
+	t.Run("Return error for invalid configuration unsupported AuthnType", func(t *testing.T) {
+		config := Config{
+			Account:      "account",
+			ApplianceURL: "appliance-url",
+			AuthnType:    "foobar",
+			ServiceID:    "service-id",
+		}
+
+		err := config.Validate()
+		assert.Error(t, err)
+
+		errString := err.Error()
+		assert.Contains(t, errString, "AuthnType must be one of ")
 	})
 }
 
@@ -85,6 +114,8 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 
 		os.Setenv("CONJUR_ACCOUNT", "account")
 		os.Setenv("CONJUR_APPLIANCE_URL", "appliance-url")
+		os.Setenv("CONJUR_AUTHN_TYPE", "ldap")
+		os.Setenv("CONJUR_SERVICE_ID", "service-id")
 
 		t.Run("Returns Config loaded with values from env", func(t *testing.T) {
 			config := &Config{}
@@ -93,6 +124,8 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 			assert.EqualValues(t, *config, Config{
 				Account:      "account",
 				ApplianceURL: "appliance-url",
+				AuthnType:    "ldap",
+				ServiceID:    "service-id",
 			})
 		})
 	})
@@ -140,6 +173,8 @@ appliance_url: http://path/to/appliance%v
 account: some account%v
 cert_file: "/path/to/cert/file/pem%v"
 netrc_path: "/path/to/netrc/file%v"
+authn_type: ldap
+service_id: my-ldap-service
 %s
 `, index, index, index, index, versiontest.in)
 
@@ -156,6 +191,8 @@ netrc_path: "/path/to/netrc/file%v"
 					ApplianceURL: fmt.Sprintf("http://path/to/appliance%v", index),
 					NetRCPath:    fmt.Sprintf("/path/to/netrc/file%v", index),
 					SSLCertPath:  fmt.Sprintf("/path/to/cert/file/pem%v", index),
+					AuthnType:    "ldap",
+					ServiceID:    "my-ldap-service",
 				})
 			})
 		})
@@ -176,5 +213,52 @@ cert_file: "C:\badly\escaped\path"
 		config := &Config{}
 		err = config.mergeYAML(tmpFileName)
 		assert.Error(t, err)
+	})
+}
+
+var conjurrcTestCases = []struct {
+	name     string
+	config   Config
+	expected string
+}{
+	{
+		name: "Minimal config",
+		config: Config{
+			Account:      "test-account",
+			ApplianceURL: "test-appliance-url",
+		},
+		expected: `account: test-account
+appliance_url: test-appliance-url
+`,
+	},
+	{
+		name: "Full config",
+		config: Config{
+			Account:      "test-account",
+			ApplianceURL: "test-appliance-url",
+			AuthnType:    "ldap",
+			ServiceID:    "test-service-id",
+			SSLCertPath:  "test-cert-path",
+			NetRCPath:    "test-netrc-path",
+			SSLCert:      "test-cert",
+		},
+		expected: `account: test-account
+appliance_url: test-appliance-url
+netrc_path: test-netrc-path
+cert_file: test-cert-path
+authn_type: ldap
+service_id: test-service-id
+`,
+	},
+}
+
+func TestConfig_Conjurrc(t *testing.T) {
+	t.Run("Generates conjurrc content", func(t *testing.T) {
+		for _, testCase := range conjurrcTestCases {
+			t.Run(testCase.name, func(t *testing.T) {
+				actual := testCase.config.Conjurrc()
+				assert.Equal(t, testCase.expected, string(actual))
+			})
+		}
 	})
 }

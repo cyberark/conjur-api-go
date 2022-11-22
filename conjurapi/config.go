@@ -14,19 +14,23 @@ import (
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 )
 
+var supportedAuthnTypes = []string{"authn", "ldap"}
+
 type Config struct {
 	Account      string `yaml:"account,omitempty"`
 	ApplianceURL string `yaml:"appliance_url,omitempty"`
 	NetRCPath    string `yaml:"netrc_path,omitempty"`
 	SSLCert      string `yaml:"-"`
 	SSLCertPath  string `yaml:"cert_file,omitempty"`
+	AuthnType    string `yaml:"authn_type,omitempty"`
+	ServiceID    string `yaml:"service_id,omitempty"`
 }
 
 func (c *Config) IsHttps() bool {
 	return c.SSLCertPath != "" || c.SSLCert != ""
 }
 
-func (c *Config) validate() error {
+func (c *Config) Validate() error {
 	errors := []string{}
 
 	if c.ApplianceURL == "" {
@@ -35,6 +39,14 @@ func (c *Config) validate() error {
 
 	if c.Account == "" {
 		errors = append(errors, "Must specify an Account")
+	}
+
+	if c.AuthnType != "" && !contains(supportedAuthnTypes, c.AuthnType) {
+		errors = append(errors, fmt.Sprintf("AuthnType must be one of %v", supportedAuthnTypes))
+	}
+
+	if c.AuthnType == "ldap" && c.ServiceID == "" {
+		errors = append(errors, "Must specify a ServiceID when using LDAP")
 	}
 
 	if len(errors) == 0 {
@@ -77,6 +89,8 @@ func (c *Config) merge(o *Config) {
 	c.SSLCert = mergeValue(c.SSLCert, o.SSLCert)
 	c.SSLCertPath = mergeValue(c.SSLCertPath, o.SSLCertPath)
 	c.NetRCPath = mergeValue(c.NetRCPath, o.NetRCPath)
+	c.AuthnType = mergeValue(c.AuthnType, o.AuthnType)
+	c.ServiceID = mergeValue(c.ServiceID, o.ServiceID)
 }
 
 func (c *Config) mergeYAML(filename string) error {
@@ -111,10 +125,17 @@ func (c *Config) mergeEnv() {
 		SSLCertPath:  os.Getenv("CONJUR_CERT_FILE"),
 		Account:      os.Getenv("CONJUR_ACCOUNT"),
 		NetRCPath:    os.Getenv("CONJUR_NETRC_PATH"),
+		AuthnType:    os.Getenv("CONJUR_AUTHN_TYPE"),
+		ServiceID:    os.Getenv("CONJUR_SERVICE_ID"),
 	}
 
 	logging.ApiLog.Debugf("Config from environment: %+v\n", env)
 	c.merge(&env)
+}
+
+func (c *Config) Conjurrc() []byte {
+	data, _ := yaml.Marshal(&c)
+	return data
 }
 
 func LoadConfig() (Config, error) {
@@ -158,4 +179,14 @@ func getSystemPath() string {
 	} else {
 		return "/etc"
 	}
+}
+
+func contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
 }
