@@ -133,6 +133,11 @@ func (c *Config) mergeEnv() {
 	c.merge(&env)
 }
 
+func (c *Config) Conjurrc() []byte {
+	data, _ := yaml.Marshal(&c)
+	return data
+}
+
 func LoadConfig() (Config, error) {
 	config := Config{}
 

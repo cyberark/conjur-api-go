@@ -215,3 +215,50 @@ cert_file: "C:\badly\escaped\path"
 		assert.Error(t, err)
 	})
 }
+
+var conjurrcTestCases = []struct {
+	name     string
+	config   Config
+	expected string
+}{
+	{
+		name: "Minimal config",
+		config: Config{
+			Account:      "test-account",
+			ApplianceURL: "test-appliance-url",
+		},
+		expected: `account: test-account
+appliance_url: test-appliance-url
+`,
+	},
+	{
+		name: "Full config",
+		config: Config{
+			Account:      "test-account",
+			ApplianceURL: "test-appliance-url",
+			AuthnType:    "ldap",
+			ServiceID:    "test-service-id",
+			SSLCertPath:  "test-cert-path",
+			NetRCPath:    "test-netrc-path",
+			SSLCert:      "test-cert",
+		},
+		expected: `account: test-account
+appliance_url: test-appliance-url
+netrc_path: test-netrc-path
+cert_file: test-cert-path
+authn_type: ldap
+service_id: test-service-id
+`,
+	},
+}
+
+func TestConfig_Conjurrc(t *testing.T) {
+	t.Run("Generates conjurrc content", func(t *testing.T) {
+		for _, testCase := range conjurrcTestCases {
+			t.Run(testCase.name, func(t *testing.T) {
+				actual := testCase.config.Conjurrc()
+				assert.Equal(t, testCase.expected, string(actual))
+			})
+		}
+	})
+}
