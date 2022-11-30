@@ -2,16 +2,38 @@ package conjurapi
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
+	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
+// OidcProviderResponse contains information about an OIDC provider.
+type OidcProviderResponse struct {
+	ServiceID    string `json:"service_id"`
+	Type         string `json:"type"`
+	Name         string `json:"name"`
+	Nonce        string `json:"nonce"`
+	CodeVerifier string `json:"code_verifier"`
+	RedirectURI  string `json:"redirect_uri"`
+}
+
 func (c *Client) RefreshToken() (err error) {
 	var token *authn.AuthnToken
+
+	// Fetch cached conjur access token if using OIDC
+	if c.GetConfig().AuthnType == "oidc" {
+		token := c.readCachedAccessToken()
+		if token != nil {
+			c.authToken = token
+		}
+	}
 
 	if c.NeedsTokenRefresh() {
 		var tokenBytes []byte
@@ -116,6 +138,43 @@ func (c *Client) authenticate(loginPair authn.LoginPair) (*http.Response, error)
 	return c.httpClient.Do(req)
 }
 
+func (c *Client) OidcAuthenticate(code, nonce, code_verifier string) ([]byte, error) {
+	req, err := c.OidcAuthenticateRequest(code, nonce, code_verifier)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := response.DataResponse(res)
+
+	if err == nil {
+		c.cacheAccessToken(resp)
+	}
+
+	return resp, err
+}
+
+func (c *Client) ListOidcProviders() ([]OidcProviderResponse, error) {
+	req, err := c.ListOidcProvidersRequest()
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	providers := []OidcProviderResponse{}
+	err = response.JSONResponse(resp, &providers)
+
+	return providers, err
+}
+
 // RotateAPIKey replaces the API key of a role on the server with a new
 // random secret.
 //
@@ -170,4 +229,49 @@ func (c *Client) rotateAPIKey(roleID string) (*http.Response, error) {
 	}
 
 	return c.SubmitRequest(req)
+}
+
+func (c *Client) oidcTokenPath() string {
+	oidcTokenPath := c.GetConfig().OidcTokenPath
+	if oidcTokenPath == "" {
+		oidcTokenPath = defaultOidcTokenPath
+	}
+	return oidcTokenPath
+}
+
+// Caches the conjur access token. We only cache this for OIDC since we don't have access
+// to the Conjur API key and this is the only credential we can save.
+// TODO: Perhaps .netrc storage should be moved to the conjur-api-go repository. At that point we could store
+// the access token there as we do with the API key.
+func (c *Client) cacheAccessToken(token []byte) error {
+	if token == nil {
+		return nil
+	}
+
+	oidcTokenPath := c.oidcTokenPath()
+
+	// Ensure the directory exists
+	_, err := os.Stat(oidcTokenPath)
+	if err != nil && errors.Is(err, os.ErrNotExist) {
+		dir := filepath.Dir(oidcTokenPath)
+		os.MkdirAll(dir, os.ModePerm)
+	}
+	err = os.WriteFile(oidcTokenPath, token, 0600)
+	if err != nil {
+		logging.ApiLog.Debugf("Failed to write access token to %s: %s", oidcTokenPath, err)
+	}
+	return nil
+}
+
+// Fetches the cached conjur access token. We only do this for OIDC since we don't have access
+// to the Conjur API key and this is the only credential we can save.
+func (c *Client) readCachedAccessToken() *authn.AuthnToken {
+	if contents, err := os.ReadFile(c.oidcTokenPath()); err == nil {
+		token, err := authn.NewToken(contents)
+		if err == nil {
+			token.FromJSON(contents)
+			return token
+		}
+	}
+	return nil
 }

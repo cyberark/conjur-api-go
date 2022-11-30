@@ -49,7 +49,7 @@ func TestConfig_IsValid(t *testing.T) {
 		assert.Contains(t, errString, "Must specify an ApplianceURL")
 	})
 
-	t.Run("Return error for invalid configuration missing ServiceId", func(t *testing.T) {
+	t.Run("Return error for authn-ldap configuration missing ServiceId", func(t *testing.T) {
 		config := Config{
 			Account:      "account",
 			ApplianceURL: "appliance-url",
@@ -60,7 +60,21 @@ func TestConfig_IsValid(t *testing.T) {
 		assert.Error(t, err)
 
 		errString := err.Error()
-		assert.Contains(t, errString, "Must specify a ServiceID when using ")
+		assert.Contains(t, errString, "Must specify a ServiceID when using ldap")
+	})
+
+	t.Run("Return error for authn-oidc configuration missing ServiceId", func(t *testing.T) {
+		config := Config{
+			Account:      "account",
+			ApplianceURL: "appliance-url",
+			AuthnType:    "oidc",
+		}
+
+		err := config.Validate()
+		assert.Error(t, err)
+
+		errString := err.Error()
+		assert.Contains(t, errString, "Must specify a ServiceID when using oidc")
 	})
 
 	t.Run("Return error for invalid configuration unsupported AuthnType", func(t *testing.T) {
@@ -236,7 +250,7 @@ appliance_url: test-appliance-url
 		config: Config{
 			Account:      "test-account",
 			ApplianceURL: "test-appliance-url",
-			AuthnType:    "ldap",
+			AuthnType:    "oidc",
 			ServiceID:    "test-service-id",
 			SSLCertPath:  "test-cert-path",
 			NetRCPath:    "test-netrc-path",
@@ -246,7 +260,7 @@ appliance_url: test-appliance-url
 appliance_url: test-appliance-url
 netrc_path: test-netrc-path
 cert_file: test-cert-path
-authn_type: ldap
+authn_type: oidc
 service_id: test-service-id
 `,
 	},
