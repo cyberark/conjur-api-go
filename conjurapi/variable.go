@@ -1,12 +1,11 @@
 package conjurapi
 
 import (
+	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
-	"errors"
-
-	"encoding/json"
-	"encoding/base64"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )

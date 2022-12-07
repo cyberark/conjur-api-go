@@ -204,6 +204,12 @@ func (c *Client) SubmitRequest(req *http.Request) (resp *http.Response, err erro
 		return
 	}
 
+	return c.submitRequestWithCustomAuth(req)
+}
+
+func (c *Client) submitRequestWithCustomAuth(req *http.Request) (resp *http.Response, err error) {
+
+
 	logging.ApiLog.Debugf("req: %+v\n", req)
 	resp, err = c.httpClient.Do(req)
 	if err != nil {
@@ -404,6 +410,61 @@ func (c *Client) AddSecretRequest(variableID, secretValue string) (*http.Request
 
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	return request, nil
+}
+
+func (c *Client) CreateTokenRequest(body string) (*http.Request, error) {
+
+	tokenURL := c.createTokenURL()
+	request, err := http.NewRequest(
+		"POST",
+		tokenURL,
+		strings.NewReader(body),
+	)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	return request, nil
+
+}
+
+func (c *Client) DeleteTokenRequest(token string) (*http.Request, error) {
+	tokenURL := c.createTokenURL() + "/" + token
+
+	request, err := http.NewRequest(
+		"DELETE",
+		tokenURL,
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	return request, nil
+}
+
+func (c *Client) CreateHostRequest(body string, token string) (*http.Request, error) {
+	hostURL := c.createHostURL()
+	request, err := http.NewRequest(
+		"POST",
+		hostURL,
+		strings.NewReader(body),
+	)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Add("Authorization", fmt.Sprintf("Token token=\"%s\"", token))
+
+	return request, nil
+}
+
+func (c *Client) createTokenURL() string {
+	return makeRouterURL(c.config.ApplianceURL, "host_factory_tokens").String()
+}
+
+func (c *Client) createHostURL() string {
+	return makeRouterURL(c.config.ApplianceURL, "host_factories/hosts").String()
 }
 
 func (c *Client) variableURL(variableID string) (string, error) {
