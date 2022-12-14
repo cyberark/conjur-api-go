@@ -79,6 +79,32 @@ func (c *Client) RetrieveSecretReader(variableID string) (io.ReadCloser, error) 
 	return response.SecretDataResponse(resp)
 }
 
+// RetrieveSecretWithVersion fetches a specific version of a secret from a
+// variable.
+//
+// The authenticated user must have execute privilege on the variable.
+func (c *Client) RetrieveSecretWithVersion(variableID string, version int) ([]byte, error) {
+	resp, err := c.retrieveSecretWithVersion(variableID, version)
+	if err != nil {
+		return nil, err
+	}
+
+	return response.DataResponse(resp)
+}
+
+// RetrieveSecretWithVersionReader fetches a specific version of a secret from a
+// variable and returns it as a data stream.
+//
+// The authenticated user must have execute privilege on the variable.
+func (c *Client) RetrieveSecretWithVersionReader(variableID string, version int) (io.ReadCloser, error) {
+	resp, err := c.retrieveSecretWithVersion(variableID, version)
+	if err != nil {
+		return nil, err
+	}
+
+	return response.SecretDataResponse(resp)
+}
+
 func (c *Client) retrieveBatchSecrets(variableIDs []string, base64Flag bool) (map[string]string, error) {
 	req, err := c.RetrieveBatchSecretsRequest(variableIDs, base64Flag)
 	if err != nil {
@@ -113,6 +139,15 @@ func (c *Client) retrieveBatchSecrets(variableIDs []string, base64Flag bool) (ma
 
 func (c *Client) retrieveSecret(variableID string) (*http.Response, error) {
 	req, err := c.RetrieveSecretRequest(variableID)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.SubmitRequest(req)
+}
+
+func (c *Client) retrieveSecretWithVersion(variableID string, version int) (*http.Response, error) {
+	req, err := c.RetrieveSecretWithVersionRequest(variableID, version)
 	if err != nil {
 		return nil, err
 	}

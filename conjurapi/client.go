@@ -385,6 +385,21 @@ func (c *Client) RetrieveSecretRequest(variableID string) (*http.Request, error)
 	)
 }
 
+func (c *Client) RetrieveSecretWithVersionRequest(variableID string, version int) (*http.Request, error) {
+	fullVariableID := makeFullId(c.config.Account, "variable", variableID)
+
+	variableURL, err := c.variableWithVersionURL(fullVariableID, version)
+	if err != nil {
+		return nil, err
+	}
+
+	return http.NewRequest(
+		"GET",
+		variableURL,
+		nil,
+	)
+}
+
 func (c *Client) AddSecretRequest(variableID, secretValue string) (*http.Request, error) {
 	fullVariableID := makeFullId(c.config.Account, "variable", variableID)
 
@@ -412,6 +427,15 @@ func (c *Client) variableURL(variableID string) (string, error) {
 		return "", err
 	}
 	return makeRouterURL(c.secretsURL(account), kind, url.PathEscape(id)).String(), nil
+}
+
+func (c *Client) variableWithVersionURL(variableID string, version int) (string, error) {
+	account, kind, id, err := parseID(variableID)
+	if err != nil {
+		return "", err
+	}
+	return makeRouterURL(c.secretsURL(account), kind, url.PathEscape(id)).
+		withFormattedQuery("version=%d", version).String(), nil	
 }
 
 func (c *Client) batchVariableURL(variableIDs []string) string {
