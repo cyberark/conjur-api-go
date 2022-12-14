@@ -21,7 +21,10 @@ func TestClient_RetrieveSecret(t *testing.T) {
 
 	t.Run("On a populated secret", func(t *testing.T) {
 		variableIdentifier := "existent-variable-with-defined-value"
-		secretValue := fmt.Sprintf("secret-value-%v", rand.Intn(123456))
+
+		oldSecretValue := fmt.Sprintf("old-secret-value-%v", rand.Intn(123456))
+		secretValue := fmt.Sprintf("latest-secret-value-%v", rand.Intn(123456))
+
 		policy := fmt.Sprintf(`
 - !variable %s
 `, variableIdentifier)
@@ -34,8 +37,11 @@ func TestClient_RetrieveSecret(t *testing.T) {
 			"root",
 			strings.NewReader(policy),
 		)
-		err = conjur.AddSecret(variableIdentifier, secretValue)
+		
+		err = conjur.AddSecret(variableIdentifier, oldSecretValue)
 		assert.NoError(t, err)
+
+		err = conjur.AddSecret(variableIdentifier, secretValue)
 
 		t.Run("Returns existent variable's defined value as a stream", func(t *testing.T) {
 			secretResponse, err := conjur.RetrieveSecretReader(variableIdentifier)
@@ -66,6 +72,23 @@ func TestClient_RetrieveSecret(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.Equal(t, secretValue, string(obtainedSecretValue))
+		})
+
+		t.Run("Returns correct variable when version specified", func(t *testing.T) {
+			obtainedSecretValue, err := conjur.RetrieveSecretWithVersion(variableIdentifier, 1)
+			assert.NoError(t, err)
+
+			assert.Equal(t, oldSecretValue, string(obtainedSecretValue))
+		})
+
+		t.Run("Returns correct variable value when version specified defined as a stream", func(t *testing.T) {
+			secretResponse, err := conjur.RetrieveSecretWithVersionReader(variableIdentifier, 1)
+			assert.NoError(t, err)
+
+			obtainedSecretValue, err := ReadResponseBody(secretResponse)
+			assert.NoError(t, err)
+
+			assert.Equal(t, oldSecretValue, string(obtainedSecretValue))
 		})
 
 		t.Run("Rejects an id from the wrong account", func(t *testing.T) {
