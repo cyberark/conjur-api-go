@@ -78,9 +78,7 @@ func (c *Client) Resources(filter *ResourceFilter) (resources []map[string]inter
 	}
 
 	resources = make([]map[string]interface{}, 1)
-
 	err = json.Unmarshal(data, &resources)
-
 	return
 }
 
@@ -98,4 +96,26 @@ func (c *Client) ResourceIDs(filter *ResourceFilter) ([]string, error) {
 	}
 
 	return resourceIDs, nil
+}
+
+// PermittedRoles lists the roles which have the named permission on a resource
+func (c *Client) PermittedRoles(resourceID, privilege string) ([]string, error) {
+	req, err := c.PermittedRolesRequest(resourceID, privilege)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.SubmitRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := response.DataResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	roles := make([]string, 0)
+	err = json.Unmarshal(data, &roles)
+	return roles, nil
 }

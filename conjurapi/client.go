@@ -318,6 +318,20 @@ func (c *Client) ResourcesRequest(filter *ResourceFilter) (*http.Request, error)
 	)
 }
 
+func (c *Client) PermittedRolesRequest(resourceID string, privilege string) (*http.Request, error) {
+	account, kind, id, err := parseID(resourceID)
+	if err != nil {
+		return nil, err
+	}
+	permittedRolesURL := makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id)).withFormattedQuery("permitted_roles=true&privilege=%s", url.QueryEscape(privilege)).String()
+
+	return http.NewRequest(
+		"GET",
+		permittedRolesURL,
+		nil,
+	)
+}
+
 func (c *Client) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader) (*http.Request, error) {
 	fullPolicyID := makeFullId(c.config.Account, "policy", policyID)
 
@@ -435,7 +449,7 @@ func (c *Client) variableWithVersionURL(variableID string, version int) (string,
 		return "", err
 	}
 	return makeRouterURL(c.secretsURL(account), kind, url.PathEscape(id)).
-		withFormattedQuery("version=%d", version).String(), nil	
+		withFormattedQuery("version=%d", version).String(), nil
 }
 
 func (c *Client) batchVariableURL(variableIDs []string) string {

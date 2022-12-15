@@ -137,3 +137,18 @@ func TestClient_ResourceIDs(t *testing.T) {
 	t.Run("Lists resources and limit result to 1", listResourceIDs(conjur, &ResourceFilter{Limit: 1}, 1))
 	t.Run("Lists resources after the first", listResourceIDs(conjur, &ResourceFilter{Offset: 1}, 10))
 }
+
+func TestClient_PermittedRoles(t *testing.T) {
+	listPermittedRoles := func(conjur *Client, resourceID string, expected int) func(t *testing.T) {
+		return func(t *testing.T) {
+			roles, err := conjur.PermittedRoles(resourceID, "execute")
+			assert.NoError(t, err)
+			assert.Len(t, roles, expected)
+		}
+	}
+
+	conjur, err := conjurSetup()
+	assert.NoError(t, err)
+
+	t.Run("Lists permitted roles on a variable", listPermittedRoles(conjur, "cucumber:variable:db-password", 2))
+}
