@@ -70,3 +70,13 @@ func TestNewClientFromToken(t *testing.T) {
 		assert.IsType(t, &authn.TokenAuthenticator{}, client.authenticator)
 	})
 }
+
+func TestNewClientFromOidcCode(t *testing.T) {
+	t.Run("Has authenticator of type OidcAuthenticator", func(t *testing.T) {
+		config := Config{ServiceID: "test", AuthnType: "oidc", Account: "account", ApplianceURL: "appliance-url"}
+		client, err := NewClientFromOidcCode(config, "test-code", "test-nonce", "test-code-verifier")
+
+		assert.NoError(t, err)
+		assert.IsType(t, &authn.OidcAuthenticator{}, client.authenticator)
+	})
+}

@@ -14,16 +14,18 @@ import (
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 )
 
-var supportedAuthnTypes = []string{"authn", "ldap"}
+var supportedAuthnTypes = []string{"authn", "ldap", "oidc"}
+var defaultOidcTokenPath = os.ExpandEnv("$HOME/.conjur/oidc_token")
 
 type Config struct {
-	Account      string `yaml:"account,omitempty"`
-	ApplianceURL string `yaml:"appliance_url,omitempty"`
-	NetRCPath    string `yaml:"netrc_path,omitempty"`
-	SSLCert      string `yaml:"-"`
-	SSLCertPath  string `yaml:"cert_file,omitempty"`
-	AuthnType    string `yaml:"authn_type,omitempty"`
-	ServiceID    string `yaml:"service_id,omitempty"`
+	Account       string `yaml:"account,omitempty"`
+	ApplianceURL  string `yaml:"appliance_url,omitempty"`
+	NetRCPath     string `yaml:"netrc_path,omitempty"`
+	SSLCert       string `yaml:"-"`
+	SSLCertPath   string `yaml:"cert_file,omitempty"`
+	AuthnType     string `yaml:"authn_type,omitempty"`
+	ServiceID     string `yaml:"service_id,omitempty"`
+	OidcTokenPath string `yaml:"oidc_token_path,omitempty"`
 }
 
 func (c *Config) IsHttps() bool {
@@ -45,8 +47,8 @@ func (c *Config) Validate() error {
 		errors = append(errors, fmt.Sprintf("AuthnType must be one of %v", supportedAuthnTypes))
 	}
 
-	if c.AuthnType == "ldap" && c.ServiceID == "" {
-		errors = append(errors, "Must specify a ServiceID when using LDAP")
+	if (c.AuthnType == "ldap" || c.AuthnType == "oidc") && c.ServiceID == "" {
+		errors = append(errors, fmt.Sprintf("Must specify a ServiceID when using %s", c.AuthnType))
 	}
 
 	if len(errors) == 0 {

@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- Added support for Conjur's LDAP authenticator
+  [cyberark/conjur-api-go#141](https://github.com/cyberark/conjur-api-go/pull/141)
+- Added support for Conjur's OIDC authenticator
+  [cyberark/conjur-api-go#144](https://github.com/cyberark/conjur-api-go/pull/144)
+
 ### Removed
 - Remove all usage of Conjur v4
   [cyberark/conjur-api-go#139](https://github.com/cyberark/conjur-api-go/pull/139)

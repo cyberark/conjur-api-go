@@ -42,6 +42,22 @@ func NewClientFromKey(config Config, loginPair authn.LoginPair) (*Client, error)
 	return client, err
 }
 
+func NewClientFromOidcCode(config Config, code, nonce, code_verifier string) (*Client, error) {
+	authenticator := &authn.OidcAuthenticator{
+		Code:         code,
+		Nonce:        nonce,
+		CodeVerifier: code_verifier,
+	}
+	client, err := newClientWithAuthenticator(
+		config,
+		authenticator,
+	)
+	if err == nil {
+		authenticator.Authenticate = client.OidcAuthenticate
+	}
+	return client, err
+}
+
 // ReadResponseBody fully reads a response and closes it.
 func ReadResponseBody(response io.ReadCloser) ([]byte, error) {
 	defer response.Close()
@@ -175,6 +191,19 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 		return NewClientFromKey(config, *loginPair)
 	}
 
+	if config.AuthnType == "oidc" {
+		client, err := NewClientFromOidcCode(config, "", "", "")
+		if err != nil {
+			return nil, err
+		}
+		token := client.readCachedAccessToken()
+		if token != nil && !token.ShouldRefresh() {
+			return client, nil
+		}
+
+		return nil, fmt.Errorf("No valid OIDC token found. Please login again.")
+	}
+
 	return nil, fmt.Errorf("Environment variables and machine identity files satisfying at least one authentication strategy must be present!")
 }
 
@@ -238,6 +267,21 @@ func (c *Client) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, 
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "text/plain")
+
+	return req, nil
+}
+
+func (c *Client) ListOidcProvidersRequest() (*http.Request, error) {
+	return http.NewRequest("GET", c.oidcProvidersUrl(), nil)
+}
+
+func (c *Client) OidcAuthenticateRequest(code, nonce, code_verifier string) (*http.Request, error) {
+	authenticateURL := makeRouterURL(c.authnURL(), "authenticate").withFormattedQuery("code=%s&nonce=%s&code_verifier=%s", code, nonce, code_verifier).String()
+
+	req, err := http.NewRequest("GET", authenticateURL, nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -458,10 +502,18 @@ func (c *Client) batchVariableURL(variableIDs []string) string {
 }
 
 func (c *Client) authnURL() string {
-	if c.config.AuthnType == "ldap" {
-		return makeRouterURL(c.config.ApplianceURL, "authn-ldap", c.config.ServiceID, c.config.Account).String()
+	if c.config.AuthnType != "" && c.config.AuthnType != "authn" {
+		// If using an alternate authn service, such as authn-oidc, the URL will be
+		// '/authn-<type>/<service-id>/<account>'
+		authnType := fmt.Sprintf("authn-%s", c.config.AuthnType)
+		return makeRouterURL(c.config.ApplianceURL, authnType, c.config.ServiceID, c.config.Account).String()
 	}
+	// For the default authn service, the URL will be '/authn/<account>'
 	return makeRouterURL(c.config.ApplianceURL, "authn", c.config.Account).String()
+}
+
+func (c *Client) oidcProvidersUrl() string {
+	return makeRouterURL(c.config.ApplianceURL, "authn-oidc", c.config.Account, "providers").String()
 }
 
 func (c *Client) resourcesURL(account string) string {
