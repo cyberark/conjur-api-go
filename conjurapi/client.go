@@ -382,6 +382,48 @@ func (c *Client) PermittedRolesRequest(resourceID string, privilege string) (*ht
 	)
 }
 
+func (c *Client) RoleRequest(roleID string) (*http.Request, error) {
+	account, kind, id, err := parseID(roleID)
+	if err != nil {
+		return nil, err
+	}
+	roleURL := makeRouterURL(c.rolesURL(account), kind, url.QueryEscape(id))
+
+	return http.NewRequest(
+		"GET",
+		roleURL.String(),
+		nil,
+	)
+}
+
+func (c *Client) RoleMembersRequest(roleID string) (*http.Request, error) {
+	account, kind, id, err := parseID(roleID)
+	if err != nil {
+		return nil, err
+	}
+	roleMembersURL := makeRouterURL(c.rolesURL(account), kind, url.QueryEscape(id)).withFormattedQuery("members")
+
+	return http.NewRequest(
+		"GET",
+		roleMembersURL.String(),
+		nil,
+	)
+}
+
+func (c *Client) RoleMembershipsRequest(roleID string) (*http.Request, error) {
+	account, kind, id, err := parseID(roleID)
+	if err != nil {
+		return nil, err
+	}
+	roleMembershipsURL := makeRouterURL(c.rolesURL(account), kind, url.QueryEscape(id)).withFormattedQuery("memberships")
+
+	return http.NewRequest(
+		"GET",
+		roleMembershipsURL.String(),
+		nil,
+	)
+}
+
 func (c *Client) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader) (*http.Request, error) {
 	fullPolicyID := makeFullId(c.config.Account, "policy", policyID)
 
@@ -579,6 +621,10 @@ func (c *Client) oidcProvidersUrl() string {
 
 func (c *Client) resourcesURL(account string) string {
 	return makeRouterURL(c.config.ApplianceURL, "resources", account).String()
+}
+
+func (c *Client) rolesURL(account string) string {
+	return makeRouterURL(c.config.ApplianceURL, "roles", account).String()
 }
 
 func (c *Client) secretsURL(account string) string {
