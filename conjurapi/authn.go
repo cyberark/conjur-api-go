@@ -234,7 +234,7 @@ func (c *Client) rotateAPIKey(roleID string) (*http.Response, error) {
 func (c *Client) oidcTokenPath() string {
 	oidcTokenPath := c.GetConfig().OidcTokenPath
 	if oidcTokenPath == "" {
-		oidcTokenPath = defaultOidcTokenPath
+		oidcTokenPath = DefaultOidcTokenPath
 	}
 	return oidcTokenPath
 }

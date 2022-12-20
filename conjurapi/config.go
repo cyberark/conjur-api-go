@@ -15,7 +15,10 @@ import (
 )
 
 var supportedAuthnTypes = []string{"authn", "ldap", "oidc"}
-var defaultOidcTokenPath = os.ExpandEnv("$HOME/.conjur/oidc_token")
+
+// DefaultOidcTokenPath is the default path where the API will store the
+// access token when using authn-oidc
+var DefaultOidcTokenPath = os.ExpandEnv("$HOME/.conjur/oidc_token")
 
 type Config struct {
 	Account       string `yaml:"account,omitempty"`
