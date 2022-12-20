@@ -192,7 +192,7 @@ func TestClient_OidcAuthenticate(t *testing.T) {
 			// Check that token was cached to the correct location
 			var tokenPath string
 			if tc.tokenPath == "" {
-				tokenPath = defaultOidcTokenPath
+				tokenPath = DefaultOidcTokenPath
 			} else {
 				tokenPath = tc.tokenPath
 			}
