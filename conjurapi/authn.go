@@ -14,8 +14,8 @@ import (
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
-// OidcProviderResponse contains information about an OIDC provider.
-type OidcProviderResponse struct {
+// OidcProvider contains information about an OIDC provider.
+type OidcProvider struct {
 	ServiceID    string `json:"service_id"`
 	Type         string `json:"type"`
 	Name         string `json:"name"`
@@ -158,7 +158,7 @@ func (c *Client) OidcAuthenticate(code, nonce, code_verifier string) ([]byte, er
 	return resp, err
 }
 
-func (c *Client) ListOidcProviders() ([]OidcProviderResponse, error) {
+func (c *Client) ListOidcProviders() ([]OidcProvider, error) {
 	req, err := c.ListOidcProvidersRequest()
 	if err != nil {
 		return nil, err
@@ -169,7 +169,7 @@ func (c *Client) ListOidcProviders() ([]OidcProviderResponse, error) {
 		return nil, err
 	}
 
-	providers := []OidcProviderResponse{}
+	providers := []OidcProvider{}
 	err = response.JSONResponse(resp, &providers)
 
 	return providers, err
