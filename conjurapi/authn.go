@@ -25,8 +25,6 @@ type OidcProvider struct {
 }
 
 func (c *Client) RefreshToken() (err error) {
-	var token *authn.AuthnToken
-
 	// Fetch cached conjur access token if using OIDC
 	if c.GetConfig().AuthnType == "oidc" {
 		token := c.readCachedAccessToken()
@@ -36,19 +34,31 @@ func (c *Client) RefreshToken() (err error) {
 	}
 
 	if c.NeedsTokenRefresh() {
-		var tokenBytes []byte
-		tokenBytes, err = c.authenticator.RefreshToken()
-		if err == nil {
-			token, err = authn.NewToken(tokenBytes)
-			if err != nil {
-				return
-			}
-			token.FromJSON(tokenBytes)
-			c.authToken = token
-		}
+		return c.refreshToken()
 	}
 
-	return
+	return nil
+}
+
+func (c *Client) ForceRefreshToken() error {
+	return c.refreshToken()
+}
+
+func (c *Client) refreshToken() error {
+	var tokenBytes []byte
+	tokenBytes, err := c.authenticator.RefreshToken()
+	if err != nil {
+		return err
+	}
+
+	token, err := authn.NewToken(tokenBytes)
+	if err != nil {
+		return err
+	}
+
+	token.FromJSON(tokenBytes)
+	c.authToken = token
+	return nil
 }
 
 func (c *Client) NeedsTokenRefresh() bool {
@@ -91,6 +101,19 @@ func (c *Client) InternalAuthenticate() ([]byte, error) {
 		return nil, fmt.Errorf("%s", "unable to authenticate using client without authenticator")
 	}
 
+	// If using OIDC, check if we have a cached access token
+	if c.GetConfig().AuthnType == "oidc" {
+		token := c.readCachedAccessToken()
+		if token != nil && !token.ShouldRefresh() {
+			return token.Raw(), nil
+		} else {
+			// We can't simply refresh the token because it'll require user input. Instead,
+			// we return an error and inform the client/user to login again.
+			return nil, errors.New("No valid OIDC token found. Please login again.")
+		}
+	}
+
+	// Otherwise refresh the token
 	return c.authenticator.RefreshToken()
 }
 
