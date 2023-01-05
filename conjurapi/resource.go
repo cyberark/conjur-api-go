@@ -36,6 +36,27 @@ func (c *Client) CheckPermission(resourceID, privilege string) (bool, error) {
 	}
 }
 
+// ResourceExists checks whether or not a resource exists
+func (c *Client) ResourceExists(resourceID string) (bool, error) {
+	req, err := c.ResourceRequest(resourceID)
+	if err != nil {
+		return false, err
+	}
+
+	resp, err := c.SubmitRequest(req)
+	if err != nil {
+		return false, err
+	}
+
+	if (resp.StatusCode >= 200 && resp.StatusCode < 300) || resp.StatusCode == 403 {
+		return true, nil
+	} else if resp.StatusCode == 404 {
+		return false, nil
+	} else {
+		return false, fmt.Errorf("Resource exists check failed with HTTP status %d", resp.StatusCode)
+	}
+}
+
 // Resource fetches a single user-visible resource by id.
 func (c *Client) Resource(resourceID string) (resource map[string]interface{}, err error) {
 	req, err := c.ResourceRequest(resourceID)

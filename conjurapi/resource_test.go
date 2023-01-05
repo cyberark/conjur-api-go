@@ -82,6 +82,30 @@ func TestClient_CheckPermission(t *testing.T) {
 	t.Run("Check a permission on a non-existent resource", checkNonExisting(conjur, "cucumber:variable:foobar"))
 }
 
+func TestClient_ResourceExists(t *testing.T) {
+	resourceExistent := func(conjur *Client, id string) func (t *testing.T) {
+		return func(t *testing.T) {
+			exists, err := conjur.ResourceExists(id)
+			assert.NoError(t, err)
+			assert.True(t, exists)
+		}
+	}
+
+	resourceNonexistent := func(conjur *Client, id string) func (t *testing.T) {
+		return func(t *testing.T) {
+			exists, err := conjur.ResourceExists(id)
+			assert.NoError(t, err)
+			assert.False(t, exists)
+		}
+	}
+
+	conjur, err := conjurSetup()
+	assert.NoError(t, err)
+
+	t.Run("Resource exists returns true", resourceExistent(conjur, "cucumber:variable:db-password"))
+	t.Run("Resource exists returns false", resourceNonexistent(conjur, "cucumber:variable:nonexistent"))
+}
+
 func TestClient_Resources(t *testing.T) {
 	listResources := func(conjur *Client, filter *ResourceFilter, expected int) func(t *testing.T) {
 		return func(t *testing.T) {
