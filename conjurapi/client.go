@@ -342,12 +342,18 @@ func (c *Client) ChangeUserPasswordRequest(username string, password string, new
 	return req, nil
 }
 
-func (c *Client) CheckPermissionRequest(resourceID string, privilege string) (*http.Request, error) {
+func (c *Client) CheckPermissionRequest(resourceID string, roleID string, privilege string) (*http.Request, error) {
 	account, kind, id, err := parseID(resourceID)
 	if err != nil {
 		return nil, err
 	}
-	checkURL := makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id)).withFormattedQuery("check=true&privilege=%s", url.QueryEscape(privilege)).String()
+
+	var checkURL string
+	if len(roleID) != 0 {
+		checkURL = makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id)).withFormattedQuery("check=true&role=%s&privilege=%s", url.QueryEscape(roleID), url.QueryEscape(privilege)).String()
+	} else {
+		checkURL = makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id)).withFormattedQuery("check=true&privilege=%s", url.QueryEscape(privilege)).String()
+	}
 
 	return http.NewRequest(
 		"GET",

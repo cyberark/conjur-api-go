@@ -7,18 +7,18 @@ import (
 )
 
 func TestClient_CheckPermission(t *testing.T) {
-	checkAllowed := func(conjur *Client, id string) func(t *testing.T) {
+	checkAllowed := func(conjur *Client, id string, role string) func(t *testing.T) {
 		return func(t *testing.T) {
-			allowed, err := conjur.CheckPermission(id, "execute")
+			allowed, err := conjur.CheckPermission(id, role, "execute")
 
 			assert.NoError(t, err)
 			assert.True(t, allowed)
 		}
 	}
 
-	checkNonExisting := func(conjur *Client, id string) func(t *testing.T) {
+	checkNotAllowed := func(conjur *Client, id string, role string) func(t *testing.T) {
 		return func(t *testing.T) {
-			allowed, err := conjur.CheckPermission(id, "execute")
+			allowed, err := conjur.CheckPermission(id, role, "execute")
 
 			assert.NoError(t, err)
 			assert.False(t, allowed)
@@ -28,9 +28,10 @@ func TestClient_CheckPermission(t *testing.T) {
 	conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
 	assert.NoError(t, err)
 
-	t.Run("Check an allowed permission", checkAllowed(conjur, "cucumber:variable:db-password"))
-
-	t.Run("Check a permission on a non-existent resource", checkNonExisting(conjur, "cucumber:variable:foobar"))
+	t.Run("Check an allowed permission for default admin role", checkAllowed(conjur, "cucumber:variable:db-password", ""))
+	t.Run("Check an allowed permission for a role", checkAllowed(conjur, "cucumber:variable:db-password", "cucumber:user:alice"))
+	t.Run("Check a permission on a non-existent resource", checkNotAllowed(conjur, "cucumber:variable:foobar", "cucumber:user:alice"))
+	t.Run("Check no permission for a role", checkNotAllowed(conjur, "cucumber:variable:db-password", "cucumber:host:bob"))
 }
 
 func TestClient_ResourceExists(t *testing.T) {

@@ -16,8 +16,8 @@ type ResourceFilter struct {
 
 // CheckPermission determines whether the authenticated user has a specified privilege
 // on a resource.
-func (c *Client) CheckPermission(resourceID, privilege string) (bool, error) {
-	req, err := c.CheckPermissionRequest(resourceID, privilege)
+func (c *Client) CheckPermission(resourceID string, roleID string, privilege string) (bool, error) {
+	req, err := c.CheckPermissionRequest(resourceID, roleID, privilege)
 	if err != nil {
 		return false, err
 	}
