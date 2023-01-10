@@ -159,7 +159,7 @@ func PurgeCredentials(config Config) error {
 // Authenticate obtains a new access token using the internal authenticator.
 func (c *Client) InternalAuthenticate() ([]byte, error) {
 	if c.authenticator == nil {
-		return nil, fmt.Errorf("%s", "unable to authenticate using client without authenticator")
+		return nil, errors.New("unable to authenticate using client without authenticator")
 	}
 
 	// If using OIDC, check if we have a cached access token

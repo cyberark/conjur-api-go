@@ -153,6 +153,33 @@ func runRotateUserAPIKeyAssertions(t *testing.T, tc rotateUserAPIKeyTestCase, co
 	assert.NoError(t, err)
 }
 
+func TestClient_Whoami(t *testing.T) {
+	t.Run("Whoami", func(t *testing.T) {
+		conjur, err := conjurSetup()
+		assert.NoError(t, err)
+
+		resp, err := conjur.WhoAmI()
+		assert.NoError(t, err)
+
+		respStr := string(resp)
+		assert.Contains(t, respStr, `"account":"cucumber"`)
+		assert.Contains(t, respStr, `"username":"admin"`)
+	})
+}
+
+func TestClient_ListOidcProviders(t *testing.T) {
+	t.Run("List OIDC Providers", func(t *testing.T) {
+		ts, client := setupTestClient(t)
+		defer ts.Close()
+
+		providers, err := client.ListOidcProviders()
+		assert.NoError(t, err)
+
+		assert.Equal(t, 1, len(providers))
+		assert.Equal(t, "test-service-id", providers[0].ServiceID)
+	})
+}
+
 func TestClient_Login(t *testing.T) {
 	t.Run("Login and Authenticate", func(t *testing.T) {
 		ts, client := setupTestClient(t)
@@ -253,6 +280,123 @@ func TestClient_PurgeCredentials(t *testing.T) {
 	})
 }
 
+func TestPurgeCredentials(t *testing.T) {
+	// Test the PurgeCredentials function which doesn't require a client
+
+	t.Run("Purges credentials from netrc", func(t *testing.T) {
+		tempDir := t.TempDir()
+		config := Config{
+			Account:           "cucumber",
+			ApplianceURL:      "https://conjur",
+			NetRCPath:         filepath.Join(tempDir, ".netrc"),
+			CredentialStorage: "file",
+		}
+
+		initialContent := `
+machine https://conjur/authn
+	login cucumber
+	password test-api-key`
+
+		err := os.WriteFile(config.NetRCPath, []byte(initialContent), 0600)
+		assert.NoError(t, err)
+
+		err = PurgeCredentials(config)
+		assert.NoError(t, err)
+
+		contents, err := os.ReadFile(config.NetRCPath)
+		assert.NoError(t, err)
+		assert.NotContains(t, string(contents), "https://conjur/authn")
+		assert.NotContains(t, string(contents), "cucumber")
+		assert.NotContains(t, string(contents), "test-api-key")
+	})
+
+	t.Run("Doesn't fail when not storing credentials", func(t *testing.T) {
+		config := Config{
+			Account:           "cucumber",
+			ApplianceURL:      "https://conjur",
+			CredentialStorage: "none",
+		}
+		err := PurgeCredentials(config)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Returns error for unrecognized storage provider", func(t *testing.T) {
+		config := Config{
+			Account:           "cucumber",
+			ApplianceURL:      "https://conjur",
+			CredentialStorage: "invalid",
+		}
+		err := PurgeCredentials(config)
+		assert.EqualError(t, err, "Unknown credential storage type")
+	})
+}
+
+func TestClient_InternalAuthenticate(t *testing.T) {
+	config := Config{
+		Account:      "cucumber",
+		ApplianceURL: "https://conjur",
+	}
+
+	t.Run("Returns error if no authenticator", func(t *testing.T) {
+		client, err := NewClient(config)
+		assert.NoError(t, err)
+
+		_, err = client.InternalAuthenticate()
+		assert.EqualError(t, err, "unable to authenticate using client without authenticator")
+	})
+
+	t.Run("Returns token from authenticator", func(t *testing.T) {
+		client, err := NewClient(config)
+		assert.NoError(t, err)
+
+		client.authenticator = &authn.TokenAuthenticator{Token: "test-token"}
+		token, err := client.InternalAuthenticate()
+		assert.NoError(t, err)
+		assert.Equal(t, "test-token", string(token))
+	})
+
+	t.Run("Returns error if authenticator returns error", func(t *testing.T) {
+		client, err := NewClient(config)
+		assert.NoError(t, err)
+
+		client.authenticator = &authn.OidcAuthenticator{
+			Authenticate: func(code, noce, code_verifier string) ([]byte, error) {
+				return nil, errors.New("error")
+			},
+		}
+		_, err = client.InternalAuthenticate()
+		assert.EqualError(t, err, "error")
+	})
+
+	t.Run("Returns re-login message when using OIDC and token is expired", func(t *testing.T) {
+		expired_token := `{"protected":"eyJhbGciOiJjb25qdXIub3JnL3Nsb3NpbG8vdjIiLCJraWQiOiI5M2VjNTEwODRmZTM3Zjc3M2I1ODhlNTYyYWVjZGMxMSJ9","payload":"eyJzdWIiOiJhZG1pbiIsImlhdCI6MTUxMDc1MzI1OX0=","signature":"raCufKOf7sKzciZInQTphu1mBbLhAdIJM72ChLB4m5wKWxFnNz_7LawQ9iYEI_we1-tdZtTXoopn_T1qoTplR9_Bo3KkpI5Hj3DB7SmBpR3CSRTnnEwkJ0_aJ8bql5Cbst4i4rSftyEmUqX-FDOqJdAztdi9BUJyLfbeKTW9OGg-QJQzPX1ucB7IpvTFCEjMoO8KUxZpbHj-KpwqAMZRooG4ULBkxp5nSfs-LN27JupU58oRgIfaWASaDmA98O2x6o88MFpxK_M0FeFGuDKewNGrRc8lCOtTQ9cULA080M5CSnruCqu1Qd52r72KIOAfyzNIiBCLTkblz2fZyEkdSKQmZ8J3AakxQE2jyHmMT-eXjfsEIzEt-IRPJIirI3Qm"}`
+		_, err := runOIDCInternalAuthenticateTest(t, expired_token, nil)
+		assert.EqualError(t, err, "No valid OIDC token found. Please login again.")
+	})
+
+	t.Run("Returns error if storage returns error", func(t *testing.T) {
+		_, err := runOIDCInternalAuthenticateTest(t, "", errors.New("error"))
+		assert.EqualError(t, err, "No valid OIDC token found. Please login again.")
+	})
+}
+
+func runOIDCInternalAuthenticateTest(t *testing.T, token string, injectErr error) ([]byte, error) {
+	client, err := NewClient(Config{
+		Account:      "cucumber",
+		ApplianceURL: "https://conjur",
+		AuthnType:    "oidc",
+		ServiceID:    "test-service",
+	})
+	assert.NoError(t, err)
+
+	client.storage = &mockStorageProvider{
+		password:    token,
+		injectError: injectErr,
+	}
+	client.authenticator = &authn.OidcAuthenticator{}
+	return client.InternalAuthenticate()
+}
+
 func setupTestClient(t *testing.T) (*httptest.Server, *Client) {
 	mockConjurServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Listen for the login, authenticate, and oidc endpoints and return test values
@@ -271,6 +415,9 @@ func setupTestClient(t *testing.T) (*httptest.Server, *Client) {
 		} else if strings.HasSuffix(r.URL.Path, "/authn-oidc/test-service-id/cucumber/authenticate") {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("test-token-oidc"))
+		} else if strings.HasSuffix(r.URL.Path, "/authn-oidc/cucumber/providers") {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`[{"service_id": "test-service-id"}]`))
 		} else {
 			w.WriteHeader(http.StatusNotFound)
 		}
