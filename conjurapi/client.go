@@ -98,7 +98,7 @@ func LoginPairFromNetRC(config Config) (*authn.LoginPair, error) {
 		return nil, err
 	}
 
-	m := rc.FindMachine(config.ApplianceURL + "/authn")
+	m := rc.FindMachine(getMachineName(config))
 
 	if m == nil {
 		return nil, fmt.Errorf("No credentials found in NetRCPath")
@@ -196,7 +196,7 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 		if err != nil {
 			return nil, err
 		}
-		token := client.readCachedAccessToken()
+		token := readCachedAccessToken(config)
 		if token != nil && !token.ShouldRefresh() {
 			return client, nil
 		}
@@ -237,8 +237,6 @@ func (c *Client) SubmitRequest(req *http.Request) (resp *http.Response, err erro
 }
 
 func (c *Client) submitRequestWithCustomAuth(req *http.Request) (resp *http.Response, err error) {
-
-
 	logging.ApiLog.Debugf("req: %+v\n", req)
 	resp, err = c.httpClient.Do(req)
 	if err != nil {
@@ -707,6 +705,8 @@ func newHTTPSClient(cert []byte) (*http.Client, error) {
 	if !ok {
 		return nil, fmt.Errorf("Can't append Conjur SSL cert")
 	}
+	//TODO: Test what happens if this cert is expired
+	//TODO: What if server cert is rotated
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{RootCAs: pool},
 	}

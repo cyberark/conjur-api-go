@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -151,89 +152,112 @@ func runRotateUserAPIKeyAssertions(t *testing.T, tc rotateUserAPIKeyTestCase, co
 	assert.NoError(t, err)
 }
 
-func TestClient_OidcAuthenticate(t *testing.T) {
-	testCases := []struct {
-		name                 string
-		tokenPath            string
-		expectFileWriteError bool
-	}{
-		{
-			name:      "Caches token to default location",
-			tokenPath: "",
-		},
-		{
-			name:      "Caches token to custom location",
-			tokenPath: t.TempDir() + "/tmp/test-token",
-		},
-		{
-			// Writing this file will fail but there should be no error returned from OidcAuthenticate()
-			name:                 "Caches token to custom location with trailing slash",
-			tokenPath:            t.TempDir() + "/tmp/test-token/",
-			expectFileWriteError: true,
-		},
-	}
+func TestClient_Login(t *testing.T) {
+	t.Run("Login and Authenticate", func(t *testing.T) {
+		ts, client := setupTestClient(t)
+		defer ts.Close()
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			ts, client := setupTestOidcClient(tc.tokenPath)
-			defer ts.Close()
+		token, err := client.Login("alice", "password")
+		assert.NoError(t, err)
+		assert.Equal(t, "test-api-key", string(token))
 
-			token, err := client.OidcAuthenticate("code", "nonce", "code-verifier")
+		// Check that api key was cached to the correct location
+		contents, err := os.ReadFile(client.GetConfig().NetRCPath)
+		assert.NoError(t, err)
+		assert.Contains(t, string(contents), client.GetConfig().ApplianceURL+"/authn")
+		assert.Contains(t, string(contents), "test-api-key")
 
-			assert.NoError(t, err)
-			assert.Equal(t, "test-token", string(token))
+		// Check that we can authenticate with the cached api key
+		token, err = client.Authenticate(authn.LoginPair{Login: "alice", APIKey: string(token)})
+		assert.NoError(t, err)
+		assert.Equal(t, "test-token", string(token))
+	})
 
-			if tc.expectFileWriteError {
-				// File writing should have failed, so the token should not have been cached
-				// We just want to test that there was no error returned from OidcAuthenticate()
-				return
-			}
+	t.Run("OIDC authentication", func(t *testing.T) {
+		ts, client := setupTestClient(t)
+		defer ts.Close()
 
-			// Check that token was cached to the correct location
-			var tokenPath string
-			if tc.tokenPath == "" {
-				tokenPath = DefaultOidcTokenPath
-			} else {
-				tokenPath = tc.tokenPath
-			}
+		client.config.AuthnType = "oidc"
+		client.config.ServiceID = "test-service-id"
 
-			// Check file permissions
-			fileInfo, err := os.Stat(tokenPath)
-			assert.NoError(t, err)
-			assert.Equal(t, os.FileMode(0600), fileInfo.Mode().Perm())
+		token, err := client.OidcAuthenticate("code", "nonce", "code-verifier")
+		assert.NoError(t, err)
+		assert.Equal(t, "test-token-oidc", string(token))
 
-			// Check file contents
-			tokenFile, err := os.Open(tokenPath)
-			assert.NoError(t, err)
-
-			tokenBytes, err := io.ReadAll(tokenFile)
-			assert.NoError(t, err)
-			assert.Equal(t, "test-token", string(tokenBytes))
-
-			// Cleanup
-			os.Remove(tokenPath)
-		})
-	}
+		// Check that token was cached to the correct location
+		contents, err := os.ReadFile(client.GetConfig().NetRCPath)
+		assert.NoError(t, err)
+		assert.Contains(t, string(contents), client.GetConfig().ApplianceURL+"/authn-oidc/test-service-id")
+		assert.Contains(t, string(contents), "test-token-oidc")
+	})
 }
 
-func setupTestOidcClient(tokenPath string) (*httptest.Server, *Client) {
+func TestClient_PurgeCredentials(t *testing.T) {
+	config := setupConfig(t)
+
+	t.Run("Removes machine if it exists", func(t *testing.T) {
+		initialContent := `
+machine http://conjur/authn
+	login admin
+	password password`
+
+		err := os.WriteFile(config.NetRCPath, []byte(initialContent), 0600)
+		assert.NoError(t, err)
+
+		err = PurgeCredentials(config)
+		assert.NoError(t, err)
+
+		contents, err := os.ReadFile(config.NetRCPath)
+		assert.NoError(t, err)
+		assert.NotContains(t, string(contents), config.ApplianceURL)
+	})
+
+	t.Run("Does not error if machine does not exist", func(t *testing.T) {
+		os.Remove(config.NetRCPath)
+		_, err := os.Create(config.NetRCPath)
+		assert.NoError(t, err)
+
+		err = PurgeCredentials(config)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Does not error if file does not exist", func(t *testing.T) {
+		os.Remove(config.NetRCPath)
+
+		err := PurgeCredentials(config)
+		assert.NoError(t, err)
+	})
+}
+
+func setupTestClient(t *testing.T) (*httptest.Server, *Client) {
 	mockConjurServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Listen for the authenticate endpoint and return a test token
-		if strings.HasSuffix(r.URL.Path, "/authn-oidc/test-provider/cucumber/authenticate") {
+		// Listen for the login, authenticate, and oidc endpoints and return test values
+		if strings.HasSuffix(r.URL.Path, "/authn/cucumber/login") {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("test-token"))
+			w.Write([]byte("test-api-key"))
+		} else if strings.HasSuffix(r.URL.Path, "/authn/cucumber/alice/authenticate") {
+			// Ensure that the api key we returned in /login is being used
+			body, _ := io.ReadAll(r.Body)
+			if string(body) == "test-api-key" {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("test-token"))
+			} else {
+				w.WriteHeader(http.StatusUnauthorized)
+			}
+		} else if strings.HasSuffix(r.URL.Path, "/authn-oidc/test-service-id/cucumber/authenticate") {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("test-token-oidc"))
 		} else {
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
 
+	tempDir := t.TempDir()
 	client := &Client{
 		config: Config{
-			Account:       "cucumber",
-			ApplianceURL:  mockConjurServer.URL,
-			AuthnType:     "oidc",
-			ServiceID:     "test-provider",
-			OidcTokenPath: tokenPath,
+			Account:      "cucumber",
+			ApplianceURL: mockConjurServer.URL,
+			NetRCPath:    filepath.Join(tempDir, ".netrc"),
 		},
 		httpClient: &http.Client{},
 	}

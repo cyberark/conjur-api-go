@@ -16,19 +16,15 @@ import (
 
 var supportedAuthnTypes = []string{"authn", "ldap", "oidc"}
 
-// DefaultOidcTokenPath is the default path where the API will store the
-// access token when using authn-oidc
-var DefaultOidcTokenPath = os.ExpandEnv("$HOME/.conjur/oidc_token")
-
 type Config struct {
-	Account       string `yaml:"account,omitempty"`
-	ApplianceURL  string `yaml:"appliance_url,omitempty"`
-	NetRCPath     string `yaml:"netrc_path,omitempty"`
-	SSLCert       string `yaml:"-"`
-	SSLCertPath   string `yaml:"cert_file,omitempty"`
-	AuthnType     string `yaml:"authn_type,omitempty"`
-	ServiceID     string `yaml:"service_id,omitempty"`
-	OidcTokenPath string `yaml:"oidc_token_path,omitempty"`
+	Account             string `yaml:"account,omitempty"`
+	ApplianceURL        string `yaml:"appliance_url,omitempty"`
+	NetRCPath           string `yaml:"netrc_path,omitempty"`
+	SSLCert             string `yaml:"-"`
+	SSLCertPath         string `yaml:"cert_file,omitempty"`
+	AuthnType           string `yaml:"authn_type,omitempty"`
+	ServiceID           string `yaml:"service_id,omitempty"`
+	DontSaveCredentials bool   `yaml:"-"`
 }
 
 func (c *Config) IsHttps() bool {
