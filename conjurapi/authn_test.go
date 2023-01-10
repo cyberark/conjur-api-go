@@ -1,6 +1,7 @@
 package conjurapi
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -180,6 +181,10 @@ func TestClient_Login(t *testing.T) {
 		client.config.AuthnType = "oidc"
 		client.config.ServiceID = "test-service-id"
 
+		storage, err := createStorageProvider(client.config)
+		assert.NoError(t, err)
+		client.storage = storage
+
 		token, err := client.OidcAuthenticate("code", "nonce", "code-verifier")
 		assert.NoError(t, err)
 		assert.Equal(t, "test-token-oidc", string(token))
@@ -192,40 +197,59 @@ func TestClient_Login(t *testing.T) {
 	})
 }
 
+type mockStorageProvider struct {
+	username    string
+	password    string
+	injectError error
+	purgeCalled bool
+}
+
+func (m *mockStorageProvider) ReadCredentials() (string, string, error) {
+	return m.username, m.password, m.injectError
+}
+
+func (m *mockStorageProvider) StoreCredentials(username, password string) error {
+	m.username = username
+	m.password = password
+	return m.injectError
+}
+
+func (m *mockStorageProvider) StoreAuthnToken(token []byte) error {
+	return m.StoreCredentials("", string(token))
+}
+
+func (m *mockStorageProvider) ReadAuthnToken() ([]byte, error) {
+	_, token, err := m.ReadCredentials()
+	return []byte(token), err
+}
+
+func (m *mockStorageProvider) PurgeCredentials() error {
+	m.purgeCalled = true
+	m.username = ""
+	m.password = ""
+	return m.injectError
+}
+
 func TestClient_PurgeCredentials(t *testing.T) {
-	config := setupConfig(t)
+	client := &Client{
+		config: Config{
+			Account:      "cucumber",
+			ApplianceURL: "https://conjur",
+		},
+		httpClient: &http.Client{},
+		storage:    &mockStorageProvider{},
+	}
 
-	t.Run("Removes machine if it exists", func(t *testing.T) {
-		initialContent := `
-machine http://conjur/authn
-	login admin
-	password password`
-
-		err := os.WriteFile(config.NetRCPath, []byte(initialContent), 0600)
+	t.Run("Calls storage provider's PurgeCredentials", func(t *testing.T) {
+		err := client.PurgeCredentials()
 		assert.NoError(t, err)
-
-		err = PurgeCredentials(config)
-		assert.NoError(t, err)
-
-		contents, err := os.ReadFile(config.NetRCPath)
-		assert.NoError(t, err)
-		assert.NotContains(t, string(contents), config.ApplianceURL)
+		assert.True(t, client.storage.(*mockStorageProvider).purgeCalled)
 	})
 
-	t.Run("Does not error if machine does not exist", func(t *testing.T) {
-		os.Remove(config.NetRCPath)
-		_, err := os.Create(config.NetRCPath)
-		assert.NoError(t, err)
-
-		err = PurgeCredentials(config)
-		assert.NoError(t, err)
-	})
-
-	t.Run("Does not error if file does not exist", func(t *testing.T) {
-		os.Remove(config.NetRCPath)
-
-		err := PurgeCredentials(config)
-		assert.NoError(t, err)
+	t.Run("Returns error if storage provider returns error", func(t *testing.T) {
+		client.storage.(*mockStorageProvider).injectError = errors.New("error")
+		err := client.PurgeCredentials()
+		assert.EqualError(t, err, "error")
 	})
 }
 
@@ -253,13 +277,16 @@ func setupTestClient(t *testing.T) (*httptest.Server, *Client) {
 	}))
 
 	tempDir := t.TempDir()
+	config := Config{
+		Account:      "cucumber",
+		ApplianceURL: mockConjurServer.URL,
+		NetRCPath:    filepath.Join(tempDir, ".netrc"),
+	}
+	storage, _ := createStorageProvider(config)
 	client := &Client{
-		config: Config{
-			Account:      "cucumber",
-			ApplianceURL: mockConjurServer.URL,
-			NetRCPath:    filepath.Join(tempDir, ".netrc"),
-		},
+		config:     config,
 		httpClient: &http.Client{},
+		storage:    storage,
 	}
 
 	return mockConjurServer, client

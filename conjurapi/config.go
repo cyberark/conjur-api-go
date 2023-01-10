@@ -17,14 +17,14 @@ import (
 var supportedAuthnTypes = []string{"authn", "ldap", "oidc"}
 
 type Config struct {
-	Account             string `yaml:"account,omitempty"`
-	ApplianceURL        string `yaml:"appliance_url,omitempty"`
-	NetRCPath           string `yaml:"netrc_path,omitempty"`
-	SSLCert             string `yaml:"-"`
-	SSLCertPath         string `yaml:"cert_file,omitempty"`
-	AuthnType           string `yaml:"authn_type,omitempty"`
-	ServiceID           string `yaml:"service_id,omitempty"`
-	DontSaveCredentials bool   `yaml:"-"`
+	Account           string `yaml:"account,omitempty"`
+	ApplianceURL      string `yaml:"appliance_url,omitempty"`
+	NetRCPath         string `yaml:"netrc_path,omitempty"`
+	SSLCert           string `yaml:"-"`
+	SSLCertPath       string `yaml:"cert_file,omitempty"`
+	AuthnType         string `yaml:"authn_type,omitempty"`
+	ServiceID         string `yaml:"service_id,omitempty"`
+	CredentialStorage string `yaml:"-"`
 }
 
 func (c *Config) IsHttps() bool {
