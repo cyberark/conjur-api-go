@@ -175,19 +175,25 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 		return NewClientFromKey(config, *loginPair)
 	}
 
-	if storageProvider, _ := createStorageProvider(config); storageProvider != nil {
-		if config.AuthnType == "oidc" {
-			client, err := NewClientFromOidcCode(config, "", "", "")
-			if err != nil {
-				return nil, err
-			}
-			token := client.readCachedAccessToken()
-			if token != nil && !token.ShouldRefresh() {
-				return client, nil
-			}
-			return nil, fmt.Errorf("No valid OIDC token found. Please login again.")
-		}
+	client, err := newClientFromStoredCredentials(config)
+	if err != nil {
+		return nil, err
+	}
 
+	if client != nil {
+		return client, nil
+	}
+
+	return nil, fmt.Errorf("Environment variables and machine identity files satisfying at least one authentication strategy must be present!")
+}
+
+func newClientFromStoredCredentials(config Config) (*Client, error) {
+	if config.AuthnType == "oidc" {
+		return newClientFromStoredOidcCredentials(config)
+	}
+
+	// Attempt to load credentials from whatever storage provider is configured
+	if storageProvider, _ := createStorageProvider(config); storageProvider != nil {
 		login, password, err := storageProvider.ReadCredentials()
 		if err != nil {
 			return nil, err
@@ -197,7 +203,19 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("Environment variables and machine identity files satisfying at least one authentication strategy must be present!")
+	return nil, nil
+}
+
+func newClientFromStoredOidcCredentials(config Config) (*Client, error) {
+	client, err := NewClientFromOidcCode(config, "", "", "")
+	if err != nil {
+		return nil, err
+	}
+	token := client.readCachedAccessToken()
+	if token != nil && !token.ShouldRefresh() {
+		return client, nil
+	}
+	return nil, fmt.Errorf("No valid OIDC token found. Please login again.")
 }
 
 func (c *Client) GetAuthenticator() Authenticator {
@@ -678,6 +696,24 @@ func NewClient(config Config) (*Client, error) {
 		return nil, err
 	}
 
+	httpClient, err := createHttpClient(config)
+	if err != nil {
+		return nil, err
+	}
+
+	storageProvider, err := createStorageProvider(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Client{
+		config:     config,
+		httpClient: httpClient,
+		storage:    storageProvider,
+	}, nil
+}
+
+func createHttpClient(config Config) (*http.Client, error) {
 	var httpClient *http.Client
 
 	if config.IsHttps() {
@@ -692,17 +728,7 @@ func NewClient(config Config) (*Client, error) {
 	} else {
 		httpClient = &http.Client{Timeout: time.Second * 10}
 	}
-
-	storageProvider, err := createStorageProvider(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Client{
-		config:     config,
-		httpClient: httpClient,
-		storage:    storageProvider,
-	}, nil
+	return httpClient, nil
 }
 
 func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Client, error) {

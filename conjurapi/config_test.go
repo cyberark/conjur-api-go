@@ -2,7 +2,6 @@ package conjurapi
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -11,7 +10,7 @@ import (
 )
 
 func TempFileForTesting(prefix string, fileContents string, t *testing.T) (string, error) {
-	tmpfile, err := ioutil.TempFile(t.TempDir(), prefix)
+	tmpfile, err := os.CreateTemp(t.TempDir(), prefix)
 	if err != nil {
 		return "", err
 	}
@@ -130,16 +129,18 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 		os.Setenv("CONJUR_APPLIANCE_URL", "appliance-url")
 		os.Setenv("CONJUR_AUTHN_TYPE", "ldap")
 		os.Setenv("CONJUR_SERVICE_ID", "service-id")
+		os.Setenv("CONJUR_CREDENTIAL_STORAGE", "keyring")
 
 		t.Run("Returns Config loaded with values from env", func(t *testing.T) {
 			config := &Config{}
 			config.mergeEnv()
 
 			assert.EqualValues(t, *config, Config{
-				Account:      "account",
-				ApplianceURL: "appliance-url",
-				AuthnType:    "ldap",
-				ServiceID:    "service-id",
+				Account:           "account",
+				ApplianceURL:      "appliance-url",
+				AuthnType:         "ldap",
+				ServiceID:         "service-id",
+				CredentialStorage: "keyring",
 			})
 		})
 	})
@@ -248,13 +249,14 @@ appliance_url: test-appliance-url
 	{
 		name: "Full config",
 		config: Config{
-			Account:      "test-account",
-			ApplianceURL: "test-appliance-url",
-			AuthnType:    "oidc",
-			ServiceID:    "test-service-id",
-			SSLCertPath:  "test-cert-path",
-			NetRCPath:    "test-netrc-path",
-			SSLCert:      "test-cert",
+			Account:           "test-account",
+			ApplianceURL:      "test-appliance-url",
+			AuthnType:         "oidc",
+			ServiceID:         "test-service-id",
+			SSLCertPath:       "test-cert-path",
+			NetRCPath:         "test-netrc-path",
+			SSLCert:           "test-cert",
+			CredentialStorage: "keyring",
 		},
 		expected: `account: test-account
 appliance_url: test-appliance-url
@@ -262,6 +264,7 @@ netrc_path: test-netrc-path
 cert_file: test-cert-path
 authn_type: oidc
 service_id: test-service-id
+credential_storage: keyring
 `,
 	},
 }

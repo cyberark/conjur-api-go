@@ -14,6 +14,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var sample_token = `{"protected":"eyJhbGciOiJjb25qdXIub3JnL3Nsb3NpbG8vdjIiLCJraWQiOiI5M2VjNTEwODRmZTM3Zjc3M2I1ODhlNTYyYWVjZGMxMSJ9","payload":"eyJzdWIiOiJhZG1pbiIsImlhdCI6MTUxMDc1MzI1OSwiZXhwIjo0MTAzMzc5MTY0fQo=","signature":"raCufKOf7sKzciZInQTphu1mBbLhAdIJM72ChLB4m5wKWxFnNz_7LawQ9iYEI_we1-tdZtTXoopn_T1qoTplR9_Bo3KkpI5Hj3DB7SmBpR3CSRTnnEwkJ0_aJ8bql5Cbst4i4rSftyEmUqX-FDOqJdAztdi9BUJyLfbeKTW9OGg-QJQzPX1ucB7IpvTFCEjMoO8KUxZpbHj-KpwqAMZRooG4ULBkxp5nSfs-LN27JupU58oRgIfaWASaDmA98O2x6o88MFpxK_M0FeFGuDKewNGrRc8lCOtTQ9cULA080M5CSnruCqu1Qd52r72KIOAfyzNIiBCLTkblz2fZyEkdSKQmZ8J3AakxQE2jyHmMT-eXjfsEIzEt-IRPJIirI3Qm"}`
+var expired_token = `{"protected":"eyJhbGciOiJjb25qdXIub3JnL3Nsb3NpbG8vdjIiLCJraWQiOiI5M2VjNTEwODRmZTM3Zjc3M2I1ODhlNTYyYWVjZGMxMSJ9","payload":"eyJzdWIiOiJhZG1pbiIsImlhdCI6MTUxMDc1MzI1OX0=","signature":"raCufKOf7sKzciZInQTphu1mBbLhAdIJM72ChLB4m5wKWxFnNz_7LawQ9iYEI_we1-tdZtTXoopn_T1qoTplR9_Bo3KkpI5Hj3DB7SmBpR3CSRTnnEwkJ0_aJ8bql5Cbst4i4rSftyEmUqX-FDOqJdAztdi9BUJyLfbeKTW9OGg-QJQzPX1ucB7IpvTFCEjMoO8KUxZpbHj-KpwqAMZRooG4ULBkxp5nSfs-LN27JupU58oRgIfaWASaDmA98O2x6o88MFpxK_M0FeFGuDKewNGrRc8lCOtTQ9cULA080M5CSnruCqu1Qd52r72KIOAfyzNIiBCLTkblz2fZyEkdSKQmZ8J3AakxQE2jyHmMT-eXjfsEIzEt-IRPJIirI3Qm"}`
+
 type rotateAPIKeyTestCase struct {
 	name             string
 	roleId           string
@@ -155,7 +158,7 @@ func runRotateUserAPIKeyAssertions(t *testing.T, tc rotateUserAPIKeyTestCase, co
 
 func TestClient_Whoami(t *testing.T) {
 	t.Run("Whoami", func(t *testing.T) {
-		conjur, err := conjurSetup()
+		conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
 		assert.NoError(t, err)
 
 		resp, err := conjur.WhoAmI()
@@ -221,6 +224,19 @@ func TestClient_Login(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Contains(t, string(contents), client.GetConfig().ApplianceURL+"/authn-oidc/test-service-id")
 		assert.Contains(t, string(contents), "test-token-oidc")
+	})
+}
+
+func TestClient_AuthenticateReader(t *testing.T) {
+	t.Run("Retrieves access token reader", func(t *testing.T) {
+		ts, client := setupTestClient(t)
+		defer ts.Close()
+
+		reader, err := client.AuthenticateReader(authn.LoginPair{Login: "alice", APIKey: "test-api-key"})
+		assert.NoError(t, err)
+		token, err := ReadResponseBody(reader)
+		assert.NoError(t, err)
+		assert.Equal(t, "test-token", string(token))
 	})
 }
 
@@ -368,8 +384,13 @@ func TestClient_InternalAuthenticate(t *testing.T) {
 		assert.EqualError(t, err, "error")
 	})
 
+	t.Run("Returns token when using OIDC", func(t *testing.T) {
+		token, err := runOIDCInternalAuthenticateTest(t, sample_token, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, sample_token, string(token))
+	})
+
 	t.Run("Returns re-login message when using OIDC and token is expired", func(t *testing.T) {
-		expired_token := `{"protected":"eyJhbGciOiJjb25qdXIub3JnL3Nsb3NpbG8vdjIiLCJraWQiOiI5M2VjNTEwODRmZTM3Zjc3M2I1ODhlNTYyYWVjZGMxMSJ9","payload":"eyJzdWIiOiJhZG1pbiIsImlhdCI6MTUxMDc1MzI1OX0=","signature":"raCufKOf7sKzciZInQTphu1mBbLhAdIJM72ChLB4m5wKWxFnNz_7LawQ9iYEI_we1-tdZtTXoopn_T1qoTplR9_Bo3KkpI5Hj3DB7SmBpR3CSRTnnEwkJ0_aJ8bql5Cbst4i4rSftyEmUqX-FDOqJdAztdi9BUJyLfbeKTW9OGg-QJQzPX1ucB7IpvTFCEjMoO8KUxZpbHj-KpwqAMZRooG4ULBkxp5nSfs-LN27JupU58oRgIfaWASaDmA98O2x6o88MFpxK_M0FeFGuDKewNGrRc8lCOtTQ9cULA080M5CSnruCqu1Qd52r72KIOAfyzNIiBCLTkblz2fZyEkdSKQmZ8J3AakxQE2jyHmMT-eXjfsEIzEt-IRPJIirI3Qm"}`
 		_, err := runOIDCInternalAuthenticateTest(t, expired_token, nil)
 		assert.EqualError(t, err, "No valid OIDC token found. Please login again.")
 	})
@@ -377,6 +398,92 @@ func TestClient_InternalAuthenticate(t *testing.T) {
 	t.Run("Returns error if storage returns error", func(t *testing.T) {
 		_, err := runOIDCInternalAuthenticateTest(t, "", errors.New("error"))
 		assert.EqualError(t, err, "No valid OIDC token found. Please login again.")
+	})
+}
+
+func TestClient_RefreshToken(t *testing.T) {
+	config := Config{
+		Account:      "cucumber",
+		ApplianceURL: "https://conjur",
+	}
+
+	t.Run("Updates token from authenticator", func(t *testing.T) {
+		client, err := NewClient(config)
+		assert.NoError(t, err)
+
+		client.authenticator = &authn.TokenAuthenticator{Token: sample_token}
+		err = client.RefreshToken()
+		assert.NoError(t, err)
+		assert.Equal(t, sample_token, string(client.authToken.Raw()))
+	})
+
+	t.Run("Doesn't update token from authenticator when not required", func(t *testing.T) {
+		client, err := NewClient(config)
+		assert.NoError(t, err)
+
+		// Set token so that it doesn't need to be refreshed
+		client.authToken, err = authn.NewToken([]byte(sample_token))
+		assert.NoError(t, err)
+
+		// Change authenticator token so that it doesn't match the token in the client
+		client.authenticator = &authn.TokenAuthenticator{Token: "test-token"}
+
+		// Call RefreshToken and verify that the token in the client is not updated
+		err = client.RefreshToken()
+		assert.NoError(t, err)
+		assert.Equal(t, sample_token, string(client.authToken.Raw()))
+	})
+
+	t.Run("Returns error when authenticator returns invalid token", func(t *testing.T) {
+		client, err := NewClient(config)
+		assert.NoError(t, err)
+
+		client.authenticator = &authn.TokenAuthenticator{Token: "invalid-token"}
+		err = client.RefreshToken()
+		assert.Error(t, err)
+	})
+
+	t.Run("Retrieves cached token when using OIDC", func(t *testing.T) {
+		client, err := NewClient(Config{
+			Account:      "cucumber",
+			ApplianceURL: "https://conjur",
+			AuthnType:    "oidc",
+			ServiceID:    "test-service",
+		})
+		assert.NoError(t, err)
+
+		client.storage = &mockStorageProvider{
+			password: sample_token,
+		}
+		client.authenticator = &authn.OidcAuthenticator{}
+		err = client.RefreshToken()
+
+		assert.NoError(t, err)
+		assert.Equal(t, sample_token, string(client.authToken.Raw()))
+	})
+}
+
+func TestClient_ForceRefreshToken(t *testing.T) {
+	config := Config{
+		Account:      "cucumber",
+		ApplianceURL: "https://conjur",
+	}
+
+	t.Run("Forces update of token from authenticator", func(t *testing.T) {
+		client, err := NewClient(config)
+		assert.NoError(t, err)
+
+		// Set token so that it doesn't need to be refreshed
+		client.authToken, err = authn.NewToken([]byte(sample_token))
+		assert.NoError(t, err)
+
+		// Change authenticator token so that it doesn't match the token in the client
+		client.authenticator = &authn.TokenAuthenticator{Token: expired_token}
+
+		// Call ForceRefreshToken and verify that the token in the client is updated
+		err = client.ForceRefreshToken()
+		assert.NoError(t, err)
+		assert.Equal(t, expired_token, string(client.authToken.Raw()))
 	})
 }
 
@@ -425,9 +532,10 @@ func setupTestClient(t *testing.T) (*httptest.Server, *Client) {
 
 	tempDir := t.TempDir()
 	config := Config{
-		Account:      "cucumber",
-		ApplianceURL: mockConjurServer.URL,
-		NetRCPath:    filepath.Join(tempDir, ".netrc"),
+		Account:           "cucumber",
+		ApplianceURL:      mockConjurServer.URL,
+		NetRCPath:         filepath.Join(tempDir, ".netrc"),
+		CredentialStorage: "file",
 	}
 	storage, _ := createStorageProvider(config)
 	client := &Client{
@@ -440,18 +548,18 @@ func setupTestClient(t *testing.T) (*httptest.Server, *Client) {
 }
 
 type changeUserPasswordTestCase struct {
-	name string
-	userID string
-	login string
+	name        string
+	userID      string
+	login       string
 	newPassword string
 }
 
 func TestClient_ChangeUserPassword(t *testing.T) {
 	testCases := []changeUserPasswordTestCase{
 		{
-			name:   "Change the password of a user",
-			userID: "alice",
-			login: "alice",
+			name:        "Change the password of a user",
+			userID:      "alice",
+			login:       "alice",
 			newPassword: "SUp3r$3cr3t!!",
 		},
 	}
@@ -460,7 +568,7 @@ func TestClient_ChangeUserPassword(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// SETUP
 			config := &Config{
-				DontSaveCredentials: true,
+				CredentialStorage: "none",
 			}
 			conjur, err := conjurSetup(config, defaultTestPolicy)
 			assert.NoError(t, err)
@@ -482,7 +590,7 @@ func runChangeUserPasswordAssertions(t *testing.T, tc changeUserPasswordTestCase
 
 	userAPIKey, err = conjur.Login(tc.login, tc.newPassword)
 	assert.NoError(t, err)
-	
+
 	_, err = conjur.Authenticate(authn.LoginPair{Login: tc.login, APIKey: string(userAPIKey)})
 	assert.NoError(t, err)
 }

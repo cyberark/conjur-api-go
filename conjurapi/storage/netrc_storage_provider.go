@@ -9,57 +9,32 @@ import (
 )
 
 type NetrcStorageProvider struct {
-	netRCPath    string
-	applianceURL string
-	authnType    string
-	serviceID    string
+	netRCPath   string
+	machineName string
 }
 
-func NewNetrcStorageProvider(netRCPath, applianceURL, authnType, serviceID string) *NetrcStorageProvider {
+func NewNetrcStorageProvider(netRCPath, machineName string) *NetrcStorageProvider {
 	return &NetrcStorageProvider{
-		netRCPath:    netRCPath,
-		applianceURL: applianceURL,
-		authnType:    authnType,
-		serviceID:    serviceID,
+		netRCPath:   netRCPath,
+		machineName: machineName,
 	}
-}
-
-// getMachineName returns the machine name to use in the .netrc file. It contains the appliance URL
-// and the path to the authentication endpoint.
-func (s *NetrcStorageProvider) getMachineName() string {
-	if s.authnType != "" && s.authnType != "authn" {
-		authnType := fmt.Sprintf("authn-%s", s.authnType)
-		return fmt.Sprintf("%s/%s/%s", s.applianceURL, authnType, s.serviceID)
-	}
-
-	return s.applianceURL + "/authn"
 }
 
 // StoreCredentials stores credentials to the specified .netrc file
 func (s *NetrcStorageProvider) StoreCredentials(login string, password string) error {
-	machineName := s.getMachineName()
-	filePath := s.netRCPath
-
-	_, err := os.Stat(filePath)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			err = os.WriteFile(filePath, []byte{}, 0600)
-			if err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	}
-
-	nrc, err := netrc.ParseFile(filePath)
+	err := s.ensureNetrcFileExists()
 	if err != nil {
 		return err
 	}
 
-	m := nrc.FindMachine(machineName)
+	nrc, err := netrc.ParseFile(s.netRCPath)
+	if err != nil {
+		return err
+	}
+
+	m := nrc.FindMachine(s.machineName)
 	if m == nil || m.IsDefault() {
-		_ = nrc.NewMachine(machineName, login, password, "")
+		_ = nrc.NewMachine(s.machineName, login, password, "")
 	} else {
 		m.UpdateLogin(login)
 		m.UpdatePassword(password)
@@ -70,23 +45,18 @@ func (s *NetrcStorageProvider) StoreCredentials(login string, password string) e
 		return err
 	}
 
-	if data[len(data)-1] != byte('\n') {
-		data = append(data, byte('\n'))
-	}
+	data = ensureEndsWithNewline(data)
 
-	return os.WriteFile(filePath, data, 0600)
+	return os.WriteFile(s.netRCPath, data, 0600)
 }
 
 func (s *NetrcStorageProvider) ReadCredentials() (string, string, error) {
-	machineName := s.getMachineName()
-	filePath := s.netRCPath
-
-	nrc, err := netrc.ParseFile(filePath)
+	nrc, err := netrc.ParseFile(s.netRCPath)
 	if err != nil {
 		return "", "", err
 	}
 
-	m := nrc.FindMachine(machineName)
+	m := nrc.FindMachine(s.machineName)
 	if m == nil {
 		return "", "", fmt.Errorf("No credentials found in NetRCPath")
 	}
@@ -116,10 +86,7 @@ func (s *NetrcStorageProvider) StoreAuthnToken(token []byte) error {
 // PurgeCredentials purges credentials from the specified .netrc file
 func (s *NetrcStorageProvider) PurgeCredentials() error {
 	// Remove cached credentials (username, api key) from .netrc
-	machineName := s.getMachineName()
-	filePath := s.netRCPath
-
-	nrc, err := netrc.ParseFile(filePath)
+	nrc, err := netrc.ParseFile(s.netRCPath)
 	if err != nil {
 		// If the .netrc file doesn't exist, we don't need to do anything
 		if errors.Is(err, os.ErrNotExist) {
@@ -129,12 +96,34 @@ func (s *NetrcStorageProvider) PurgeCredentials() error {
 		return err
 	}
 
-	nrc.RemoveMachine(machineName)
+	nrc.RemoveMachine(s.machineName)
 
 	data, err := nrc.MarshalText()
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(filePath, data, 0600)
+	return os.WriteFile(s.netRCPath, data, 0600)
+}
+
+func (s *NetrcStorageProvider) ensureNetrcFileExists() error {
+	_, err := os.Stat(s.netRCPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			err = os.WriteFile(s.netRCPath, []byte{}, 0600)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+	return nil
+}
+
+func ensureEndsWithNewline(data []byte) []byte {
+	if data[len(data)-1] != byte('\n') {
+		data = append(data, byte('\n'))
+	}
+	return data
 }

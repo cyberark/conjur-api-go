@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,13 +16,13 @@ type netrcTestConfig struct {
 	ServiceID    string
 }
 
-func TestStoreCredentials(t *testing.T) {
-	config := setupConfig(t)
+func TestNetrcStorageProvider_StoreCredentials(t *testing.T) {
+	config := setupNetrcConfig(t)
 
 	t.Run("Creates file if it does not exist", func(t *testing.T) {
 		os.Remove(config.NetRCPath)
 
-		storage := setupStorage(config)
+		storage := setupNetrcStorage(config)
 		err := storage.StoreCredentials("login", "apiKey")
 		assert.NoError(t, err)
 
@@ -36,7 +37,7 @@ func TestStoreCredentials(t *testing.T) {
 		_, err := os.Create(config.NetRCPath)
 		assert.NoError(t, err)
 
-		storage := setupStorage(config)
+		storage := setupNetrcStorage(config)
 		err = storage.StoreCredentials("login", "apiKey")
 		assert.NoError(t, err)
 
@@ -56,7 +57,7 @@ machine http://conjur/authn
 		err := os.WriteFile(config.NetRCPath, []byte(initialContent), 0600)
 		assert.NoError(t, err)
 
-		storage := setupStorage(config)
+		storage := setupNetrcStorage(config)
 		err = storage.StoreCredentials("login", "apiKey")
 		assert.NoError(t, err)
 
@@ -67,8 +68,8 @@ machine http://conjur/authn
 	})
 }
 
-func TestReadCredentials(t *testing.T) {
-	config := setupConfig(t)
+func TestNetrcStorageProvider_ReadCredentials(t *testing.T) {
+	config := setupNetrcConfig(t)
 
 	t.Run("Returns credentials from netrc", func(t *testing.T) {
 		os.Remove(config.NetRCPath)
@@ -81,7 +82,7 @@ machine http://conjur/authn
 		err := os.WriteFile(config.NetRCPath, []byte(initialContent), 0600)
 		assert.NoError(t, err)
 
-		storage := setupStorage(config)
+		storage := setupNetrcStorage(config)
 		login, apiKey, err := storage.ReadCredentials()
 		assert.NoError(t, err)
 		assert.Equal(t, "admin", login)
@@ -91,7 +92,7 @@ machine http://conjur/authn
 	t.Run("Returns error if file does not exist", func(t *testing.T) {
 		os.Remove(config.NetRCPath)
 
-		storage := setupStorage(config)
+		storage := setupNetrcStorage(config)
 		login, apiKey, err := storage.ReadCredentials()
 		assert.Error(t, err)
 		assert.Equal(t, "", login)
@@ -103,7 +104,7 @@ machine http://conjur/authn
 		_, err := os.Create(config.NetRCPath)
 		assert.NoError(t, err)
 
-		storage := setupStorage(config)
+		storage := setupNetrcStorage(config)
 		login, apiKey, err := storage.ReadCredentials()
 		assert.Error(t, err)
 		assert.Equal(t, "", login)
@@ -111,8 +112,8 @@ machine http://conjur/authn
 	})
 }
 
-func TestStoreAuthnToken(t *testing.T) {
-	config := setupConfig(t)
+func TestNetrcStorageProvider_StoreAuthnToken(t *testing.T) {
+	config := setupNetrcConfig(t)
 	t.Run("Uses authn type in machine url", func(t *testing.T) {
 		os.Remove(config.NetRCPath)
 
@@ -123,7 +124,7 @@ func TestStoreAuthnToken(t *testing.T) {
 			ServiceID:    "my-service",
 		}
 
-		storage := setupStorage(oidcConfig)
+		storage := setupNetrcStorage(oidcConfig)
 		err := storage.StoreAuthnToken([]byte("token-contents"))
 		assert.NoError(t, err)
 
@@ -134,8 +135,8 @@ func TestStoreAuthnToken(t *testing.T) {
 	})
 }
 
-func TestReadAuthnToken(t *testing.T) {
-	config := setupConfig(t)
+func TestNetrcStorageProvider_ReadAuthnToken(t *testing.T) {
+	config := setupNetrcConfig(t)
 	config.AuthnType = "oidc"
 	config.ServiceID = "my-service"
 
@@ -150,7 +151,7 @@ machine http://conjur/authn-oidc/my-service
 		err := os.WriteFile(config.NetRCPath, []byte(initialContent), 0600)
 		assert.NoError(t, err)
 
-		storage := setupStorage(config)
+		storage := setupNetrcStorage(config)
 		token, err := storage.ReadAuthnToken()
 		assert.NoError(t, err)
 		assert.NotNil(t, token)
@@ -160,14 +161,14 @@ machine http://conjur/authn-oidc/my-service
 	t.Run("Returns empty token if file does not exist", func(t *testing.T) {
 		os.Remove(config.NetRCPath)
 
-		storage := setupStorage(config)
+		storage := setupNetrcStorage(config)
 		token, _ := storage.ReadAuthnToken()
 		assert.Nil(t, token)
 	})
 }
 
-func TestPurgeCredentials(t *testing.T) {
-	config := setupConfig(t)
+func TestNetrcStorageProvider_PurgeCredentials(t *testing.T) {
+	config := setupNetrcConfig(t)
 
 	t.Run("Removes credentials from netrc", func(t *testing.T) {
 		os.Remove(config.NetRCPath)
@@ -180,7 +181,7 @@ machine http://conjur/authn
 		err := os.WriteFile(config.NetRCPath, []byte(initialContent), 0600)
 		assert.NoError(t, err)
 
-		storage := setupStorage(config)
+		storage := setupNetrcStorage(config)
 		err = storage.PurgeCredentials()
 		assert.NoError(t, err)
 
@@ -193,7 +194,7 @@ machine http://conjur/authn
 	t.Run("Does not error if file does not exist", func(t *testing.T) {
 		os.Remove(config.NetRCPath)
 
-		storage := setupStorage(config)
+		storage := setupNetrcStorage(config)
 		err := storage.PurgeCredentials()
 		assert.NoError(t, err)
 	})
@@ -203,13 +204,13 @@ machine http://conjur/authn
 		_, err := os.Create(config.NetRCPath)
 		assert.NoError(t, err)
 
-		storage := setupStorage(config)
+		storage := setupNetrcStorage(config)
 		err = storage.PurgeCredentials()
 		assert.NoError(t, err)
 	})
 }
 
-func setupConfig(t *testing.T) netrcTestConfig {
+func setupNetrcConfig(t *testing.T) netrcTestConfig {
 	tempDir := t.TempDir()
 	t.Cleanup(func() {
 		os.RemoveAll(tempDir)
@@ -220,11 +221,18 @@ func setupConfig(t *testing.T) netrcTestConfig {
 	}
 }
 
-func setupStorage(config netrcTestConfig) *NetrcStorageProvider {
+func setupNetrcStorage(config netrcTestConfig) *NetrcStorageProvider {
 	return NewNetrcStorageProvider(
 		config.NetRCPath,
-		config.ApplianceURL,
-		config.AuthnType,
-		config.ServiceID,
+		getMachineName(config.ApplianceURL, config.AuthnType, config.ServiceID),
 	)
+}
+
+func getMachineName(applianceURL, authnType, serviceID string) string {
+	if authnType != "" && authnType != "authn" {
+		authnType := fmt.Sprintf("authn-%s", authnType)
+		return fmt.Sprintf("%s/%s/%s", applianceURL, authnType, serviceID)
+	}
+
+	return applianceURL + "/authn"
 }
