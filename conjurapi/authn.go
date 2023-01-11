@@ -77,7 +77,21 @@ func (c *Client) createAuthRequest(req *http.Request) error {
 	return nil
 }
 
-// Login obtains an API key.
+func (c *Client) ChangeUserPassword(username string, password string, newPassword string) ([]byte, error) {
+	req, err := c.ChangeUserPasswordRequest(username, password, newPassword)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return response.DataResponse(res)
+}
+
+// Login exchanges a user's password for an API key.
 func (c *Client) Login(login string, password string) ([]byte, error) {
 	req, err := c.LoginRequest(login, password)
 	if err != nil {

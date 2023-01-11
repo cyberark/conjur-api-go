@@ -308,6 +308,25 @@ func (c *Client) RotateAPIKeyRequest(roleID string) (*http.Request, error) {
 	)
 }
 
+func (c *Client) ChangeUserPasswordRequest(username string, password string, newPassword string) (*http.Request, error) {
+	passwordURL := makeRouterURL(c.config.ApplianceURL, "authn", c.config.Account, "password")
+
+	req, err := http.NewRequest(
+		"PUT",
+		passwordURL.String(),
+		strings.NewReader(newPassword),
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Password can only be updated via basic auth, NOT using bearer token
+	req.SetBasicAuth(username, password)
+
+	return req, nil
+}
+
 func (c *Client) CheckPermissionRequest(resourceID string, privilege string) (*http.Request, error) {
 	account, kind, id, err := parseID(resourceID)
 	if err != nil {

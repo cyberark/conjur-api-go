@@ -45,7 +45,7 @@ func TestClient_RotateAPIKey(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// SETUP
-			conjur, err := conjurSetup()
+			conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
 			assert.NoError(t, err)
 
 			// EXERCISE
@@ -90,7 +90,7 @@ func TestClient_RotateHostAPIKey(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// SETUP
-			conjur, err := conjurSetup()
+			conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
 			assert.NoError(t, err)
 
 			// EXERCISE
@@ -131,7 +131,7 @@ func TestClient_RotateUserAPIKey(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// SETUP
-			conjur, err := conjurSetup()
+			conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
 			assert.NoError(t, err)
 
 			// EXERCISE
@@ -263,4 +263,52 @@ func setupTestClient(t *testing.T) (*httptest.Server, *Client) {
 	}
 
 	return mockConjurServer, client
+}
+
+type changeUserPasswordTestCase struct {
+	name string
+	userID string
+	login string
+	newPassword string
+}
+
+func TestClient_ChangeUserPassword(t *testing.T) {
+	testCases := []changeUserPasswordTestCase{
+		{
+			name:   "Change the password of a user",
+			userID: "alice",
+			login: "alice",
+			newPassword: "SUp3r$3cr3t!!",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// SETUP
+			config := &Config{
+				DontSaveCredentials: true,
+			}
+			conjur, err := conjurSetup(config, defaultTestPolicy)
+			assert.NoError(t, err)
+
+			// EXERCISE
+			runChangeUserPasswordAssertions(t, tc, conjur)
+		})
+	}
+}
+
+func runChangeUserPasswordAssertions(t *testing.T, tc changeUserPasswordTestCase, conjur *Client) {
+	var userAPIKey []byte
+	var err error
+
+	userAPIKey, err = conjur.RotateUserAPIKey(tc.userID)
+
+	_, err = conjur.ChangeUserPassword(tc.login, string(userAPIKey), tc.newPassword)
+	assert.NoError(t, err)
+
+	userAPIKey, err = conjur.Login(tc.login, tc.newPassword)
+	assert.NoError(t, err)
+	
+	_, err = conjur.Authenticate(authn.LoginPair{Login: tc.login, APIKey: string(userAPIKey)})
+	assert.NoError(t, err)
 }
