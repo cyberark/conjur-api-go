@@ -45,7 +45,7 @@ func TestClient_RotateAPIKey(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// SETUP
-			conjur, err := conjurSetup()
+			conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
 			assert.NoError(t, err)
 
 			// EXERCISE
@@ -90,7 +90,7 @@ func TestClient_RotateHostAPIKey(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// SETUP
-			conjur, err := conjurSetup()
+			conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
 			assert.NoError(t, err)
 
 			// EXERCISE
@@ -131,7 +131,7 @@ func TestClient_RotateUserAPIKey(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// SETUP
-			conjur, err := conjurSetup()
+			conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
 			assert.NoError(t, err)
 
 			// EXERCISE
@@ -285,7 +285,10 @@ func TestClient_ChangeUserPassword(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// SETUP
-			conjur, err := conjurSetup()
+			config := &Config{
+				DontSaveCredentials: true,
+			}
+			conjur, err := conjurSetup(config, defaultTestPolicy)
 			assert.NoError(t, err)
 
 			// EXERCISE
@@ -299,7 +302,7 @@ func runChangeUserPasswordAssertions(t *testing.T, tc changeUserPasswordTestCase
 	var err error
 
 	userAPIKey, err = conjur.RotateUserAPIKey(tc.userID)
-	
+
 	_, err = conjur.ChangeUserPassword(tc.login, string(userAPIKey), tc.newPassword)
 	assert.NoError(t, err)
 

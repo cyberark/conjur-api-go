@@ -1,22 +1,12 @@
 package conjurapi
 
 import (
-	"os"
-	"strings"
 	"testing"
 
-	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 	"github.com/stretchr/testify/assert"
 )
 
-func conjurSetupForRoleTests() (*Client, error) {
-	config := &Config{}
-	config.mergeEnv()
-
-	apiKey := os.Getenv("CONJUR_AUTHN_API_KEY")
-	login := os.Getenv("CONJUR_AUTHN_LOGIN")
-
-	policy := `
+var roleTestPolicy = `
 - !user alice
 - !host jimmy
 - !layer test-layer
@@ -34,19 +24,6 @@ func conjurSetupForRoleTests() (*Client, error) {
   - !host jimmy
   - !user alice
 `
-
-	conjur, err := NewClientFromKey(*config, authn.LoginPair{Login: login, APIKey: apiKey})
-
-	if err == nil {
-		conjur.LoadPolicy(
-			PolicyModePut,
-			"root",
-			strings.NewReader(policy),
-		)
-	}
-
-	return conjur, err
-}
 
 func TestClient_RoleExists(t *testing.T) {
 	roleExistent := func(conjur *Client, id string) func(t *testing.T) {
@@ -73,7 +50,7 @@ func TestClient_RoleExists(t *testing.T) {
 		}
 	}
 
-	conjur, err := conjurSetup()
+	conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
 	assert.NoError(t, err)
 
 	t.Run("Role exists returns true", roleExistent(conjur, "cucumber:user:alice"))
@@ -89,7 +66,7 @@ func TestClient_Role(t *testing.T) {
 		}
 	}
 
-	conjur, err := conjurSetupForRoleTests()
+	conjur, err := conjurSetup(&Config{}, roleTestPolicy)
 	assert.NoError(t, err)
 
 	t.Run("Shows a role", showRole(conjur, "cucumber:user:alice"))
@@ -104,7 +81,7 @@ func TestClient_RoleMembers(t *testing.T) {
 		}
 	}
 
-	conjur, err := conjurSetupForRoleTests()
+	conjur, err := conjurSetup(&Config{}, roleTestPolicy)
 	assert.NoError(t, err)
 
 	t.Run("List role members return no members", listMembers(conjur, "cucumber:user:admin", 0))
@@ -120,7 +97,7 @@ func TestClient_RoleMemberships(t *testing.T) {
 		}
 	}
 
-	conjur, err := conjurSetupForRoleTests()
+	conjur, err := conjurSetup(&Config{}, roleTestPolicy)
 	assert.NoError(t, err)
 
 	t.Run("List role memberships return memberships", listMemberships(conjur, "cucumber:user:admin", 4))
