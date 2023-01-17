@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bgentry/go-netrc/netrc"
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 )
@@ -23,11 +22,20 @@ type Authenticator interface {
 	NeedsTokenRefresh() bool
 }
 
+type CredentialStorageProvider interface {
+	StoreCredentials(login string, password string) error
+	ReadCredentials() (login string, password string, err error)
+	ReadAuthnToken() ([]byte, error)
+	StoreAuthnToken(token []byte) error
+	PurgeCredentials() error
+}
+
 type Client struct {
 	config        Config
 	authToken     *authn.AuthnToken
 	httpClient    *http.Client
 	authenticator Authenticator
+	storage       CredentialStorageProvider
 }
 
 func NewClientFromKey(config Config, loginPair authn.LoginPair) (*Client, error) {
@@ -86,25 +94,6 @@ func LoginPairFromEnv() (*authn.LoginPair, error) {
 		Login:  os.Getenv("CONJUR_AUTHN_LOGIN"),
 		APIKey: os.Getenv("CONJUR_AUTHN_API_KEY"),
 	}, nil
-}
-
-func LoginPairFromNetRC(config Config) (*authn.LoginPair, error) {
-	if config.NetRCPath == "" {
-		config.NetRCPath = os.ExpandEnv("$HOME/.netrc")
-	}
-
-	rc, err := netrc.ParseFile(config.NetRCPath)
-	if err != nil {
-		return nil, err
-	}
-
-	m := rc.FindMachine(getMachineName(config))
-
-	if m == nil {
-		return nil, fmt.Errorf("No credentials found in NetRCPath")
-	}
-
-	return &authn.LoginPair{Login: m.Login, APIKey: m.Password}, nil
 }
 
 // TODO: Create a version of this function for creating an authenticator from environment
@@ -186,25 +175,47 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 		return NewClientFromKey(config, *loginPair)
 	}
 
-	loginPair, err = LoginPairFromNetRC(config)
-	if err == nil && loginPair.Login != "" && loginPair.APIKey != "" {
-		return NewClientFromKey(config, *loginPair)
+	client, err := newClientFromStoredCredentials(config)
+	if err != nil {
+		return nil, err
 	}
 
-	if config.AuthnType == "oidc" {
-		client, err := NewClientFromOidcCode(config, "", "", "")
-		if err != nil {
-			return nil, err
-		}
-		token := readCachedAccessToken(config)
-		if token != nil && !token.ShouldRefresh() {
-			return client, nil
-		}
-
-		return nil, fmt.Errorf("No valid OIDC token found. Please login again.")
+	if client != nil {
+		return client, nil
 	}
 
 	return nil, fmt.Errorf("Environment variables and machine identity files satisfying at least one authentication strategy must be present!")
+}
+
+func newClientFromStoredCredentials(config Config) (*Client, error) {
+	if config.AuthnType == "oidc" {
+		return newClientFromStoredOidcCredentials(config)
+	}
+
+	// Attempt to load credentials from whatever storage provider is configured
+	if storageProvider, _ := createStorageProvider(config); storageProvider != nil {
+		login, password, err := storageProvider.ReadCredentials()
+		if err != nil {
+			return nil, err
+		}
+		if login != "" && password != "" {
+			return NewClientFromKey(config, authn.LoginPair{Login: login, APIKey: password})
+		}
+	}
+
+	return nil, nil
+}
+
+func newClientFromStoredOidcCredentials(config Config) (*Client, error) {
+	client, err := NewClientFromOidcCode(config, "", "", "")
+	if err != nil {
+		return nil, err
+	}
+	token := client.readCachedAccessToken()
+	if token != nil && !token.ShouldRefresh() {
+		return client, nil
+	}
+	return nil, fmt.Errorf("No valid OIDC token found. Please login again.")
 }
 
 func (c *Client) GetAuthenticator() Authenticator {
@@ -677,9 +688,7 @@ func parseID(fullID string) (account, kind, id string, err error) {
 }
 
 func NewClient(config Config) (*Client, error) {
-	var (
-		err error
-	)
+	var err error
 
 	err = config.Validate()
 
@@ -687,6 +696,24 @@ func NewClient(config Config) (*Client, error) {
 		return nil, err
 	}
 
+	httpClient, err := createHttpClient(config)
+	if err != nil {
+		return nil, err
+	}
+
+	storageProvider, err := createStorageProvider(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Client{
+		config:     config,
+		httpClient: httpClient,
+		storage:    storageProvider,
+	}, nil
+}
+
+func createHttpClient(config Config) (*http.Client, error) {
 	var httpClient *http.Client
 
 	if config.IsHttps() {
@@ -701,11 +728,7 @@ func NewClient(config Config) (*Client, error) {
 	} else {
 		httpClient = &http.Client{Timeout: time.Second * 10}
 	}
-
-	return &Client{
-		config:     config,
-		httpClient: httpClient,
-	}, nil
+	return httpClient, nil
 }
 
 func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Client, error) {

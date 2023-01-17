@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
+	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
@@ -24,7 +25,7 @@ type OidcProvider struct {
 func (c *Client) RefreshToken() (err error) {
 	// Fetch cached conjur access token if using OIDC
 	if c.GetConfig().AuthnType == "oidc" {
-		token := readCachedAccessToken(c.GetConfig())
+		token := c.readCachedAccessToken()
 		if token != nil {
 			c.authToken = token
 		}
@@ -62,6 +63,21 @@ func (c *Client) NeedsTokenRefresh() bool {
 	return c.authToken == nil ||
 		c.authToken.ShouldRefresh() ||
 		c.authenticator.NeedsTokenRefresh()
+}
+
+func (c *Client) readCachedAccessToken() *authn.AuthnToken {
+	tokenBytes, err := c.storage.ReadAuthnToken()
+	if err != nil {
+		return nil
+	}
+
+	token, err := authn.NewToken(tokenBytes)
+	if err != nil {
+		return nil
+	}
+
+	token.FromJSON(token.Raw())
+	return token
 }
 
 func (c *Client) createAuthRequest(req *http.Request) error {
@@ -109,26 +125,46 @@ func (c *Client) Login(login string, password string) ([]byte, error) {
 	}
 
 	// Store the API key in the credentials store
-	if !c.GetConfig().DontSaveCredentials {
-		err = storeCredentials(c.GetConfig(), login, string(apiKey))
+	if c.storage != nil {
+		err = c.storage.StoreCredentials(login, string(apiKey))
 	}
 	return apiKey, err
 }
 
-// PurgeCredentials purges credentials from the specified .netrc file
+// PurgeCredentials purges credentials from the client's credential storage.
+func (c *Client) PurgeCredentials() error {
+	if c.storage == nil {
+		return nil
+	}
+
+	return c.storage.PurgeCredentials()
+}
+
+// PurgeCredentials purges credentials from the credential storage indicated by the
+// configuration.
 func PurgeCredentials(config Config) error {
-	return purgeCredentials(config)
+	storage, err := createStorageProvider(config)
+	if err != nil {
+		return err
+	}
+
+	if storage == nil {
+		logging.ApiLog.Debugf("Not storing credentials, so nothing to purge")
+		return nil
+	}
+
+	return storage.PurgeCredentials()
 }
 
 // Authenticate obtains a new access token using the internal authenticator.
 func (c *Client) InternalAuthenticate() ([]byte, error) {
 	if c.authenticator == nil {
-		return nil, fmt.Errorf("%s", "unable to authenticate using client without authenticator")
+		return nil, errors.New("unable to authenticate using client without authenticator")
 	}
 
 	// If using OIDC, check if we have a cached access token
 	if c.GetConfig().AuthnType == "oidc" {
-		token := readCachedAccessToken(c.GetConfig())
+		token := c.readCachedAccessToken()
 		if token != nil && !token.ShouldRefresh() {
 			return token.Raw(), nil
 		} else {
@@ -199,10 +235,8 @@ func (c *Client) OidcAuthenticate(code, nonce, code_verifier string) ([]byte, er
 
 	resp, err := response.DataResponse(res)
 
-	if err == nil && !c.GetConfig().DontSaveCredentials {
-		// We should be able to use an empty string for username, but unfortunately
-		// this causes panics later on. Instead use a dummy value.
-		storeCredentials(c.GetConfig(), "[oidc]", string(resp))
+	if err == nil && c.storage != nil {
+		c.storage.StoreAuthnToken(resp)
 	}
 
 	return resp, err
