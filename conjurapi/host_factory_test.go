@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 	"github.com/stretchr/testify/assert"
-	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -145,10 +144,8 @@ func TestClient_Token(t *testing.T) {
 				continue
 			}
 			t.Run("Create Host", func(t *testing.T) {
-				data := url.Values{}
-				data.Set("id", "new-host")
-				host, err := conjur.CreateHost(data, token)
-				tc.assertHost(t, len(host.ApiKey),err)
+				host, err := conjur.CreateHost("new-host", token)
+				tc.assertHost(t, len(host.ApiKey), err)
 			})
 			t.Run("Delete Token", func(t *testing.T) {
 				err := conjur.DeleteToken(token)
