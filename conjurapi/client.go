@@ -116,17 +116,21 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 
 	authnJwtServiceID := os.Getenv("CONJUR_AUTHN_JWT_SERVICE_ID")
 	if authnJwtServiceID != "" {
+		var jwtTokenString string
+		jwtToken := os.Getenv("CONJUR_AUTHN_JWT_TOKEN")
+		jwtTokenString = fmt.Sprintf("jwt=%s", jwtToken)
+		if jwtToken == "" {
+			jwtTokenPath := os.Getenv("JWT_TOKEN_PATH")
+			if jwtTokenPath == "" {
+				jwtTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+			}
 
-		jwtTokenPath := os.Getenv("JWT_TOKEN_PATH")
-		if jwtTokenPath == "" {
-			jwtTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+			jwtToken, err := ioutil.ReadFile(jwtTokenPath)
+			if err != nil {
+				return nil, err
+			}
+			jwtTokenString = fmt.Sprintf("jwt=%s", string(jwtToken))
 		}
-
-		jwtToken, err := ioutil.ReadFile(jwtTokenPath)
-		if err != nil {
-			return nil, err
-		}
-		jwtTokenString := fmt.Sprintf("jwt=%s", string(jwtToken))
 
 		var httpClient *http.Client
 		if config.IsHttps() {
@@ -144,7 +148,7 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 		}
 
 		authnJwtHostID := os.Getenv("CONJUR_AUTHN_JWT_HOST_ID")
-		authnJwtUrl := ""
+		var authnJwtUrl string
 		if authnJwtHostID != "" {
 			authnJwtUrl = makeRouterURL(config.ApplianceURL, "authn-jwt", authnJwtServiceID, config.Account, url.PathEscape(authnJwtHostID), "authenticate").String()
 		} else {
