@@ -54,6 +54,10 @@ func TestClient_CheckPermission(t *testing.T) {
 		"Check a permission on a non-existent resource",
 		checkAndAssert(conjur, assertFailure, "cucumber:variable:foobar"),
 	)
+	t.Run(
+		"Check a permission on account-less resource",
+		checkAndAssert(conjur, assertSuccess, "variable:db-password"),
+	)
 }
 
 func TestClient_CheckPermissionForRole(t *testing.T) {
@@ -75,6 +79,10 @@ func TestClient_CheckPermissionForRole(t *testing.T) {
 	t.Run(
 		"Check a permission with empty role",
 		checkAndAssert(conjur, assertError, "cucumber:variable:db-password", ""),
+	)
+	t.Run(
+		"Check a permission for account-less role",
+		checkAndAssert(conjur, assertSuccess, "variable:db-password", "user:alice"),
 	)
 }
 
