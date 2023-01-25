@@ -342,18 +342,42 @@ func (c *Client) ChangeUserPasswordRequest(username string, password string, new
 	return req, nil
 }
 
-func (c *Client) CheckPermissionRequest(resourceID string, roleID string, privilege string) (*http.Request, error) {
+// CheckPermissionRequest crafts an HTTP request to Conjur's /resource endpoint
+// to check if the authenticated user has the given privilege on the given resourceID.
+func (c *Client) CheckPermissionRequest(resourceID, privilege string) (*http.Request, error) {
 	account, kind, id, err := parseID(resourceID)
 	if err != nil {
 		return nil, err
 	}
 
-	var checkURL string
-	if len(roleID) != 0 {
-		checkURL = makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id)).withFormattedQuery("check=true&role=%s&privilege=%s", url.QueryEscape(roleID), url.QueryEscape(privilege)).String()
-	} else {
-		checkURL = makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id)).withFormattedQuery("check=true&privilege=%s", url.QueryEscape(privilege)).String()
+	query := fmt.Sprintf("check=true&privilege=%s", url.QueryEscape(privilege))
+
+	checkURL := makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id)).withQuery(query).String()
+
+	return http.NewRequest(
+		"GET",
+		checkURL,
+		nil,
+	)
+}
+
+// CheckPermissionForRoleRequest crafts an HTTP request to Conjur's /resource endpoint
+// to check if a given role has the given privilege on the given resourceID.
+func (c *Client) CheckPermissionForRoleRequest(resourceID, roleID, privilege string) (*http.Request, error) {
+	account, kind, id, err := parseID(resourceID)
+	if err != nil {
+		return nil, err
 	}
+
+	roleAccount, roleKind, roleIdentifier, err := parseID(roleID)
+	if err != nil {
+		return nil, err
+	}
+	fullyQualifiedRoleID := strings.Join([]string{roleAccount, roleKind, roleIdentifier}, ":")
+
+	query := fmt.Sprintf("check=true&privilege=%s&role=%s", url.QueryEscape(privilege), url.QueryEscape(fullyQualifiedRoleID))
+
+	checkURL := makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id)).withQuery(query).String()
 
 	return http.NewRequest(
 		"GET",

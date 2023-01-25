@@ -6,36 +6,80 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type checkAssertion func(t *testing.T, result bool, err error)
+
+func assertSuccess(t *testing.T, result bool, err error) {
+	assert.True(t, result)
+	assert.NoError(t, err)
+}
+
+func assertFailure(t *testing.T, result bool, err error) {
+	assert.False(t, result)
+	assert.NoError(t, err)
+}
+
+func assertError(t *testing.T, result bool, err error) {
+	assert.False(t, result)
+	assert.Error(t, err)
+}
+
+func checkAndAssert(
+	conjur *Client,
+	assertion checkAssertion,
+	args ...string,
+) func(t *testing.T) {
+	return func(t *testing.T) {
+		var result bool
+		var err error
+
+		if len(args) == 1 {
+			result, err = conjur.CheckPermission(args[0], "execute")
+		} else if len(args) == 2 {
+			result, err = conjur.CheckPermissionForRole(args[0], args[1], "execute")
+		}
+
+		assertion(t, result, err)
+	}
+}
+
 func TestClient_CheckPermission(t *testing.T) {
-	checkAllowed := func(conjur *Client, id string, role string) func(t *testing.T) {
-		return func(t *testing.T) {
-			allowed, err := conjur.CheckPermission(id, role, "execute")
-
-			assert.NoError(t, err)
-			assert.True(t, allowed)
-		}
-	}
-
-	checkNotAllowed := func(conjur *Client, id string, role string) func(t *testing.T) {
-		return func(t *testing.T) {
-			allowed, err := conjur.CheckPermission(id, role, "execute")
-
-			assert.NoError(t, err)
-			assert.False(t, allowed)
-		}
-	}
-
 	conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
 	assert.NoError(t, err)
 
-	t.Run("Check an allowed permission for default admin role", checkAllowed(conjur, "cucumber:variable:db-password", ""))
-	t.Run("Check an allowed permission for a role", checkAllowed(conjur, "cucumber:variable:db-password", "cucumber:user:alice"))
-	t.Run("Check a permission on a non-existent resource", checkNotAllowed(conjur, "cucumber:variable:foobar", "cucumber:user:alice"))
-	t.Run("Check no permission for a role", checkNotAllowed(conjur, "cucumber:variable:db-password", "cucumber:host:bob"))
+	t.Run(
+		"Check an allowed permission for default role",
+		checkAndAssert(conjur, assertSuccess, "cucumber:variable:db-password"),
+	)
+	t.Run(
+		"Check a permission on a non-existent resource",
+		checkAndAssert(conjur, assertFailure, "cucumber:variable:foobar"),
+	)
+}
+
+func TestClient_CheckPermissionForRole(t *testing.T) {
+	conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
+	assert.NoError(t, err)
+
+	t.Run(
+		"Check an allowed permission for a role",
+		checkAndAssert(conjur, assertSuccess, "cucumber:variable:db-password", "cucumber:user:alice"),
+	)
+	t.Run(
+		"Check a permission on a non-existent resource",
+		checkAndAssert(conjur, assertFailure, "cucumber:variable:foobar", "cucumber:user:alice"),
+	)
+	t.Run(
+		"Check no permission for a role",
+		checkAndAssert(conjur, assertFailure, "cucumber:variable:db-password", "cucumber:host:bob"),
+	)
+	t.Run(
+		"Check a permission with empty role",
+		checkAndAssert(conjur, assertError, "cucumber:variable:db-password", ""),
+	)
 }
 
 func TestClient_ResourceExists(t *testing.T) {
-	resourceExistent := func(conjur *Client, id string) func (t *testing.T) {
+	resourceExistent := func(conjur *Client, id string) func(t *testing.T) {
 		return func(t *testing.T) {
 			exists, err := conjur.ResourceExists(id)
 			assert.NoError(t, err)
@@ -43,7 +87,7 @@ func TestClient_ResourceExists(t *testing.T) {
 		}
 	}
 
-	resourceNonexistent := func(conjur *Client, id string) func (t *testing.T) {
+	resourceNonexistent := func(conjur *Client, id string) func(t *testing.T) {
 		return func(t *testing.T) {
 			exists, err := conjur.ResourceExists(id)
 			assert.NoError(t, err)

@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added support for Conjur's OIDC authenticator
   [cyberark/conjur-api-go#144](https://github.com/cyberark/conjur-api-go/pull/144)
 - Added `CONJUR_AUTHN_JWT_TOKEN` to support authenticating via authn-jwt with the contents of a JSON Web Token (JWT) [cyberark/conjur-api-go#143](https://github.com/cyberark/conjur-api-go/pull/140)
+- Added new API method `CheckPermissionForRole`
+  [cyberark/conjur-api-go#153](https://github.com/cyberark/conjur-api-go/pull/153)
 
 ### Removed
 - Remove all usage of Conjur v4
