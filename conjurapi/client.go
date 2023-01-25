@@ -606,6 +606,11 @@ func (c *Client) CreateHostRequest(body string, token string) (*http.Request, er
 	return request, nil
 }
 
+func (c *Client) PublicKeysRequest(kind string, identifier string) (*http.Request, error) {
+	publicKeysURL := makeRouterURL(c.config.ApplianceURL, "public_keys", c.config.Account, kind, identifier)
+	return http.NewRequest("GET", publicKeysURL.String(), nil)
+}
+
 func (c *Client) createTokenURL() string {
 	return makeRouterURL(c.config.ApplianceURL, "host_factory_tokens").String()
 }

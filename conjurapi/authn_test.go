@@ -594,3 +594,56 @@ func runChangeUserPasswordAssertions(t *testing.T, tc changeUserPasswordTestCase
 	_, err = conjur.Authenticate(authn.LoginPair{Login: tc.login, APIKey: string(userAPIKey)})
 	assert.NoError(t, err)
 }
+
+var publicKeysTestPolicy = `
+- !user
+  id: alice
+  public_keys:
+  - ssh-rsa test-key-1 laptop
+  - ssh-rsa test-key-2 workstation
+`
+
+type publicKeysTestCase struct {
+	name       string
+	kind       string
+	identifier string
+}
+
+func TestClient_PublicKeys(t *testing.T) {
+	testCases := []publicKeysTestCase{
+		{
+			name:       "Display public keys",
+			kind:       "user",
+			identifier: "alice",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// SETUP
+			config := &Config{
+				CredentialStorage: "none",
+			}
+			conjur, err := conjurSetup(config, publicKeysTestPolicy)
+			assert.NoError(t, err)
+
+			// EXERCISE
+			runPublicKeysAssertions(t, tc, conjur)
+		})
+	}
+}
+
+func runPublicKeysAssertions(t *testing.T, tc publicKeysTestCase, conjur *Client) {
+	var publicKeys []byte
+	var err error
+
+	publicKeys, err = conjur.PublicKeys(tc.kind, tc.identifier)
+
+	assert.NoError(t, err)
+	
+	expectedOutput := `ssh-rsa test-key-1 laptop
+ssh-rsa test-key-2 workstation
+`
+
+	assert.Equal(t, expectedOutput, string(publicKeys))
+}
