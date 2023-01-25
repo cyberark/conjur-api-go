@@ -3,6 +3,8 @@
 cd "$(dirname "$0")"
 . ./utils.sh
 
+trap teardown EXIT
+
 export COMPOSE_PROJECT_NAME="conjurapigo_$(openssl rand -hex 3)"
 export GO_VERSION="${1:-"1.17"}"
 

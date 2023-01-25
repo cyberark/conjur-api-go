@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 source ./start-conjur.sh
 
 docker-compose build dev
-docker-compose run --no-deps -d dev
+docker-compose up --no-deps -d dev
 
 # When we start the dev container, it mounts the top-level directory in
 # the container. This excludes the vendored dependencies that got
