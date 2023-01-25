@@ -314,3 +314,17 @@ func (c *Client) rotateAPIKey(roleID string) (*http.Response, error) {
 
 	return c.SubmitRequest(req)
 }
+
+func (c *Client) PublicKeys(kind string, identifier string) ([]byte, error) {
+	req, err := c.PublicKeysRequest(kind, identifier)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := c.SubmitRequest(req)
+	if err != nil {
+		return nil, err
+	}	
+	
+	return response.DataResponse(res)
+}
