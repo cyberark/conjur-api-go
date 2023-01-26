@@ -40,7 +40,7 @@ To run the tests against a specific version of Golang, you can run the following
 This will spin up a containerized Conjur environment and build the test containers,
 and will run the tests in a `golang:1.17` container
 
-Supported arguments are `1.17` and `1.18`, with the
+Supported arguments are `1.17`, `1.18`, and `1.19`, with the
 default being `1.17` if no argument is given.
 
 ### Setting up a development environment

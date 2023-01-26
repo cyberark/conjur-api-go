@@ -57,11 +57,30 @@ services:
       CONJUR_AUTHN_API_KEY:
       GO_VERSION:
 
+  test-1.19:
+    build:
+      context: .
+      args:
+        FROM_IMAGE: "golang:1.19"
+    ports:
+      - 8080
+    depends_on:
+      - conjur
+    volumes:
+      - ./output:/conjur-api-go/output
+    environment:
+      CONJUR_DATA_KEY:
+      CONJUR_APPLIANCE_URL: http://conjur
+      CONJUR_ACCOUNT: cucumber
+      CONJUR_AUTHN_LOGIN: admin
+      CONJUR_AUTHN_API_KEY:
+      GO_VERSION:
+
   dev:
     build:
       context: .
       args:
-        FROM_IMAGE: "golang:1.17"
+        FROM_IMAGE: "golang:1.19"
     ports:
       - 8080
     depends_on:

@@ -24,7 +24,7 @@ failed() {
   exit 1
 }
 
-# Golang container version to use: `1.17` or `1.18`
+# Golang container version to use: `1.17`, `1.18`, or `1.19`
 announce "Running tests for Go version: $GO_VERSION...";
 docker-compose run \
   -e CONJUR_AUTHN_API_KEY \

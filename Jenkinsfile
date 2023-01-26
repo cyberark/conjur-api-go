@@ -20,32 +20,42 @@ pipeline {
         }
       }
     }
+    stage('Run Tests') {
+      parallel {
+        stage('Run tests: Golang 1.19') {
+          steps {
+            sh './bin/test.sh 1.19'
+            junit 'output/1.19/junit.xml'
+          }
+        }
 
-    stage('Run tests: Golang 1.18') {
-      steps {
-        sh './bin/test.sh 1.18'
-        junit 'output/1.18/junit.xml'
-      }
-    }
+        stage('Run tests: Golang 1.18') {
+          steps {
+            sh './bin/test.sh 1.18'
+            junit 'output/1.18/junit.xml'
+          }
+        }
 
-    stage('Run tests: Golang 1.17') {
-      steps {
-        sh './bin/test.sh 1.17'
-        junit 'output/1.17/junit.xml'
-        cobertura autoUpdateHealth: false,
-                  autoUpdateStability: false,
-                  coberturaReportFile: 'output/1.17/coverage.xml',
-                  conditionalCoverageTargets: '30, 0, 0',
-                  failUnhealthy: true,
-                  failUnstable: false,
-                  lineCoverageTargets: '30, 0, 0',
-                  maxNumberOfBuilds: 0,
-                  methodCoverageTargets: '30, 0, 0',
-                  onlyStable: false,
-                  sourceEncoding: 'ASCII',
-                  zoomCoverageChart: false
-        sh 'cp output/1.17/c.out .'
-        ccCoverage("gocov", "--prefix github.com/cyberark/conjur-api-go")
+        stage('Run tests: Golang 1.17') {
+          steps {
+            sh './bin/test.sh 1.17'
+            junit 'output/1.17/junit.xml'
+            cobertura autoUpdateHealth: false,
+                      autoUpdateStability: false,
+                      coberturaReportFile: 'output/1.17/coverage.xml',
+                      conditionalCoverageTargets: '30, 0, 0',
+                      failUnhealthy: true,
+                      failUnstable: false,
+                      lineCoverageTargets: '30, 0, 0',
+                      maxNumberOfBuilds: 0,
+                      methodCoverageTargets: '30, 0, 0',
+                      onlyStable: false,
+                      sourceEncoding: 'ASCII',
+                      zoomCoverageChart: false
+            sh 'cp output/1.17/c.out .'
+            ccCoverage("gocov", "--prefix github.com/cyberark/conjur-api-go")
+          }
+        }
       }
     }
 
