@@ -49,7 +49,7 @@ func TestClient_RotateAPIKey(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// SETUP
-			conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
+			conjur, err := conjurDefaultSetup()
 			assert.NoError(t, err)
 
 			// EXERCISE
@@ -94,7 +94,7 @@ func TestClient_RotateHostAPIKey(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// SETUP
-			conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
+			conjur, err := conjurDefaultSetup()
 			assert.NoError(t, err)
 
 			// EXERCISE
@@ -135,7 +135,7 @@ func TestClient_RotateUserAPIKey(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// SETUP
-			conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
+			conjur, err := conjurDefaultSetup()
 			assert.NoError(t, err)
 
 			// EXERCISE
@@ -158,15 +158,18 @@ func runRotateUserAPIKeyAssertions(t *testing.T, tc rotateUserAPIKeyTestCase, co
 
 func TestClient_Whoami(t *testing.T) {
 	t.Run("Whoami", func(t *testing.T) {
-		conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
+		conjur, err := conjurDefaultSetup()
 		assert.NoError(t, err)
 
 		resp, err := conjur.WhoAmI()
 		assert.NoError(t, err)
 
-		respStr := string(resp)
-		assert.Contains(t, respStr, `"account":"cucumber"`)
-		assert.Contains(t, respStr, `"username":"admin"`)
+		roleType, roleName, roleId := resp.Role()
+		assert.Contains(t, resp.Account, `cucumber`)
+		assert.Contains(t, resp.Username, `admin`)
+		assert.Contains(t, roleType, `user`)
+		assert.Contains(t, roleName, `admin`)
+		assert.Contains(t, roleId, `cucumber:user:admin`)
 	})
 }
 

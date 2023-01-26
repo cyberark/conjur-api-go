@@ -682,6 +682,17 @@ func makeFullId(account, kind, id string) string {
 	return strings.Join(tokens, ":")
 }
 
+func roleFromUsername(account string, username string) (string, string, string) {
+	tokens := strings.SplitN(username, "/", 2)
+	switch len(tokens) {
+	case 1:
+		tokens = []string{account, "user", tokens[0]}
+	case 2:
+		tokens = []string{account, tokens[0], tokens[1]}
+	}
+	return tokens[1], tokens[2], strings.Join(tokens, ":")
+}
+
 func parseID(fullID string) (account, kind, id string, err error) {
 	tokens := strings.SplitN(fullID, ":", 3)
 	if len(tokens) != 3 {

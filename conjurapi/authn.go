@@ -2,6 +2,7 @@ package conjurapi
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -93,6 +94,31 @@ func (c *Client) createAuthRequest(req *http.Request) error {
 	return nil
 }
 
+// ChangeCurrentUserPassword changes the password of the currently authenticated user
+func (c *Client) ChangeCurrentUserPassword(password string, newPassword string) ([]byte, error) {
+	whoamiResponse, err := c.WhoAmI()
+	if err != nil {
+		return nil, err
+	}
+
+	roleType, roleName, _ := whoamiResponse.Role()
+	if roleType != "user" {
+		return nil, fmt.Errorf("password can only be changed for role of type 'user': got type %q", roleType)
+	}
+
+	req, err := c.ChangeUserPasswordRequest(roleName, password, newPassword)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return response.DataResponse(res)
+}
+
 func (c *Client) ChangeUserPassword(username string, password string, newPassword string) ([]byte, error) {
 	req, err := c.ChangeUserPasswordRequest(username, password, newPassword)
 	if err != nil {
@@ -178,19 +204,42 @@ func (c *Client) InternalAuthenticate() ([]byte, error) {
 	return c.authenticator.RefreshToken()
 }
 
+// WhoamiResponse represents metadata on the currently authenticated user
+type WhoamiResponse struct {
+	ClientIP      string `json:"client_ip"`
+	UserAgent     string `json:"user_agent"`
+	Account       string `json:"account"`
+	Username      string `json:"username"`
+	TokenIssuedAt string `json:"token_issued_at"`
+}
+
+// Role returns the role type, role name, and role id respectively using values on WhoamiResponse
+func (w WhoamiResponse) Role() (string, string, string) {
+	return roleFromUsername(w.Account, w.Username)
+}
+
 // WhoAmI obtains information on the current user.
-func (c *Client) WhoAmI() ([]byte, error) {
+func (c *Client) WhoAmI() (WhoamiResponse, error) {
+	var whoamiResponse WhoamiResponse
+
 	req, err := c.WhoAmIRequest()
 	if err != nil {
-		return nil, err
+		return whoamiResponse, err
 	}
 
 	res, err := c.SubmitRequest(req)
 	if err != nil {
-		return nil, err
+		return whoamiResponse, err
 	}
 
-	return response.DataResponse(res)
+	whoAmIData, err := response.DataResponse(res)
+	if err != nil {
+		return whoamiResponse, err
+	}
+
+	err = json.Unmarshal(whoAmIData, &whoamiResponse)
+
+	return whoamiResponse, err
 }
 
 // Authenticate obtains a new access token.
@@ -280,6 +329,18 @@ func (c *Client) RotateUserAPIKey(userID string) ([]byte, error) {
 	config := c.GetConfig()
 	roleID := fmt.Sprintf("%s:user:%s", config.Account, userID)
 	return c.RotateAPIKey(roleID)
+}
+
+// RotateCurrentRoleAPIKey rotates the
+// API key of the currently authenticated role with a new random secret.
+func (c *Client) RotateCurrentRoleAPIKey() ([]byte, error) {
+	whoamiResponse, err := c.WhoAmI()
+	if err != nil {
+		return nil, err
+	}
+
+	_, _, roleId := whoamiResponse.Role()
+	return c.RotateAPIKey(roleId)
 }
 
 // RotateHostAPIKey constructs a role ID from a given host ID then replaces the

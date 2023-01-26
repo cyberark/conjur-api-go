@@ -32,6 +32,10 @@ var defaultTestPolicy = `
     - !variable password
 `
 
+func conjurDefaultSetup() (*Client, error) {
+	return conjurSetup(&Config{},  defaultTestPolicy)
+}
+
 func conjurSetup(config *Config, policy string) (*Client, error) {
 	config.mergeEnv()
 	

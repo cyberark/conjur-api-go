@@ -50,7 +50,7 @@ func TestClient_RoleExists(t *testing.T) {
 		}
 	}
 
-	conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
+	conjur, err := conjurDefaultSetup()
 	assert.NoError(t, err)
 
 	t.Run("Role exists returns true", roleExistent(conjur, "cucumber:user:alice"))

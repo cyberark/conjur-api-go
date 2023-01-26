@@ -25,7 +25,7 @@ func TestClient_CheckPermission(t *testing.T) {
 		}
 	}
 
-	conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
+	conjur, err := conjurDefaultSetup()
 	assert.NoError(t, err)
 
 	t.Run("Check an allowed permission", checkAllowed(conjur, "cucumber:variable:db-password"))
@@ -34,7 +34,7 @@ func TestClient_CheckPermission(t *testing.T) {
 }
 
 func TestClient_ResourceExists(t *testing.T) {
-	resourceExistent := func(conjur *Client, id string) func (t *testing.T) {
+	resourceExistent := func(conjur *Client, id string) func(t *testing.T) {
 		return func(t *testing.T) {
 			exists, err := conjur.ResourceExists(id)
 			assert.NoError(t, err)
@@ -42,7 +42,7 @@ func TestClient_ResourceExists(t *testing.T) {
 		}
 	}
 
-	resourceNonexistent := func(conjur *Client, id string) func (t *testing.T) {
+	resourceNonexistent := func(conjur *Client, id string) func(t *testing.T) {
 		return func(t *testing.T) {
 			exists, err := conjur.ResourceExists(id)
 			assert.NoError(t, err)
@@ -50,7 +50,7 @@ func TestClient_ResourceExists(t *testing.T) {
 		}
 	}
 
-	conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
+	conjur, err := conjurDefaultSetup()
 	assert.NoError(t, err)
 
 	t.Run("Resource exists returns true", resourceExistent(conjur, "cucumber:variable:db-password"))
@@ -66,7 +66,7 @@ func TestClient_Resources(t *testing.T) {
 		}
 	}
 
-	conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
+	conjur, err := conjurDefaultSetup()
 	assert.NoError(t, err)
 
 	t.Run("Lists all resources", listResources(conjur, nil, 12))
@@ -86,7 +86,7 @@ func TestClient_Resource(t *testing.T) {
 		}
 	}
 
-	conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
+	conjur, err := conjurDefaultSetup()
 	assert.NoError(t, err)
 
 	t.Run("Shows a resource", showResource(conjur, "cucumber:variable:db-password"))
@@ -101,7 +101,7 @@ func TestClient_ResourceIDs(t *testing.T) {
 		}
 	}
 
-	conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
+	conjur, err := conjurDefaultSetup()
 	assert.NoError(t, err)
 
 	t.Run("Lists all resources", listResourceIDs(conjur, nil, 12))
@@ -122,7 +122,7 @@ func TestClient_PermittedRoles(t *testing.T) {
 		}
 	}
 
-	conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
+	conjur, err := conjurDefaultSetup()
 	assert.NoError(t, err)
 
 	t.Run("Lists permitted roles on a variable", listPermittedRoles(conjur, "cucumber:variable:db-password", 2))
