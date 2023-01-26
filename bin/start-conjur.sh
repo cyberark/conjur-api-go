@@ -2,7 +2,7 @@
 
 . ./utils.sh
 
-trap teardown EXIT
+trap teardown ERR
 
 announce "Compose Project Name: $COMPOSE_PROJECT_NAME"
 

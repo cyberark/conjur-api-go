@@ -306,12 +306,9 @@ func (c *Client) OidcAuthenticateRequest(code, nonce, code_verifier string) (*ht
 }
 
 func (c *Client) RotateAPIKeyRequest(roleID string) (*http.Request, error) {
-	account, _, _, err := parseID(roleID)
+	_, _, _, err := c.parseID(roleID)
 	if err != nil {
 		return nil, err
-	}
-	if account != c.config.Account {
-		return nil, fmt.Errorf("Account of '%s' must match the configured account '%s'", roleID, c.config.Account)
 	}
 
 	rotateURL := makeRouterURL(c.authnURL(), "api_key").withFormattedQuery("role=%s", roleID).String()
@@ -342,12 +339,42 @@ func (c *Client) ChangeUserPasswordRequest(username string, password string, new
 	return req, nil
 }
 
-func (c *Client) CheckPermissionRequest(resourceID string, privilege string) (*http.Request, error) {
-	account, kind, id, err := parseID(resourceID)
+// CheckPermissionRequest crafts an HTTP request to Conjur's /resource endpoint
+// to check if the authenticated user has the given privilege on the given resourceID.
+func (c *Client) CheckPermissionRequest(resourceID, privilege string) (*http.Request, error) {
+	account, kind, id, err := c.parseID(resourceID)
 	if err != nil {
 		return nil, err
 	}
-	checkURL := makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id)).withFormattedQuery("check=true&privilege=%s", url.QueryEscape(privilege)).String()
+
+	query := fmt.Sprintf("check=true&privilege=%s", url.QueryEscape(privilege))
+
+	checkURL := makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id)).withQuery(query).String()
+
+	return http.NewRequest(
+		"GET",
+		checkURL,
+		nil,
+	)
+}
+
+// CheckPermissionForRoleRequest crafts an HTTP request to Conjur's /resource endpoint
+// to check if a given role has the given privilege on the given resourceID.
+func (c *Client) CheckPermissionForRoleRequest(resourceID, roleID, privilege string) (*http.Request, error) {
+	account, kind, id, err := c.parseID(resourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	roleAccount, roleKind, roleIdentifier, err := c.parseID(roleID)
+	if err != nil {
+		return nil, err
+	}
+	fullyQualifiedRoleID := strings.Join([]string{roleAccount, roleKind, roleIdentifier}, ":")
+
+	query := fmt.Sprintf("check=true&privilege=%s&role=%s", url.QueryEscape(privilege), url.QueryEscape(fullyQualifiedRoleID))
+
+	checkURL := makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id)).withQuery(query).String()
 
 	return http.NewRequest(
 		"GET",
@@ -357,7 +384,7 @@ func (c *Client) CheckPermissionRequest(resourceID string, privilege string) (*h
 }
 
 func (c *Client) ResourceRequest(resourceID string) (*http.Request, error) {
-	account, kind, id, err := parseID(resourceID)
+	account, kind, id, err := c.parseID(resourceID)
 	if err != nil {
 		return nil, err
 	}
@@ -401,7 +428,7 @@ func (c *Client) ResourcesRequest(filter *ResourceFilter) (*http.Request, error)
 }
 
 func (c *Client) PermittedRolesRequest(resourceID string, privilege string) (*http.Request, error) {
-	account, kind, id, err := parseID(resourceID)
+	account, kind, id, err := c.parseID(resourceID)
 	if err != nil {
 		return nil, err
 	}
@@ -415,7 +442,7 @@ func (c *Client) PermittedRolesRequest(resourceID string, privilege string) (*ht
 }
 
 func (c *Client) RoleRequest(roleID string) (*http.Request, error) {
-	account, kind, id, err := parseID(roleID)
+	account, kind, id, err := c.parseID(roleID)
 	if err != nil {
 		return nil, err
 	}
@@ -429,7 +456,7 @@ func (c *Client) RoleRequest(roleID string) (*http.Request, error) {
 }
 
 func (c *Client) RoleMembersRequest(roleID string) (*http.Request, error) {
-	account, kind, id, err := parseID(roleID)
+	account, kind, id, err := c.parseID(roleID)
 	if err != nil {
 		return nil, err
 	}
@@ -443,7 +470,7 @@ func (c *Client) RoleMembersRequest(roleID string) (*http.Request, error) {
 }
 
 func (c *Client) RoleMembershipsRequest(roleID string) (*http.Request, error) {
-	account, kind, id, err := parseID(roleID)
+	account, kind, id, err := c.parseID(roleID)
 	if err != nil {
 		return nil, err
 	}
@@ -459,7 +486,7 @@ func (c *Client) RoleMembershipsRequest(roleID string) (*http.Request, error) {
 func (c *Client) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader) (*http.Request, error) {
 	fullPolicyID := makeFullId(c.config.Account, "policy", policyID)
 
-	account, kind, id, err := parseID(fullPolicyID)
+	account, kind, id, err := c.parseID(fullPolicyID)
 	if err != nil {
 		return nil, err
 	}
@@ -620,7 +647,7 @@ func (c *Client) createHostURL() string {
 }
 
 func (c *Client) variableURL(variableID string) (string, error) {
-	account, kind, id, err := parseID(variableID)
+	account, kind, id, err := c.parseID(variableID)
 	if err != nil {
 		return "", err
 	}
@@ -628,7 +655,7 @@ func (c *Client) variableURL(variableID string) (string, error) {
 }
 
 func (c *Client) variableWithVersionURL(variableID string, version int) (string, error) {
-	account, kind, id, err := parseID(variableID)
+	account, kind, id, err := c.parseID(variableID)
 	if err != nil {
 		return "", err
 	}
@@ -687,13 +714,25 @@ func makeFullId(account, kind, id string) string {
 	return strings.Join(tokens, ":")
 }
 
-func parseID(fullID string) (account, kind, id string, err error) {
-	tokens := strings.SplitN(fullID, ":", 3)
-	if len(tokens) != 3 {
-		err = fmt.Errorf("Id '%s' must be fully qualified", fullID)
-		return
+// parseID accepts as argument a resource ID and returns its components - account,
+// resource kind, and identifier. The provided ID can either be fully- or
+// partially-qualified. If the ID is only partially-qualified, the configured
+// account will be returned.
+//
+// Examples:
+// c.parseID("dev:user:alice")  =>  "dev", "user", "alice", nil
+// c.parseID("user:alice")      =>  "dev", "user", "alice", nil
+// c.parseID("prod:user:alice") => "prod", "user", "alice", nil
+// c.parseID("malformed")       =>     "",     "",      "". error
+func (c *Client) parseID(id string) (account, kind, identifier string, err error) {
+	tokens := strings.SplitN(id, ":", 3)
+	if len(tokens) == 3 {
+		return tokens[0], tokens[1], tokens[2], nil
+	} else if len(tokens) == 2 {
+		return c.config.Account, tokens[0], tokens[1], nil
+	} else {
+		return "", "", "", fmt.Errorf("Malformed ID '%s': must be fully- or partially-qualified, of form [<account>:]<kind>:<identifier>", id)
 	}
-	return tokens[0], tokens[1], tokens[2], nil
 }
 
 func NewClient(config Config) (*Client, error) {

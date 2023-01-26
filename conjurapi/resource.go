@@ -3,6 +3,7 @@ package conjurapi
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
@@ -16,12 +17,27 @@ type ResourceFilter struct {
 
 // CheckPermission determines whether the authenticated user has a specified privilege
 // on a resource.
-func (c *Client) CheckPermission(resourceID, privilege string) (bool, error) {
+func (c *Client) CheckPermission(resourceID string, privilege string) (bool, error) {
 	req, err := c.CheckPermissionRequest(resourceID, privilege)
 	if err != nil {
 		return false, err
 	}
 
+	return c.processPermissionCheck(req)
+}
+
+// CheckPermissionForRole determines whether the provided role has a specific
+// privilege on a resource.
+func (c *Client) CheckPermissionForRole(resourceID string, roleID string, privilege string) (bool, error) {
+	req, err := c.CheckPermissionForRoleRequest(resourceID, roleID, privilege)
+	if err != nil {
+		return false, err
+	}
+
+	return c.processPermissionCheck(req)
+}
+
+func (c *Client) processPermissionCheck(req *http.Request) (bool, error) {
 	resp, err := c.SubmitRequest(req)
 	if err != nil {
 		return false, err
