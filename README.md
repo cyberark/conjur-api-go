@@ -19,12 +19,13 @@ compatibility. When possible, upgrade your Conjur version to match the
 when using integrations, choose the latest suite release that matches your Conjur version. For any 
 questions, please contact us on [Discourse](https://discuss.cyberarkcommons.org/c/conjur/5).
 
-## Compatability
+## Compatibility
 
 The `conjur-api-go` has been tested against the following Go versions:
 
-    - 1.17
+    - 1.17 (EOL)
     - 1.18
+    - 1.19
 
 ## Installation
 

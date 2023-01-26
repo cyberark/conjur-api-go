@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   [<account>:]<kind>:<identifier>.
   [cyberark/conjur-api-go#153](https://github.com/cyberark/conjur-api-go/pull/153)
 
+### Security
+- Upgrade gopkg.in/yaml.v3 indirect dependencies to v3.0.1 and Dockerfile to golang:1.19.5
+  [cyberark/conjur-api-go#158](https://github.com/cyberark/conjur-api-go/pull/158)
+
 ## [0.10.2] - 2022-11-14
 
 ### Fixed

@@ -1,4 +1,4 @@
-ARG FROM_IMAGE="golang:1.17"
+ARG FROM_IMAGE="golang:1.19"
 FROM ${FROM_IMAGE}
 MAINTAINER Conjur Inc.
 

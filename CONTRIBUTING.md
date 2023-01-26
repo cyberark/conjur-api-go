@@ -34,14 +34,14 @@ and will run all tests.
 
 To run the tests against a specific version of Golang, you can run the following:
 ```shell
-./bin/test.sh 1.17
+./bin/test.sh 1.18
 ```
 
 This will spin up a containerized Conjur environment and build the test containers,
-and will run the tests in a `golang:1.17` container
+and will run the tests in a `golang:1.18` container
 
-Supported arguments are `1.17` and `1.18`, with the
-default being `1.17` if no argument is given.
+Supported arguments are `1.18` and `1.19`, with the
+default being `1.18` if no argument is given.
 
 ### Setting up a development environment
 To start a container with terminal access, and the necessary
