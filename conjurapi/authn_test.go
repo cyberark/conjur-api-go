@@ -294,6 +294,12 @@ func TestClient_PurgeCredentials(t *testing.T) {
 		err := client.PurgeCredentials()
 		assert.EqualError(t, err, "error")
 	})
+
+	t.Run("Does nothing if storage provider is nil", func(t *testing.T) {
+		client.storage = nil
+		err := client.PurgeCredentials()
+		assert.NoError(t, err)
+	})
 }
 
 func TestPurgeCredentials(t *testing.T) {
@@ -640,7 +646,7 @@ func runPublicKeysAssertions(t *testing.T, tc publicKeysTestCase, conjur *Client
 	publicKeys, err = conjur.PublicKeys(tc.kind, tc.identifier)
 
 	assert.NoError(t, err)
-	
+
 	expectedOutput := `ssh-rsa test-key-1 laptop
 ssh-rsa test-key-2 workstation
 `
