@@ -595,6 +595,58 @@ func runChangeUserPasswordAssertions(t *testing.T, tc changeUserPasswordTestCase
 	assert.NoError(t, err)
 }
 
+type changeCurrentUserPasswordTestCase struct {
+	name        string
+	newPassword string
+}
+
+func TestClient_ChangeCurrentUserPassword(t *testing.T) {
+	testCases := []changeCurrentUserPasswordTestCase{
+		{
+			name:        "Change the password of a user",
+			newPassword: "SUp3r$3cr3t!!",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// SETUP
+			tempDir := t.TempDir()
+			config := &Config{
+				NetRCPath: filepath.Join(tempDir, ".netrc"),
+				CredentialStorage: "file",
+			}
+			conjur, err := conjurSetup(config, defaultTestPolicy)
+			assert.NoError(t, err)
+
+			// EXERCISE
+			runChangeCurrentUserPasswordAssertions(t, tc, conjur)
+		})
+	}
+}
+
+func runChangeCurrentUserPasswordAssertions(t *testing.T, tc changeCurrentUserPasswordTestCase, conjur *Client) {
+	var userAPIKey []byte
+	var err error
+
+	userAPIKey, err = conjur.RotateUserAPIKey("alice")
+
+	// Create empty netrc file, then login to write user credentials
+	err = os.WriteFile(conjur.config.NetRCPath, []byte(""), 0600)
+	assert.NoError(t, err)
+	conjur.Login("alice", string(userAPIKey))
+
+	// Change the user password, then login + authenticate to test the new password
+	_, err = conjur.ChangeCurrentUserPassword(tc.newPassword)
+	assert.NoError(t, err)
+
+	userAPIKey, err = conjur.Login("alice", tc.newPassword)
+	assert.NoError(t, err)
+
+	_, err = conjur.Authenticate(authn.LoginPair{Login: "alice", APIKey: string(userAPIKey)})
+	assert.NoError(t, err)
+}
+
 var publicKeysTestPolicy = `
 - !user
   id: alice
