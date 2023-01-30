@@ -107,6 +107,15 @@ func (c *Client) ChangeUserPassword(username string, password string, newPasswor
 	return response.DataResponse(res)
 }
 
+func (c *Client) ChangeCurrentUserPassword(newPassword string) ([]byte, error) {
+	username, password, err := c.storage.ReadCredentials()
+	if err != nil {
+		return nil, err
+	}
+
+	return c.ChangeUserPassword(username, password, newPassword)
+}
+
 // Login exchanges a user's password for an API key.
 func (c *Client) Login(login string, password string) ([]byte, error) {
 	req, err := c.LoginRequest(login, password)
