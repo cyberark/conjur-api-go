@@ -54,4 +54,28 @@ func TestToken_Parse(t *testing.T) {
 		_, err := NewToken([]byte(token_mangled_2_s))
 		assert.Equal(t, "Unable to unmarshal access token field 'payload' : invalid character 'o' in literal false (expecting 'a')", err.Error())
 	})
+
+	t.Run("Invalid JSON in token is reported", func(t *testing.T) {
+		token, err := NewToken([]byte("invalid json"))
+		assert.EqualError(t, err, "Unable to unmarshal token : invalid character 'i' looking for beginning of value")
+		assert.Nil(t, token)
+	})
+
+	t.Run("Token without correct fields", func(t *testing.T) {
+		token, err := NewToken([]byte(`{"foo":"bar"}`))
+		assert.EqualError(t, err, "Unrecognized token format")
+		assert.Nil(t, token)
+	})
+
+	t.Run("Token without iat", func(t *testing.T) {
+		token_without_iat := `{"protected":"eyJhbGciOiJjb25qdXIub3JnL3Nsb3NpbG8vdjIiLCJraWQiOiI5M2VjNTEwODRmZTM3Zjc3M2I1ODhlNTYyYWVjZGMxMSJ9","payload":"eyJzdWIiOiJhZG1pbiJ9Cg==","signature":"raCufKOf7sKzciZInQTphu1mBbLhAdIJM72ChLB4m5wKWxFnNz_7LawQ9iYEI_we1-tdZtTXoopn_T1qoTplR9_Bo3KkpI5Hj3DB7SmBpR3CSRTnnEwkJ0_aJ8bql5Cbst4i4rSftyEmUqX-FDOqJdAztdi9BUJyLfbeKTW9OGg-QJQzPX1ucB7IpvTFCEjMoO8KUxZpbHj-KpwqAMZRooG4ULBkxp5nSfs-LN27JupU58oRgIfaWASaDmA98O2x6o88MFpxK_M0FeFGuDKewNGrRc8lCOtTQ9cULA080M5CSnruCqu1Qd52r72KIOAfyzNIiBCLTkblz2fZyEkdSKQmZ8J3AakxQE2jyHmMT-eXjfsEIzEt-IRPJIirI3Qm"}`
+		_, err := NewToken([]byte(token_without_iat))
+		assert.EqualError(t, err, "access token field 'payload' does not contain 'iat'")
+	})
+
+	t.Run("Token expired before issued", func(t *testing.T) {
+		token_exp_before_issued := `{"protected":"eyJhbGciOiJjb25qdXIub3JnL3Nsb3NpbG8vdjIiLCJraWQiOiI5M2VjNTEwODRmZTM3Zjc3M2I1ODhlNTYyYWVjZGMxMSJ9","payload":"eyJzdWIiOiJhZG1pbiIsImlhdCI6MTUxMDc1MzM1OSwiZXhwIjoxNTEwNzUzMjU5fQo=","signature":"raCufKOf7sKzciZInQTphu1mBbLhAdIJM72ChLB4m5wKWxFnNz_7LawQ9iYEI_we1-tdZtTXoopn_T1qoTplR9_Bo3KkpI5Hj3DB7SmBpR3CSRTnnEwkJ0_aJ8bql5Cbst4i4rSftyEmUqX-FDOqJdAztdi9BUJyLfbeKTW9OGg-QJQzPX1ucB7IpvTFCEjMoO8KUxZpbHj-KpwqAMZRooG4ULBkxp5nSfs-LN27JupU58oRgIfaWASaDmA98O2x6o88MFpxK_M0FeFGuDKewNGrRc8lCOtTQ9cULA080M5CSnruCqu1Qd52r72KIOAfyzNIiBCLTkblz2fZyEkdSKQmZ8J3AakxQE2jyHmMT-eXjfsEIzEt-IRPJIirI3Qm"}`
+		_, err := NewToken([]byte(token_exp_before_issued))
+		assert.EqualError(t, err, "access token expired before it was issued")
+	})
 }

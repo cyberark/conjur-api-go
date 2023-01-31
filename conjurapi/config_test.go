@@ -279,3 +279,86 @@ func TestConfig_Conjurrc(t *testing.T) {
 		}
 	})
 }
+
+func TestConfig_ReadSSLCert(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Reads SSL cert from file", func(t *testing.T) {
+		tmpFileName, err := TempFileForTesting("TestConfigReadSSLCert", "test-cert", t)
+		defer os.Remove(tmpFileName) // clean up
+		assert.NoError(t, err)
+
+		config := Config{
+			SSLCertPath: tmpFileName,
+		}
+
+		cert, err := config.ReadSSLCert()
+		assert.NoError(t, err)
+		assert.Equal(t, "test-cert", string(cert))
+	})
+
+	t.Run("Returns error when SSL cert file is not found", func(t *testing.T) {
+		config := Config{
+			SSLCertPath: "not-found",
+		}
+
+		_, err := config.ReadSSLCert()
+		assert.Error(t, err)
+	})
+
+	t.Run("Returns error when SSL cert file is not set", func(t *testing.T) {
+		config := Config{}
+
+		cert, err := config.ReadSSLCert()
+		assert.EqualError(t, err, "open : no such file or directory")
+		assert.Nil(t, cert)
+	})
+
+	t.Run("Returns SSLCert when set", func(t *testing.T) {
+		config := Config{
+			SSLCert: "test-cert",
+		}
+
+		cert, err := config.ReadSSLCert()
+		assert.NoError(t, err)
+		assert.Equal(t, "test-cert", string(cert))
+	})
+}
+
+func TestConfig_BaseUURL(t *testing.T) {
+	testCases := []struct {
+		name         string
+		applianceUrl string
+		sslCert      string
+		expected     string
+	}{
+		{
+			name:         "with https prefix",
+			applianceUrl: "https://conjur.myorg.com",
+			expected:     "https://conjur.myorg.com",
+		},
+		{
+			name:         "without prefix",
+			applianceUrl: "conjur.myorg.com",
+			expected:     "http://conjur.myorg.com",
+		},
+		{
+			name:         "with cert",
+			applianceUrl: "conjur.myorg.com",
+			sslCert:      "test-cert",
+			expected:     "https://conjur.myorg.com",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			config := Config{
+				ApplianceURL: testCase.applianceUrl,
+				SSLCert:      testCase.sslCert,
+			}
+
+			actual := config.BaseURL()
+			assert.Equal(t, testCase.expected, actual)
+		})
+	}
+}
