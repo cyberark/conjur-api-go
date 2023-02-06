@@ -116,62 +116,7 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 
 	authnJwtServiceID := os.Getenv("CONJUR_AUTHN_JWT_SERVICE_ID")
 	if authnJwtServiceID != "" {
-		var jwtTokenString string
-		jwtToken := os.Getenv("CONJUR_AUTHN_JWT_TOKEN")
-		jwtTokenString = fmt.Sprintf("jwt=%s", jwtToken)
-		if jwtToken == "" {
-			jwtTokenPath := os.Getenv("JWT_TOKEN_PATH")
-			if jwtTokenPath == "" {
-				jwtTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
-			}
-
-			jwtToken, err := ioutil.ReadFile(jwtTokenPath)
-			if err != nil {
-				return nil, err
-			}
-			jwtTokenString = fmt.Sprintf("jwt=%s", string(jwtToken))
-		}
-
-		var httpClient *http.Client
-		if config.IsHttps() {
-			cert, err := config.ReadSSLCert()
-			if err != nil {
-				return nil, err
-			}
-			httpClient, err = newHTTPSClient(cert)
-			if err != nil {
-				return nil, err
-			}
-
-		} else {
-			httpClient = &http.Client{Timeout: time.Second * 10}
-		}
-
-		authnJwtHostID := os.Getenv("CONJUR_AUTHN_JWT_HOST_ID")
-		var authnJwtUrl string
-		if authnJwtHostID != "" {
-			authnJwtUrl = makeRouterURL(config.ApplianceURL, "authn-jwt", authnJwtServiceID, config.Account, url.PathEscape(authnJwtHostID), "authenticate").String()
-		} else {
-			authnJwtUrl = makeRouterURL(config.ApplianceURL, "authn-jwt", authnJwtServiceID, config.Account, "authenticate").String()
-		}
-
-		req, err := http.NewRequest("POST", authnJwtUrl, strings.NewReader(jwtTokenString))
-		if err != nil {
-			return nil, err
-		}
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-		resp, err := httpClient.Do(req)
-		if err != nil {
-			return nil, err
-		}
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-
-		return NewClientFromToken(config, string(body))
+		return NewClientFromJwt(config, authnJwtServiceID)
 	}
 
 	loginPair, err := LoginPairFromEnv()
@@ -187,8 +132,66 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 	if client != nil {
 		return client, nil
 	}
-
 	return nil, fmt.Errorf("Environment variables and machine identity files satisfying at least one authentication strategy must be present!")
+}
+
+func NewClientFromJwt(config Config, authnJwtServiceID string) (*Client, error) {
+	var jwtTokenString string
+	jwtToken := os.Getenv("CONJUR_AUTHN_JWT_TOKEN")
+	jwtTokenString = fmt.Sprintf("jwt=%s", jwtToken)
+	if jwtToken == "" {
+		jwtTokenPath := os.Getenv("JWT_TOKEN_PATH")
+		if jwtTokenPath == "" {
+			jwtTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+		}
+
+		jwtToken, err := ioutil.ReadFile(jwtTokenPath)
+		if err != nil {
+			return nil, err
+		}
+		jwtTokenString = fmt.Sprintf("jwt=%s", string(jwtToken))
+	}
+
+	var httpClient *http.Client
+	if config.IsHttps() {
+		cert, err := config.ReadSSLCert()
+		if err != nil {
+			return nil, err
+		}
+		httpClient, err = newHTTPSClient(cert)
+		if err != nil {
+			return nil, err
+		}
+
+	} else {
+		httpClient = &http.Client{Timeout: time.Second * 10}
+	}
+
+	authnJwtHostID := os.Getenv("CONJUR_AUTHN_JWT_HOST_ID")
+	var authnJwtUrl string
+	if authnJwtHostID != "" {
+		authnJwtUrl = makeRouterURL(config.ApplianceURL, "authn-jwt", authnJwtServiceID, config.Account, url.PathEscape(authnJwtHostID), "authenticate").String()
+	} else {
+		authnJwtUrl = makeRouterURL(config.ApplianceURL, "authn-jwt", authnJwtServiceID, config.Account, "authenticate").String()
+	}
+
+	req, err := http.NewRequest("POST", authnJwtUrl, strings.NewReader(jwtTokenString))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewClientFromToken(config, string(body))
 }
 
 func newClientFromStoredCredentials(config Config) (*Client, error) {
@@ -207,7 +210,7 @@ func newClientFromStoredCredentials(config Config) (*Client, error) {
 		}
 	}
 
-	return nil, nil
+	return nil, fmt.Errorf("No valid credentials found. Please login again.")
 }
 
 func newClientFromStoredOidcCredentials(config Config) (*Client, error) {

@@ -1,11 +1,31 @@
 package conjurapi
 
 import (
+	"net/http"
+	"path/filepath"
 	"testing"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 	"github.com/stretchr/testify/assert"
 )
+
+var sample_cert = `
+-----BEGIN CERTIFICATE-----
+MIICUTCCAfugAwIBAgIBADANBgkqhkiG9w0BAQQFADBXMQswCQYDVQQGEwJDTjEL
+MAkGA1UECBMCUE4xCzAJBgNVBAcTAkNOMQswCQYDVQQKEwJPTjELMAkGA1UECxMC
+VU4xFDASBgNVBAMTC0hlcm9uZyBZYW5nMB4XDTA1MDcxNTIxMTk0N1oXDTA1MDgx
+NDIxMTk0N1owVzELMAkGA1UEBhMCQ04xCzAJBgNVBAgTAlBOMQswCQYDVQQHEwJD
+TjELMAkGA1UEChMCT04xCzAJBgNVBAsTAlVOMRQwEgYDVQQDEwtIZXJvbmcgWWFu
+ZzBcMA0GCSqGSIb3DQEBAQUAA0sAMEgCQQCp5hnG7ogBhtlynpOS21cBewKE/B7j
+V14qeyslnr26xZUsSVko36ZnhiaO/zbMOoRcKK9vEcgMtcLFuQTWDl3RAgMBAAGj
+gbEwga4wHQYDVR0OBBYEFFXI70krXeQDxZgbaCQoR4jUDncEMH8GA1UdIwR4MHaA
+FFXI70krXeQDxZgbaCQoR4jUDncEoVukWTBXMQswCQYDVQQGEwJDTjELMAkGA1UE
+CBMCUE4xCzAJBgNVBAcTAkNOMQswCQYDVQQKEwJPTjELMAkGA1UECxMCVU4xFDAS
+BgNVBAMTC0hlcm9uZyBZYW5nggEAMAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQEE
+BQADQQA/ugzBrjjK9jcWnDVfGHlk3icNRq0oV7Ri32z/+HQX67aRfgZu7KWdI+Ju
+Wm7DCfrPNGVwFWUQOmsPue9rZBgO
+-----END CERTIFICATE-----
+`
 
 func TestNewClientFromKey(t *testing.T) {
 	t.Run("Has authenticator of type APIKeyAuthenticator", func(t *testing.T) {
@@ -45,6 +65,64 @@ func TestNewClientFromTokenFile(t *testing.T) {
 	})
 }
 
+func TestNewClientFromEnvironment(t *testing.T) {
+	t.Run("Calls NewClientFromTokenFile when CONJUR_AUTHN_TOKEN_FILE is set", func(t *testing.T) {
+		config := Config{Account: "account", ApplianceURL: "appliance-url"}
+		t.Setenv("CONJUR_AUTHN_TOKEN_FILE", "token-file")
+		client, err := NewClientFromEnvironment(config)
+		assert.NoError(t, err)
+		assert.IsType(t, &authn.TokenFileAuthenticator{}, client.authenticator)
+	})
+	t.Run("Calls NewClientFromToken when CONJUR_AUTHN_TOKEN is set", func(t *testing.T) {
+		config := Config{Account: "account", ApplianceURL: "appliance-url"}
+		t.Setenv("CONJUR_AUTHN_TOKEN", "some-token")
+		client, err := NewClientFromEnvironment(config)
+		assert.NoError(t, err)
+		assert.IsType(t, &authn.TokenAuthenticator{}, client.authenticator)
+	})
+	t.Run("Calls NewClientFromJwt when CONJUR_AUTHN_JWT_SERVICE is set", func(t *testing.T) {
+		config := Config{Account: "account", ApplianceURL: "appliance-url"}
+		t.Setenv("CONJUR_AUTHN_JWT_SERVICE_ID", "jwt-service")
+		client, err := NewClientFromEnvironment(config)
+
+		// Expect it to fail without a mocked JWT server
+		assert.Error(t, err)
+		assert.Nil(t, client)
+	})
+	t.Run("Calls NewClientFromKey with when LoginPair is retrieved from env variables", func(t *testing.T) {
+		config := Config{Account: "account", ApplianceURL: "appliance-url"}
+		t.Setenv("CONJUR_AUTHN_LOGIN", "user")
+		t.Setenv("CONJUR_AUTHN_API_KEY", "password")
+		client, err := NewClientFromEnvironment(config)
+		assert.NoError(t, err)
+		assert.IsType(t, &authn.APIKeyAuthenticator{}, client.authenticator)
+	})
+
+	t.Run("Returns error when no credentials found", func(t *testing.T) {
+		config := Config{Account: "account", ApplianceURL: "appliance-url"}
+		t.Setenv("CONJUR_AUTHN_LOGIN", "")
+		t.Setenv("CONJUR_AUTHN_API_KEY", "")
+
+		client, err := NewClientFromEnvironment(config)
+		assert.Error(t, err)
+		assert.Nil(t, client)
+	})
+}
+
+func TestNewClientFromJwt(t *testing.T) {
+	t.Run("Fetches config but fails due to unreachable host", func(t *testing.T) {
+		config := Config{Account: "account", ApplianceURL: "https://appliance-url", SSLCert: sample_cert}
+		t.Setenv("CONJUR_AUTHN_JWT_TOKEN", "jwt-token")
+
+		client, err := NewClientFromJwt(config, "jwt-service")
+
+		// Expect it to fail without a mocked JWT server
+		assert.Error(t, err)
+		assert.Nil(t, client)
+	})
+
+}
+
 func Test_newClientWithAuthenticator(t *testing.T) {
 	t.Run("Returns nil and error for invalid config", func(t *testing.T) {
 		client, err := newClientWithAuthenticator(Config{}, nil)
@@ -78,5 +156,121 @@ func TestNewClientFromOidcCode(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.IsType(t, &authn.OidcAuthenticator{}, client.authenticator)
+	})
+}
+
+func Test_newClientFromStoredCredentials(t *testing.T) {
+	tempDir := t.TempDir()
+	config := Config{
+		Account:           "account",
+		ApplianceURL:      "appliance-url",
+		CredentialStorage: "file",
+		NetRCPath:         filepath.Join(tempDir, ".netrc"),
+	}
+
+	t.Run("Returns error when no credentials are stored", func(t *testing.T) {
+		client, err := newClientFromStoredCredentials(config)
+
+		assert.Error(t, err)
+		assert.Nil(t, client)
+	})
+	t.Run("Returns a client when stored credentials exist", func(t *testing.T) {
+		if storageProvider, _ := createStorageProvider(config); storageProvider != nil {
+			storageProvider.StoreCredentials("user", "password")
+		}
+		client, err := newClientFromStoredCredentials(config)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+	})
+}
+
+func Test_newClientFromStoredOidcCredentials(t *testing.T) {
+	tempDir := t.TempDir()
+	config := Config{
+		ServiceID:         "test",
+		AuthnType:         "oidc",
+		Account:           "account",
+		ApplianceURL:      "appliance-url",
+		CredentialStorage: "file",
+		NetRCPath:         filepath.Join(tempDir, ".netrc"),
+	}
+	t.Run("Returns error when no OIDC credentials are stored", func(t *testing.T) {
+		client, err := newClientFromStoredOidcCredentials(config)
+
+		assert.Error(t, err)
+		assert.Nil(t, client)
+	})
+	t.Run("Returns a client when OIDC credentials exist", func(t *testing.T) {
+		if storageProvider, _ := createStorageProvider(config); storageProvider != nil {
+			storageProvider.StoreAuthnToken([]byte(sample_token))
+		}
+		client, err := newClientFromStoredCredentials(config)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+	})
+}
+
+func TestClient_GetAuthenticator(t *testing.T) {
+	t.Run("Get authenticator", func(t *testing.T) {
+		authenticator := &authn.APIKeyAuthenticator{}
+		client := Client{authenticator: authenticator}
+
+		assert.Equal(t, authenticator, client.GetAuthenticator())
+	})
+}
+
+func TestClient_SetAuthenticator(t *testing.T) {
+	t.Run("Set authenticator", func(t *testing.T) {
+		authenticator := &authn.APIKeyAuthenticator{}
+		client := Client{}
+		client.SetAuthenticator(authenticator)
+
+		assert.Equal(t, authenticator, client.authenticator)
+	})
+}
+
+func TestClient_GetHttpClient(t *testing.T) {
+	t.Run("Get HTTP client", func(t *testing.T) {
+		httpClient := &http.Client{}
+		client := Client{httpClient: httpClient}
+
+		assert.Equal(t, httpClient, client.GetHttpClient())
+	})
+}
+
+func TestClient_SetHttpClient(t *testing.T) {
+	t.Run("Set HTTP client", func(t *testing.T) {
+		httpClient := &http.Client{}
+		client := Client{}
+		client.SetHttpClient(httpClient)
+
+		assert.Equal(t, httpClient, client.httpClient)
+	})
+}
+
+func TestClient_createHttpClient(t *testing.T) {
+	t.Run("Create HTTP client with HTTPS and valid cert", func(t *testing.T) {
+		config := Config{Account: "account", ApplianceURL: "https://appliance-url", SSLCert: sample_cert}
+		client, err := createHttpClient(config)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+	})
+}
+
+func TestClient_newHTTPSClient(t *testing.T) {
+	t.Run("New HTTPS client error with invalid cert", func(t *testing.T) {
+		client, err := newHTTPSClient([]byte("invalid cert"))
+
+		assert.EqualError(t, err, "Can't append Conjur SSL cert")
+		assert.Nil(t, client)
+	})
+	t.Run("New HTTPS client with valid cert", func(t *testing.T) {
+		client, err := newHTTPSClient([]byte(sample_cert))
+
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
 	})
 }
