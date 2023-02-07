@@ -325,7 +325,7 @@ func TestConfig_ReadSSLCert(t *testing.T) {
 	})
 }
 
-func TestConfig_BaseUURL(t *testing.T) {
+func TestConfig_BaseURL(t *testing.T) {
 	testCases := []struct {
 		name         string
 		applianceUrl string
