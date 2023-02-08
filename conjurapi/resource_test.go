@@ -129,6 +129,7 @@ func TestClient_Resources(t *testing.T) {
 	t.Run("Lists variables that start with prod", listResources(conjur, &ResourceFilter{Search: "prod", Kind: "variable"}, 4))
 	t.Run("Lists resources and limit result to 1", listResources(conjur, &ResourceFilter{Limit: 1}, 1))
 	t.Run("Lists resources after the first", listResources(conjur, &ResourceFilter{Offset: 1}, 10))
+	t.Run("Lists resources that alice can see", listResources(conjur, &ResourceFilter{Role:"cucumber:user:alice"}, 1))
 }
 
 func TestClient_Resource(t *testing.T) {

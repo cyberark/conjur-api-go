@@ -419,6 +419,10 @@ func (c *Client) ResourcesRequest(filter *ResourceFilter) (*http.Request, error)
 		if filter.Offset != 0 {
 			query.Add("offset", strconv.Itoa(filter.Offset))
 		}
+
+		if filter.Role != "" {
+			query.Add("acting_as", filter.Role)
+		}
 	}
 
 	requestURL := makeRouterURL(c.resourcesURL(c.config.Account)).withQuery(query.Encode())
