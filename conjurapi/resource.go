@@ -13,6 +13,7 @@ type ResourceFilter struct {
 	Search string
 	Limit  int
 	Offset int
+	Role   string
 }
 
 // CheckPermission determines whether the authenticated user has a specified privilege
