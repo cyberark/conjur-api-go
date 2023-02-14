@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -32,8 +33,15 @@ func (c *Client) CreateToken(durationStr string, hostFactory string, cidrs []str
 		return nil, err
 	}
 	expiration := time.Now().Add(duration).Format(time.RFC3339)
+	id := strings.SplitN(hostFactory, ":", 3)
+	if len(id) == 3 {
+		data.Set("host_factory", hostFactory)
+	} else if len(id) == 1{
+		data.Set("host_factory", c.config.Account + ":host_factory:" + hostFactory)
+	} else {
+		return nil, fmt.Errorf("malformed id '%s': ", hostFactory)
+	}
 	data.Set("expiration", expiration)
-	data.Set("host_factory", hostFactory)
 	data.Set("count", fmt.Sprint(count))
 	for _, cidr := range cidrs {
 		data.Add("cidr[]", cidr)
