@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Resource IDs can now be partially-qualified, adhering to the form
   [<account>:]<kind>:<identifier>.
   [cyberark/conjur-api-go#153](https://github.com/cyberark/conjur-api-go/pull/153)
+- The Hostfactory id is no longer required to be a fully qualified id.
+  [cyberark/conjur-api-go#164](https://github.com/cyberark/conjur-api-go/pull/164)
 
 ### Security
 - Upgrade gopkg.in/yaml.v3 indirect dependencies to v3.0.1 and Dockerfile to golang:1.19.5

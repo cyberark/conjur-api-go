@@ -42,6 +42,20 @@ func TestClient_Token(t *testing.T) {
 			},
 		},
 		{
+			name:        "Create a token with a partial hostfactory id",
+			duration:    "10m",
+			hostFactory: "factory",
+			count:       1,
+			cidr:        []string{"0.0.0.0/0"},
+			assert: func(t *testing.T, err error) {
+				assert.NoError(t, err)
+			},
+			assertHost: func(t *testing.T, size int, err error) {
+				assert.NoError(t, err)
+				assert.True(t, size > 0)
+			},
+		},
+		{
 			name:        "Create a token with two cidrs",
 			duration:    "10m",
 			hostFactory: "cucumber:host_factory:factory",
@@ -100,6 +114,20 @@ func TestClient_Token(t *testing.T) {
 			name:          "Invalid duration",
 			duration:      "10",
 			hostFactory:   "cucumber:host_factory:factory",
+			count:         1,
+			cidr:          []string{"0.0.0.0/0"},
+			expectNoToken: true,
+			assert: func(t *testing.T, err error) {
+				assert.Error(t, err)
+			},
+			assertHost: func(t *testing.T, size int, err error) {
+				return
+			},
+		},
+		{
+			name:          "Invalid hostfactory id",
+			duration:      "10m",
+			hostFactory:   "cucumber:factory",
 			count:         1,
 			cidr:          []string{"0.0.0.0/0"},
 			expectNoToken: true,
