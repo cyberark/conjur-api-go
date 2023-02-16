@@ -76,6 +76,38 @@ func runRotateAPIKeyAssertions(t *testing.T, tc rotateAPIKeyTestCase, conjur *Cl
 	assert.NoError(t, err)
 }
 
+func TestClient_RotateCurrentUserAPIKey(t *testing.T) {
+	//TODO: This test is ugly. Refactor it into something more concise.
+	t.Run("Rotate the API key of the current user", func(t *testing.T) {
+		// SETUP
+		// Login as admin and rotate alice's API key,
+		// so we can log in as her with her new API key
+		conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
+		assert.NoError(t, err)
+		userApiKey, err := conjur.RotateAPIKey("cucumber:user:alice")
+		assert.NoError(t, err)
+
+		// Login as alice with a mock storage provider to store her API key
+		config := &Config{}
+		config.mergeEnv()
+		conjur, err = NewClientFromKey(*config, authn.LoginPair{Login: "alice", APIKey: string(userApiKey)})
+		assert.NoError(t, err)
+		conjur.storage = &mockStorageProvider{}
+		_, err = conjur.Login("alice", string(userApiKey))
+		assert.NoError(t, err)
+
+		// EXERCISE
+		// This will use the "stored" API key to rotate alice's API key
+		newAPIKey, err := conjur.RotateCurrentUserAPIKey()
+		assert.NoError(t, err)
+
+		// VERIFY
+		// Ensure the new API key works
+		_, err = conjur.Authenticate(authn.LoginPair{Login: "alice", APIKey: string(newAPIKey)})
+		assert.NoError(t, err)
+	})
+}
+
 type rotateHostAPIKeyTestCase struct {
 	name   string
 	hostID string
@@ -619,7 +651,7 @@ func TestClient_ChangeCurrentUserPassword(t *testing.T) {
 			// SETUP
 			tempDir := t.TempDir()
 			config := &Config{
-				NetRCPath: filepath.Join(tempDir, ".netrc"),
+				NetRCPath:         filepath.Join(tempDir, ".netrc"),
 				CredentialStorage: "file",
 			}
 			conjur, err := conjurSetup(config, defaultTestPolicy)

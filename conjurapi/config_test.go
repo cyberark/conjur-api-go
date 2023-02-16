@@ -229,6 +229,27 @@ cert_file: "C:\badly\escaped\path"
 		err = config.mergeYAML(tmpFileName)
 		assert.Error(t, err)
 	})
+
+	// BEGIN COMPATIBILITY WITH PYTHON CLI
+	t.Run("Accepts conjur_url and conjur_account for backwards compatibility", func(t *testing.T) {
+		conjurrcFileContents := `
+---
+conjur_url: http://path/to/appliance
+conjur_account: some account
+`
+
+		tmpFileName, err := TempFileForTesting("TestConfigBackwardsCompatibility", conjurrcFileContents, t)
+		defer os.Remove(tmpFileName) // clean up
+		assert.NoError(t, err)
+
+		config := &Config{}
+		config.mergeYAML(tmpFileName)
+		assert.EqualValues(t, *config, Config{
+			Account:      "some account",
+			ApplianceURL: "http://path/to/appliance",
+		})
+	})
+	// END COMPATIBILITY WITH PYTHON CLI
 }
 
 var conjurrcTestCases = []struct {
