@@ -323,6 +323,25 @@ func (c *Client) RotateAPIKeyRequest(roleID string) (*http.Request, error) {
 	)
 }
 
+func (c *Client) RotateCurrentUserAPIKeyRequest(login string, password string) (*http.Request, error) {
+	rotateUrl := makeRouterURL(c.authnURL(), "api_key")
+
+	req, err := http.NewRequest(
+		"PUT",
+		rotateUrl.String(),
+		nil,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// API key can only be rotated via basic auth, NOT using bearer token
+	req.SetBasicAuth(login, password)
+
+	return req, nil
+}
+
 func (c *Client) ChangeUserPasswordRequest(username string, password string, newPassword string) (*http.Request, error) {
 	passwordURL := makeRouterURL(c.config.ApplianceURL, "authn", c.config.Account, "password")
 

@@ -281,6 +281,20 @@ func (c *Client) RotateAPIKey(roleID string) ([]byte, error) {
 	return response.DataResponse(resp)
 }
 
+func (c *Client) RotateCurrentUserAPIKey() ([]byte, error) {
+	username, password, err := c.storage.ReadCredentials()
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.rotateCurrentUserAPIKey(username, password)
+	if err != nil {
+		return nil, err
+	}
+
+	return response.DataResponse(resp)
+}
+
 // RotateUserAPIKey constructs a role ID from a given user ID then replaces the
 // API key of the role with a new random secret.
 //
@@ -324,6 +338,15 @@ func (c *Client) rotateAPIKey(roleID string) (*http.Response, error) {
 	return c.SubmitRequest(req)
 }
 
+func (c *Client) rotateCurrentUserAPIKey(username string, password string) (*http.Response, error) {
+	req, err := c.RotateCurrentUserAPIKeyRequest(username, password)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.httpClient.Do(req)
+}
+
 func (c *Client) PublicKeys(kind string, identifier string) ([]byte, error) {
 	req, err := c.PublicKeysRequest(kind, identifier)
 	if err != nil {
@@ -333,7 +356,7 @@ func (c *Client) PublicKeys(kind string, identifier string) ([]byte, error) {
 	res, err := c.SubmitRequest(req)
 	if err != nil {
 		return nil, err
-	}	
-	
+	}
+
 	return response.DataResponse(res)
 }
