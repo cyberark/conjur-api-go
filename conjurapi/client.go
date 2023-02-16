@@ -308,11 +308,14 @@ func (c *Client) OidcAuthenticateRequest(code, nonce, code_verifier string) (*ht
 	return req, nil
 }
 
+// RotateAPIKeyRequest requires roleID argument to be at least partially-qualified
+// ID of from [<account>:]<kind>:<identifier>.
 func (c *Client) RotateAPIKeyRequest(roleID string) (*http.Request, error) {
-	_, _, _, err := c.parseID(roleID)
+	account, kind, identifier, err := c.parseID(roleID)
 	if err != nil {
 		return nil, err
 	}
+	roleID = fmt.Sprintf("%s:%s:%s", account, kind, identifier)
 
 	rotateURL := makeRouterURL(c.authnURL(), "api_key").withFormattedQuery("role=%s", roleID).String()
 
@@ -751,14 +754,51 @@ func makeFullId(account, kind, id string) string {
 // c.parseID("prod:user:alice") => "prod", "user", "alice", nil
 // c.parseID("malformed")       =>     "",     "",      "". error
 func (c *Client) parseID(id string) (account, kind, identifier string, err error) {
-	tokens := strings.SplitN(id, ":", 3)
-	if len(tokens) == 3 {
-		return tokens[0], tokens[1], tokens[2], nil
-	} else if len(tokens) == 2 {
-		return c.config.Account, tokens[0], tokens[1], nil
-	} else {
+	account, kind, identifier = c.unopinionatedParseID(id)
+	if identifier == "" || kind == "" {
 		return "", "", "", fmt.Errorf("Malformed ID '%s': must be fully- or partially-qualified, of form [<account>:]<kind>:<identifier>", id)
 	}
+	if account == "" {
+		account = c.config.Account
+	}
+	return account, kind, identifier, nil
+}
+
+// parseIDandEnforceKind accepts as argument a resource ID and a kind, and returns
+// the components - account, resource kind, and identifier - only if the provided
+// resource matches the expected kind. If the ID is only partially-qualified, the
+// configured account will be returned, and if the ID consists only of the
+// identifier, the expected kind will be returned.
+//
+// Examples:
+// c.parseID("dev:user:alice", "user")  =>  "dev", "user", "alice", nil
+// c.parseID("user:alice", "user")      =>  "dev", "user", "alice", nil
+// c.parseID("alice", "user")           =>  "dev", "user", "alice", nil
+// c.parseID("prod:user:alice", "user") => "prod", "user", "alice", nil
+// c.parseID("host:alice", "user")      =>     "",     "",      "", error
+func (c *Client) parseIDandEnforceKind(id, enforcedKind string) (account, kind, identifier string, err error) {
+	account, kind, identifier = c.unopinionatedParseID(id)
+	if (identifier == "") || (kind != "" && kind != enforcedKind) {
+		return "", "", "", fmt.Errorf("Malformed ID '%s', must represent a %s, of form [[<account>:]%s:]<identifier>", id, enforcedKind, enforcedKind)
+	}
+	if kind == "" {
+		kind = enforcedKind
+	}
+	if account == "" {
+		account = c.config.Account
+	}
+	return account, kind, identifier, nil
+}
+
+// unopinionatedParseID returns the components of the provided ID - account,
+// resource kind, and identifier - without expectation on resource kind or
+// account inclusion.
+func (c *Client) unopinionatedParseID(id string) (account, kind, identifier string) {
+	tokens := strings.SplitN(id, ":", 3)
+	for len(tokens) < 3 {
+		tokens = append([]string{""}, tokens...)
+	}
+	return tokens[0], tokens[1], tokens[2]
 }
 
 func NewClient(config Config) (*Client, error) {

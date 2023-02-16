@@ -269,7 +269,8 @@ func (c *Client) ListOidcProviders() ([]OidcProvider, error) {
 }
 
 // RotateAPIKey replaces the API key of a role on the server with a new
-// random secret.
+// random secret. Given that a fully-qualified resource id resembles
+// '<account>:<kind>:<identifier>', argument roleID must be at least partially-qualified.
 //
 // The authenticated user must have update privilege on the role.
 func (c *Client) RotateAPIKey(roleID string) ([]byte, error) {
@@ -296,23 +297,34 @@ func (c *Client) RotateCurrentUserAPIKey() ([]byte, error) {
 }
 
 // RotateUserAPIKey constructs a role ID from a given user ID then replaces the
-// API key of the role with a new random secret.
+// API key of the role with a new random secret. Given that a fully-qualified
+// resource ID resembles '<account>:<kind>:<identifier>', argument userID will
+// be accepted as either fully- or partially-qualified, but the provided role
+// must be a user.
 //
 // The authenticated user must have update privilege on the role.
 func (c *Client) RotateUserAPIKey(userID string) ([]byte, error) {
-	config := c.GetConfig()
-	roleID := fmt.Sprintf("%s:user:%s", config.Account, userID)
-	return c.RotateAPIKey(roleID)
+	return c.rotateApiKeyAndEnforceKind(userID, "user")
 }
 
 // RotateHostAPIKey constructs a role ID from a given host ID then replaces the
-// API key of the role with a new random secret.
+// API key of the role with a new random secret. Given that a fully-qualified
+// resource ID resembles '<account>:<kind>:<identifier>', argument hostID will
+// be accepted as either fully- or partially-qualified, but the provided role
+// must be a host.
 //
 // The authenticated user must have update privilege on the role.
 func (c *Client) RotateHostAPIKey(hostID string) ([]byte, error) {
-	config := c.GetConfig()
-	roleID := fmt.Sprintf("%s:host:%s", config.Account, hostID)
+	return c.rotateApiKeyAndEnforceKind(hostID, "host")
+}
 
+func (c *Client) rotateApiKeyAndEnforceKind(roleID, kind string) ([]byte, error) {
+	account, kind, identifier, err := c.parseIDandEnforceKind(roleID, kind)
+	if err != nil {
+		return nil, err
+	}
+
+	roleID = fmt.Sprintf("%s:%s:%s", account, kind, identifier)
 	return c.RotateAPIKey(roleID)
 }
 

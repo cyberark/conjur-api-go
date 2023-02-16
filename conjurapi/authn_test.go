@@ -44,6 +44,12 @@ func TestClient_RotateAPIKey(t *testing.T) {
 			login:            "alice",
 			readResponseBody: true,
 		},
+		{
+			name:             "Rotate the API key of a partially-qualified role and read the data stream",
+			roleId:           "user:alice",
+			login:            "alice",
+			readResponseBody: true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -109,17 +115,40 @@ func TestClient_RotateCurrentUserAPIKey(t *testing.T) {
 }
 
 type rotateHostAPIKeyTestCase struct {
-	name   string
-	hostID string
-	login  string
+	name       string
+	hostID     string
+	login      string
+	assertions func(t *testing.T, tc rotateHostAPIKeyTestCase, conjur *Client)
 }
 
 func TestClient_RotateHostAPIKey(t *testing.T) {
 	testCases := []rotateHostAPIKeyTestCase{
 		{
-			name:   "Rotate the API key of a foreign host",
-			hostID: "bob",
-			login:  "host/bob",
+			name:       "Rotate the API key of a foreign host: ID only",
+			hostID:     "bob",
+			login:      "host/bob",
+			assertions: runRotateHostAPIKeyAssertions,
+		},
+		{
+			name:       "Rotate the API key of a foreign host: partially qualified",
+			hostID:     "host:bob",
+			login:      "host/bob",
+			assertions: runRotateHostAPIKeyAssertions,
+		},
+		{
+			name:       "Rotate the API key of a foreign host: fully qualified",
+			hostID:     "cucumber:host:bob",
+			login:      "host/bob",
+			assertions: runRotateHostAPIKeyAssertions,
+		},
+		{
+			name:   "Rotate the API key of a foreign host: wrong role kind",
+			hostID: "user:alice",
+			assertions: func(t *testing.T, tc rotateHostAPIKeyTestCase, conjur *Client) {
+				_, err := conjur.RotateHostAPIKey(tc.hostID)
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "must represent a host")
+			},
 		},
 	}
 
@@ -130,7 +159,7 @@ func TestClient_RotateHostAPIKey(t *testing.T) {
 			assert.NoError(t, err)
 
 			// EXERCISE
-			runRotateHostAPIKeyAssertions(t, tc, conjur)
+			tc.assertions(t, tc, conjur)
 		})
 	}
 }
@@ -150,17 +179,40 @@ func runRotateHostAPIKeyAssertions(t *testing.T, tc rotateHostAPIKeyTestCase, co
 // This is probably redundant with the above test case. Just going to keep them
 // separate for expediency for now.
 type rotateUserAPIKeyTestCase struct {
-	name   string
-	userID string
-	login  string
+	name       string
+	userID     string
+	login      string
+	assertions func(t *testing.T, tc rotateUserAPIKeyTestCase, conjur *Client)
 }
 
 func TestClient_RotateUserAPIKey(t *testing.T) {
 	testCases := []rotateUserAPIKeyTestCase{
 		{
-			name:   "Rotate the API key of a user",
-			userID: "alice",
-			login:  "alice",
+			name:       "Rotate the API key of a user: ID only",
+			userID:     "alice",
+			login:      "alice",
+			assertions: runRotateUserAPIKeyAssertions,
+		},
+		{
+			name:       "Rotate the API key of a user: partially qualified",
+			userID:     "user:alice",
+			login:      "alice",
+			assertions: runRotateUserAPIKeyAssertions,
+		},
+		{
+			name:       "Rotate the API key of a user: fully qualified",
+			userID:     "cucumber:user:alice",
+			login:      "alice",
+			assertions: runRotateUserAPIKeyAssertions,
+		},
+		{
+			name:   "Rotate the API key of a user: wrong role kind",
+			userID: "host:bob",
+			assertions: func(t *testing.T, tc rotateUserAPIKeyTestCase, conjur *Client) {
+				_, err := conjur.RotateUserAPIKey(tc.userID)
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "must represent a user")
+			},
 		},
 	}
 
@@ -171,7 +223,7 @@ func TestClient_RotateUserAPIKey(t *testing.T) {
 			assert.NoError(t, err)
 
 			// EXERCISE
-			runRotateUserAPIKeyAssertions(t, tc, conjur)
+			tc.assertions(t, tc, conjur)
 		})
 	}
 }
