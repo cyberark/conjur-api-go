@@ -96,6 +96,7 @@ func (c *Config) merge(o *Config) {
 }
 
 func (c *Config) mergeYAML(filename string) error {
+	// Read the YAML file
 	buf, err := ioutil.ReadFile(filename)
 
 	if err != nil {
@@ -104,9 +105,15 @@ func (c *Config) mergeYAML(filename string) error {
 		return nil
 	}
 
+	// Parse the YAML file into a new struct containing the same
+	// fields as Config, plus a few extra fields for compatibility
 	aux := struct {
 		ConjurVersion string `yaml:"version"`
 		Config        `yaml:",inline"`
+		// BEGIN COMPATIBILITY WITH PYTHON CLI
+		ConjurURL     string `yaml:"conjur_url"`
+		ConjurAccount string `yaml:"conjur_account"`
+		// END COMPATIBILITY WITH PYTHON CLI
 	}{}
 
 	if err := yaml.Unmarshal(buf, &aux); err != nil {
@@ -114,8 +121,22 @@ func (c *Config) mergeYAML(filename string) error {
 		return err
 	}
 
+	// Now merge the parsed config into the current config object
 	logging.ApiLog.Debugf("Config from %s: %+v\n", filename, aux.Config)
 	c.merge(&aux.Config)
+
+	// BEGIN COMPATIBILITY WITH PYTHON CLI
+	// The Python CLI uses the keys conjur_url and conjur_account
+	// instead of appliance_url and account. Check if those keys
+	// are present and use them if the new keys are not present.
+	if c.ApplianceURL == "" && aux.ConjurURL != "" {
+		c.ApplianceURL = aux.ConjurURL
+	}
+
+	if c.Account == "" && aux.ConjurAccount != "" {
+		c.Account = aux.ConjurAccount
+	}
+	// END COMPATIBILITY WITH PYTHON CLI
 
 	return nil
 }

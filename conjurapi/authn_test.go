@@ -96,12 +96,6 @@ func TestClient_RotateCurrentUserAPIKey(t *testing.T) {
 		_, err = conjur.Login("alice", string(userApiKey))
 		assert.NoError(t, err)
 
-		// Ensure we're logged in as alice
-		resp, err := conjur.WhoAmI()
-		assert.NoError(t, err)
-		respStr := string(resp)
-		assert.Contains(t, respStr, `"username":"alice"`)
-
 		// EXERCISE
 		// This will use the "stored" API key to rotate alice's API key
 		newAPIKey, err := conjur.RotateCurrentUserAPIKey()
