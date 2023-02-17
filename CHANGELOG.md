@@ -21,8 +21,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - Resource IDs can now be partially-qualified, adhering to the form
-  [<account>:]<kind>:<identifier>.
+  `[<account>:]<kind>:<identifier>`.
   [cyberark/conjur-api-go#153](https://github.com/cyberark/conjur-api-go/pull/153)
+- User and Host IDs passed to their respective API key rotation functions can
+  now be fully-qualified, adhering to the form `[[<account>:]<kind>:]<identifier>`.
+  [cyberark/conjur-api-go#166](https://github.com/cyberark/conjur-api-go/pull/166)
 - The Hostfactory id is no longer required to be a fully qualified id.
   [cyberark/conjur-api-go#164](https://github.com/cyberark/conjur-api-go/pull/164)
 
