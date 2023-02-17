@@ -44,6 +44,20 @@ func TestClient_Token(t *testing.T) {
 		{
 			name:        "Create a token with a partial hostfactory id",
 			duration:    "10m",
+			hostFactory: "host_factory:factory",
+			count:       1,
+			cidr:        []string{"0.0.0.0/0"},
+			assert: func(t *testing.T, err error) {
+				assert.NoError(t, err)
+			},
+			assertHost: func(t *testing.T, size int, err error) {
+				assert.NoError(t, err)
+				assert.True(t, size > 0)
+			},
+		},
+		{
+			name:        "Create a token with a partial (singular) hostfactory id",
+			duration:    "10m",
 			hostFactory: "factory",
 			count:       1,
 			cidr:        []string{"0.0.0.0/0"},
