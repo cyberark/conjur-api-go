@@ -15,6 +15,7 @@ import (
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
 type Authenticator interface {
@@ -185,13 +186,13 @@ func NewClientFromJwt(config Config, authnJwtServiceID string) (*Client, error) 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+
+	token, err := response.DataResponse(resp)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewClientFromToken(config, string(body))
+	return NewClientFromToken(config, string(token))
 }
 
 func newClientFromStoredCredentials(config Config) (*Client, error) {

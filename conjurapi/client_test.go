@@ -1,8 +1,11 @@
 package conjurapi
 
 import (
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
@@ -118,9 +121,41 @@ func TestNewClientFromJwt(t *testing.T) {
 
 		// Expect it to fail without a mocked JWT server
 		assert.Error(t, err)
+		assert.ErrorContains(t, err, "no such host")
 		assert.Nil(t, client)
 	})
 
+	t.Run("Fetches config and succeeds", func(t *testing.T) {
+		// Listen for JWT authentication requests
+		mockConjurServer := mockConjurServerWithJWT()
+		defer mockConjurServer.Close()
+
+		config := Config{Account: "myaccount", ApplianceURL: mockConjurServer.URL}
+		t.Setenv("CONJUR_AUTHN_JWT_TOKEN", "jwt-token")
+
+		client, err := NewClientFromJwt(config, "jwt-service")
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+
+		// Verify that the client authenticator is of type TokenAuthenticator
+		assert.IsType(t, &authn.TokenAuthenticator{}, client.authenticator)
+		// Verify that the auth token is set to the expected value
+		assert.Equal(t, "test-api-key", client.authenticator.(*authn.TokenAuthenticator).Token)
+	})
+
+	t.Run("Fetches config and fails with incorrect JWT", func(t *testing.T) {
+		// Listen for JWT authentication requests
+		mockConjurServer := mockConjurServerWithJWT()
+		defer mockConjurServer.Close()
+
+		config := Config{Account: "myaccount", ApplianceURL: mockConjurServer.URL}
+		t.Setenv("CONJUR_AUTHN_JWT_TOKEN", "incorrect-jwt-token")
+
+		client, err := NewClientFromJwt(config, "jwt-service")
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "401 Unauthorized")
+		assert.Nil(t, client)
+	})
 }
 
 func Test_newClientWithAuthenticator(t *testing.T) {
@@ -273,4 +308,24 @@ func TestClient_newHTTPSClient(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
 	})
+}
+
+func mockConjurServerWithJWT() *httptest.Server {
+	mockConjurServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Listen for requests to the JWT authenticate endpoint
+		if strings.HasSuffix(r.URL.Path, "/authn-jwt/jwt-service/myaccount/authenticate") {
+			// Check that the request body contains the JWT token
+			body, _ := io.ReadAll(r.Body)
+
+			if string(body) == "jwt=jwt-token" {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("test-api-key"))
+			} else {
+				w.WriteHeader(http.StatusUnauthorized)
+			}
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	return mockConjurServer
 }
