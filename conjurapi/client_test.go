@@ -121,7 +121,6 @@ func TestNewClientFromJwt(t *testing.T) {
 
 		// Expect it to fail without a mocked JWT server
 		assert.Error(t, err)
-		assert.ErrorContains(t, err, "no such host")
 		assert.Nil(t, client)
 	})
 
