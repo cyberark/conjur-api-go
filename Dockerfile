@@ -1,4 +1,4 @@
-ARG FROM_IMAGE="golang:1.17"
+ARG FROM_IMAGE="golang:1.19"
 FROM ${FROM_IMAGE}
 MAINTAINER Conjur Inc.
 
@@ -13,9 +13,9 @@ RUN apt update -y && \
                    less \
                    libc-dev
 
-RUN go get -u github.com/jstemmer/go-junit-report && \
-    go get -u github.com/axw/gocov/gocov && \
-    go get -u github.com/AlekSi/gocov-xml
+RUN go install github.com/jstemmer/go-junit-report@latest && \
+    go install github.com/axw/gocov/gocov@latest && \
+    go install github.com/AlekSi/gocov-xml@latest
 
 WORKDIR /conjur-api-go
 

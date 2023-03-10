@@ -34,25 +34,14 @@ and will run all tests.
 
 To run the tests against a specific version of Golang, you can run the following:
 ```shell
-./bin/test.sh 1.16
+./bin/test.sh 1.18
 ```
 
 This will spin up a containerized Conjur environment and build the test containers,
-and will run the tests in a `golang:1.16` container
+and will run the tests in a `golang:1.18` container
 
-Supported arguments are `1.16` and `1.17`, with the
-default being `1.16` if no argument is given.
-
-To run just the tests against just the Conjur Open Source, run:
-
-```shell
-export TEST_VERSION="oss"
-# This will spin up a containerized Conjur oss
-./bin/test.sh <version>
-```
-
-Possible values for `TEST_VERSION` are `oss` and `all`, with `all`
-being the default.
+Supported arguments are `1.18` and `1.19`, with the
+default being `1.18` if no argument is given.
 
 ### Setting up a development environment
 To start a container with terminal access, and the necessary
@@ -83,6 +72,7 @@ In particular, for each release you should:
   [`go.mod`](./go.mod) since the last release. If any changes have been made,
   update the [NOTICES](./NOTICES.txt) file.
 - Update the [CHANGELOG](./CHANGELOG.md) to reflect the new version.
+- Update the [VERSION](./VERSION) file to reflect the new version.
 - Commit the changes to the files above in a branch and submit a version bump PR
 - Once the PR has been merged, tag the version using
   `git tag -s vx.y.z -m vx.y.z`. Note: this requires you to be able to sign

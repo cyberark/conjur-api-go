@@ -2,7 +2,6 @@ package conjurapi
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -11,7 +10,7 @@ import (
 )
 
 func TempFileForTesting(prefix string, fileContents string, t *testing.T) (string, error) {
-	tmpfile, err := ioutil.TempFile(t.TempDir(), prefix)
+	tmpfile, err := os.CreateTemp(t.TempDir(), prefix)
 	if err != nil {
 		return "", err
 	}
@@ -33,20 +32,63 @@ func TestConfig_IsValid(t *testing.T) {
 			ApplianceURL: "appliance-url",
 		}
 
-		err := config.validate()
+		err := config.Validate()
 		assert.NoError(t, err)
 	})
 
-	t.Run("Return error for invalid configuration", func(t *testing.T) {
+	t.Run("Return error for invalid configuration missing ApplianceUrl", func(t *testing.T) {
 		config := Config{
 			Account: "account",
 		}
 
-		err := config.validate()
+		err := config.Validate()
 		assert.Error(t, err)
 
 		errString := err.Error()
 		assert.Contains(t, errString, "Must specify an ApplianceURL")
+	})
+
+	t.Run("Return error for authn-ldap configuration missing ServiceId", func(t *testing.T) {
+		config := Config{
+			Account:      "account",
+			ApplianceURL: "appliance-url",
+			AuthnType:    "ldap",
+		}
+
+		err := config.Validate()
+		assert.Error(t, err)
+
+		errString := err.Error()
+		assert.Contains(t, errString, "Must specify a ServiceID when using ldap")
+	})
+
+	t.Run("Return error for authn-oidc configuration missing ServiceId", func(t *testing.T) {
+		config := Config{
+			Account:      "account",
+			ApplianceURL: "appliance-url",
+			AuthnType:    "oidc",
+		}
+
+		err := config.Validate()
+		assert.Error(t, err)
+
+		errString := err.Error()
+		assert.Contains(t, errString, "Must specify a ServiceID when using oidc")
+	})
+
+	t.Run("Return error for invalid configuration unsupported AuthnType", func(t *testing.T) {
+		config := Config{
+			Account:      "account",
+			ApplianceURL: "appliance-url",
+			AuthnType:    "foobar",
+			ServiceID:    "service-id",
+		}
+
+		err := config.Validate()
+		assert.Error(t, err)
+
+		errString := err.Error()
+		assert.Contains(t, errString, "AuthnType must be one of ")
 	})
 }
 
@@ -85,14 +127,20 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 
 		os.Setenv("CONJUR_ACCOUNT", "account")
 		os.Setenv("CONJUR_APPLIANCE_URL", "appliance-url")
+		os.Setenv("CONJUR_AUTHN_TYPE", "ldap")
+		os.Setenv("CONJUR_SERVICE_ID", "service-id")
+		os.Setenv("CONJUR_CREDENTIAL_STORAGE", "keyring")
 
 		t.Run("Returns Config loaded with values from env", func(t *testing.T) {
 			config := &Config{}
 			config.mergeEnv()
 
 			assert.EqualValues(t, *config, Config{
-				Account:      "account",
-				ApplianceURL: "appliance-url",
+				Account:           "account",
+				ApplianceURL:      "appliance-url",
+				AuthnType:         "ldap",
+				ServiceID:         "service-id",
+				CredentialStorage: "keyring",
 			})
 		})
 	})
@@ -140,6 +188,8 @@ appliance_url: http://path/to/appliance%v
 account: some account%v
 cert_file: "/path/to/cert/file/pem%v"
 netrc_path: "/path/to/netrc/file%v"
+authn_type: ldap
+service_id: my-ldap-service
 %s
 `, index, index, index, index, versiontest.in)
 
@@ -147,7 +197,7 @@ netrc_path: "/path/to/netrc/file%v"
 			defer os.Remove(tmpFileName) // clean up
 			assert.NoError(t, err)
 
-			t.Run(fmt.Sprintf("Returns Config loaded with values from file and V4: %t", versiontest.out), func(t *testing.T) {
+			t.Run(fmt.Sprintf("Returns Config loaded with values from file: %t", versiontest.out), func(t *testing.T) {
 				config := &Config{}
 				config.mergeYAML(tmpFileName)
 
@@ -156,7 +206,8 @@ netrc_path: "/path/to/netrc/file%v"
 					ApplianceURL: fmt.Sprintf("http://path/to/appliance%v", index),
 					NetRCPath:    fmt.Sprintf("/path/to/netrc/file%v", index),
 					SSLCertPath:  fmt.Sprintf("/path/to/cert/file/pem%v", index),
-					V4:           versiontest.out,
+					AuthnType:    "ldap",
+					ServiceID:    "my-ldap-service",
 				})
 			})
 		})
@@ -178,4 +229,157 @@ cert_file: "C:\badly\escaped\path"
 		err = config.mergeYAML(tmpFileName)
 		assert.Error(t, err)
 	})
+
+	// BEGIN COMPATIBILITY WITH PYTHON CLI
+	t.Run("Accepts conjur_url and conjur_account for backwards compatibility", func(t *testing.T) {
+		conjurrcFileContents := `
+---
+conjur_url: http://path/to/appliance
+conjur_account: some account
+`
+
+		tmpFileName, err := TempFileForTesting("TestConfigBackwardsCompatibility", conjurrcFileContents, t)
+		defer os.Remove(tmpFileName) // clean up
+		assert.NoError(t, err)
+
+		config := &Config{}
+		config.mergeYAML(tmpFileName)
+		assert.EqualValues(t, *config, Config{
+			Account:      "some account",
+			ApplianceURL: "http://path/to/appliance",
+		})
+	})
+	// END COMPATIBILITY WITH PYTHON CLI
+}
+
+var conjurrcTestCases = []struct {
+	name     string
+	config   Config
+	expected string
+}{
+	{
+		name: "Minimal config",
+		config: Config{
+			Account:      "test-account",
+			ApplianceURL: "test-appliance-url",
+		},
+		expected: `account: test-account
+appliance_url: test-appliance-url
+`,
+	},
+	{
+		name: "Full config",
+		config: Config{
+			Account:           "test-account",
+			ApplianceURL:      "test-appliance-url",
+			AuthnType:         "oidc",
+			ServiceID:         "test-service-id",
+			SSLCertPath:       "test-cert-path",
+			NetRCPath:         "test-netrc-path",
+			SSLCert:           "test-cert",
+			CredentialStorage: "keyring",
+		},
+		expected: `account: test-account
+appliance_url: test-appliance-url
+netrc_path: test-netrc-path
+cert_file: test-cert-path
+authn_type: oidc
+service_id: test-service-id
+credential_storage: keyring
+`,
+	},
+}
+
+func TestConfig_Conjurrc(t *testing.T) {
+	t.Run("Generates conjurrc content", func(t *testing.T) {
+		for _, testCase := range conjurrcTestCases {
+			t.Run(testCase.name, func(t *testing.T) {
+				actual := testCase.config.Conjurrc()
+				assert.Equal(t, testCase.expected, string(actual))
+			})
+		}
+	})
+}
+
+func TestConfig_ReadSSLCert(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Reads SSL cert from file", func(t *testing.T) {
+		tmpFileName, err := TempFileForTesting("TestConfigReadSSLCert", "test-cert", t)
+		defer os.Remove(tmpFileName) // clean up
+		assert.NoError(t, err)
+
+		config := Config{
+			SSLCertPath: tmpFileName,
+		}
+
+		cert, err := config.ReadSSLCert()
+		assert.NoError(t, err)
+		assert.Equal(t, "test-cert", string(cert))
+	})
+
+	t.Run("Returns error when SSL cert file is not found", func(t *testing.T) {
+		config := Config{
+			SSLCertPath: "not-found",
+		}
+
+		_, err := config.ReadSSLCert()
+		assert.Error(t, err)
+	})
+
+	t.Run("Returns error when SSL cert file is not set", func(t *testing.T) {
+		config := Config{}
+
+		cert, err := config.ReadSSLCert()
+		assert.EqualError(t, err, "open : no such file or directory")
+		assert.Nil(t, cert)
+	})
+
+	t.Run("Returns SSLCert when set", func(t *testing.T) {
+		config := Config{
+			SSLCert: "test-cert",
+		}
+
+		cert, err := config.ReadSSLCert()
+		assert.NoError(t, err)
+		assert.Equal(t, "test-cert", string(cert))
+	})
+}
+
+func TestConfig_BaseURL(t *testing.T) {
+	testCases := []struct {
+		name         string
+		applianceUrl string
+		sslCert      string
+		expected     string
+	}{
+		{
+			name:         "with https prefix",
+			applianceUrl: "https://conjur.myorg.com",
+			expected:     "https://conjur.myorg.com",
+		},
+		{
+			name:         "without prefix",
+			applianceUrl: "conjur.myorg.com",
+			expected:     "http://conjur.myorg.com",
+		},
+		{
+			name:         "with cert",
+			applianceUrl: "conjur.myorg.com",
+			sslCert:      "test-cert",
+			expected:     "https://conjur.myorg.com",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			config := Config{
+				ApplianceURL: testCase.applianceUrl,
+				SSLCert:      testCase.sslCert,
+			}
+
+			actual := config.BaseURL()
+			assert.Equal(t, testCase.expected, actual)
+		})
+	}
 }

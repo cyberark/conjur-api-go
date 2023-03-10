@@ -19,18 +19,11 @@ services:
       CONJUR_APPLIANCE_URL: http://conjur
       CONJUR_ACCOUNT: cucumber
 
-  cuke-master:
-    image: registry2.itci.conjur.net/conjur-appliance-cuke-master:4.9-stable
-    security_opt:
-      - seccomp:unconfined
-    ports:
-      - 443
-
-  test-1.16:
+  test-1.18:
     build:
       context: .
       args:
-        FROM_IMAGE: "golang:1.16"
+        FROM_IMAGE: "golang:1.18"
     ports:
       - 8080
     depends_on:
@@ -43,20 +36,13 @@ services:
       CONJUR_ACCOUNT: cucumber
       CONJUR_AUTHN_LOGIN: admin
       CONJUR_AUTHN_API_KEY:
-      CONJUR_V4_APPLIANCE_URL: https://cuke-master/api
-      CONJUR_V4_HEALTH_URL: https://cuke-master/health
-      CONJUR_V4_ACCOUNT: cucumber
-      CONJUR_V4_AUTHN_LOGIN: admin
-      CONJUR_V4_AUTHN_API_KEY:
-      CONJUR_V4_SSL_CERTIFICATE:
-      TEST_VERSION:
       GO_VERSION:
 
-  test-1.17:
+  test-1.19:
     build:
       context: .
       args:
-        FROM_IMAGE: "golang:1.17"
+        FROM_IMAGE: "golang:1.19"
     ports:
       - 8080
     depends_on:
@@ -69,20 +55,13 @@ services:
       CONJUR_ACCOUNT: cucumber
       CONJUR_AUTHN_LOGIN: admin
       CONJUR_AUTHN_API_KEY:
-      CONJUR_V4_APPLIANCE_URL: https://cuke-master/api
-      CONJUR_V4_HEALTH_URL: https://cuke-master/health
-      CONJUR_V4_ACCOUNT: cucumber
-      CONJUR_V4_AUTHN_LOGIN: admin
-      CONJUR_V4_AUTHN_API_KEY:
-      CONJUR_V4_SSL_CERTIFICATE:
-      TEST_VERSION:
       GO_VERSION:
 
   dev:
     build:
       context: .
       args:
-        FROM_IMAGE: "golang:1.16"
+        FROM_IMAGE: "golang:1.19"
     ports:
       - 8080
     depends_on:
@@ -95,11 +74,5 @@ services:
       CONJUR_ACCOUNT: cucumber
       CONJUR_AUTHN_LOGIN: admin
       CONJUR_AUTHN_API_KEY:
-      CONJUR_V4_APPLIANCE_URL: https://cuke-master/api
-      CONJUR_V4_HEALTH_URL: https://cuke-master/health
-      CONJUR_V4_ACCOUNT: cucumber
-      CONJUR_V4_AUTHN_LOGIN: admin
-      CONJUR_V4_AUTHN_API_KEY:
-      CONJUR_V4_SSL_CERTIFICATE:
     entrypoint: sleep
     command: infinity

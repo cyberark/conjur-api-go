@@ -3,8 +3,10 @@
 cd "$(dirname "$0")"
 . ./utils.sh
 
+trap teardown EXIT
+
 export COMPOSE_PROJECT_NAME="conjurapigo_$(openssl rand -hex 3)"
-export GO_VERSION="${1:-"1.16"}"
+export GO_VERSION="${1:-"1.18"}"
 
 # Spin up Conjur environment
 source ./start-conjur.sh
@@ -19,16 +21,13 @@ mkdir -p $output_dir
 
 failed() {
   announce "TESTS FAILED"
-  docker logs "$(docker-compose ps -q cuke-master)"
   exit 1
 }
 
-# Golang container version to use: `1.16` or `1.17`
+# Golang container version to use: `1.18` or `1.19`
 announce "Running tests for Go version: $GO_VERSION...";
 docker-compose run \
   -e CONJUR_AUTHN_API_KEY \
-  -e CONJUR_V4_AUTHN_API_KEY \
-  -e CONJUR_V4_SSL_CERTIFICATE \
   -e GO_VERSION \
   "test-$GO_VERSION" bash -c 'set -o pipefail;
            echo "Go version: $(go version)"
