@@ -122,14 +122,14 @@ func TestClient_Resources(t *testing.T) {
 	conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
 	assert.NoError(t, err)
 
-	t.Run("Lists all resources", listResources(conjur, nil, 12))
+	t.Run("Lists all resources", listResources(conjur, nil, 13))
 	t.Run("Lists resources by kind", listResources(conjur, &ResourceFilter{Kind: "variable"}, 7))
 	t.Run("Lists resources that start with db", listResources(conjur, &ResourceFilter{Search: "db"}, 2))
 	t.Run("Lists variables that start with prod/database", listResources(conjur, &ResourceFilter{Search: "prod/database", Kind: "variable"}, 2))
 	t.Run("Lists variables that start with prod", listResources(conjur, &ResourceFilter{Search: "prod", Kind: "variable"}, 4))
 	t.Run("Lists resources and limit result to 1", listResources(conjur, &ResourceFilter{Limit: 1}, 1))
 	t.Run("Lists resources after the first", listResources(conjur, &ResourceFilter{Offset: 1}, 10))
-	t.Run("Lists resources that alice can see", listResources(conjur, &ResourceFilter{Role:"cucumber:user:alice"}, 1))
+	t.Run("Lists resources that alice can see", listResources(conjur, &ResourceFilter{Role: "cucumber:user:alice"}, 1))
 }
 
 func TestClient_Resource(t *testing.T) {
@@ -158,7 +158,7 @@ func TestClient_ResourceIDs(t *testing.T) {
 	conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
 	assert.NoError(t, err)
 
-	t.Run("Lists all resources", listResourceIDs(conjur, nil, 12))
+	t.Run("Lists all resources", listResourceIDs(conjur, nil, 13))
 	t.Run("Lists resources by kind", listResourceIDs(conjur, &ResourceFilter{Kind: "variable"}, 7))
 	t.Run("Lists resources that start with db", listResourceIDs(conjur, &ResourceFilter{Search: "db"}, 2))
 	t.Run("Lists variables that start with prod/database", listResourceIDs(conjur, &ResourceFilter{Search: "prod/database", Kind: "variable"}, 2))

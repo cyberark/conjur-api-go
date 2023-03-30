@@ -84,7 +84,7 @@ func TestClient_RoleMembers(t *testing.T) {
 	conjur, err := conjurSetup(&Config{}, roleTestPolicy)
 	assert.NoError(t, err)
 
-	t.Run("List role members return no members", listMembers(conjur, "cucumber:user:admin", 0))
+	t.Run("List admin role members return 1 member", listMembers(conjur, "cucumber:user:admin", 1))
 	t.Run("List role members return members", listMembers(conjur, "cucumber:layer:test-layer", 3))
 }
 
@@ -100,6 +100,6 @@ func TestClient_RoleMemberships(t *testing.T) {
 	conjur, err := conjurSetup(&Config{}, roleTestPolicy)
 	assert.NoError(t, err)
 
-	t.Run("List role memberships return memberships", listMemberships(conjur, "cucumber:user:admin", 4))
+	t.Run("List role memberships return memberships", listMemberships(conjur, "cucumber:user:admin", 5))
 	t.Run("List role memberships return no memberships", listMemberships(conjur, "cucumber:layer:test-layer", 0))
 }
