@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Improved error message for failed JWT authentication
   [cyberark/conjur-api-go#169](https://github.com/cyberark/conjur-api-go/pull/169)
 
+### Security
+- Upgrade ruby in bin/parse-changelog.sh from 2.5 to 3.1
+  [cyberark/conjur-api-go#172](https://github.com/cyberark/conjur-api-go/pull/172)
+
 ## [0.11.0] - 2023-02-28
 
 ### Added
