@@ -125,15 +125,7 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 		return NewClientFromKey(config, *loginPair)
 	}
 
-	client, err := newClientFromStoredCredentials(config)
-	if err != nil {
-		return nil, err
-	}
-
-	if client != nil {
-		return client, nil
-	}
-	return nil, fmt.Errorf("Environment variables and machine identity files satisfying at least one authentication strategy must be present!")
+	return newClientFromStoredCredentials(config)
 }
 
 func NewClientFromJwt(config Config, authnJwtServiceID string) (*Client, error) {
@@ -273,10 +265,10 @@ func (c *Client) LoginRequest(login string, password string) (*http.Request, err
 	authenticateURL := makeRouterURL(c.authnURL(), "login").String()
 
 	req, err := http.NewRequest("GET", authenticateURL, nil)
-	req.SetBasicAuth(login, password)
 	if err != nil {
 		return nil, err
 	}
+	req.SetBasicAuth(login, password)
 	req.Header.Set("Content-Type", "text/plain")
 
 	return req, nil
@@ -531,7 +523,7 @@ func (c *Client) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.R
 	case PolicyModePut:
 		method = "PUT"
 	default:
-		return nil, fmt.Errorf("Invalid PolicyMode : %d", mode)
+		return nil, fmt.Errorf("Invalid PolicyMode: %d", mode)
 	}
 
 	return http.NewRequest(

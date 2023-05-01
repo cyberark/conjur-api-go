@@ -31,7 +31,7 @@ func hasField(fields map[string]string, name string) (hasField bool) {
 func NewToken(data []byte) (token *AuthnToken, err error) {
 	fields := make(map[string]string)
 	if err = json.Unmarshal(data, &fields); err != nil {
-		err = fmt.Errorf("Unable to unmarshal token : %s", err)
+		err = fmt.Errorf("Unable to unmarshal token: %s", err)
 		return
 	}
 
@@ -53,7 +53,7 @@ func (t *AuthnToken) FromJSON(data []byte) (err error) {
 
 	err = json.Unmarshal(data, &t)
 	if err != nil {
-		err = fmt.Errorf("Unable to unmarshal access token %s", err)
+		err = fmt.Errorf("Unable to unmarshal access token: %s", err)
 		return
 	}
 
@@ -67,7 +67,7 @@ func (t *AuthnToken) FromJSON(data []byte) (err error) {
 	}
 	err = json.Unmarshal(payloadJSON, &payloadFields)
 	if err != nil {
-		err = fmt.Errorf("Unable to unmarshal access token field 'payload' : %s", err)
+		err = fmt.Errorf("Unable to unmarshal access token field 'payload': %s", err)
 		return
 	}
 
