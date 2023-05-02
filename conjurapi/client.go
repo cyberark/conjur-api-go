@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -70,7 +69,7 @@ func NewClientFromOidcCode(config Config, code, nonce, code_verifier string) (*C
 // ReadResponseBody fully reads a response and closes it.
 func ReadResponseBody(response io.ReadCloser) ([]byte, error) {
 	defer response.Close()
-	return ioutil.ReadAll(response)
+	return io.ReadAll(response)
 }
 
 func NewClientFromToken(config Config, token string) (*Client, error) {
@@ -138,7 +137,7 @@ func NewClientFromJwt(config Config, authnJwtServiceID string) (*Client, error) 
 			jwtTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 		}
 
-		jwtToken, err := ioutil.ReadFile(jwtTokenPath)
+		jwtToken, err := os.ReadFile(jwtTokenPath)
 		if err != nil {
 			return nil, err
 		}

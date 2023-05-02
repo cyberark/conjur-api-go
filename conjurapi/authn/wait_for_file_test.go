@@ -1,7 +1,6 @@
 package authn
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -18,12 +17,12 @@ func Test_waitForTextFile(t *testing.T) {
 	})
 
 	t.Run("Returns bytes for eventually existent filename", func(t *testing.T) {
-		file_to_exist, _ := ioutil.TempFile("", "existent-file")
+		file_to_exist, _ := os.CreateTemp("", "existent-file")
 		file_to_exist_name := file_to_exist.Name()
 
 		os.Remove(file_to_exist_name)
 		go func() {
-			ioutil.WriteFile(file_to_exist_name, []byte("some random stuff"), 0600)
+			os.WriteFile(file_to_exist_name, []byte("some random stuff"), 0600)
 		}()
 		defer os.Remove(file_to_exist_name)
 
