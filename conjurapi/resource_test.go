@@ -58,6 +58,10 @@ func TestClient_CheckPermission(t *testing.T) {
 		"Check a permission on account-less resource",
 		checkAndAssert(conjur, assertSuccess, "variable:db-password"),
 	)
+	t.Run(
+		"Malformed resource id",
+		checkAndAssert(conjur, assertError, "malformed_id"),
+	)
 }
 
 func TestClient_CheckPermissionForRole(t *testing.T) {
@@ -83,6 +87,10 @@ func TestClient_CheckPermissionForRole(t *testing.T) {
 	t.Run(
 		"Check a permission for account-less role",
 		checkAndAssert(conjur, assertSuccess, "variable:db-password", "user:alice"),
+	)
+	t.Run(
+		"Malformed resource id",
+		checkAndAssert(conjur, assertError, "malformed_id", "cucumber:user:alice"),
 	)
 }
 

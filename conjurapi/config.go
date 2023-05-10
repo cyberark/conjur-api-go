@@ -2,7 +2,6 @@ package conjurapi
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"runtime"
@@ -62,7 +61,7 @@ func (c *Config) ReadSSLCert() ([]byte, error) {
 	if c.SSLCert != "" {
 		return []byte(c.SSLCert), nil
 	}
-	return ioutil.ReadFile(c.SSLCertPath)
+	return os.ReadFile(c.SSLCertPath)
 }
 
 func (c *Config) BaseURL() string {
@@ -97,7 +96,7 @@ func (c *Config) merge(o *Config) {
 
 func (c *Config) mergeYAML(filename string) error {
 	// Read the YAML file
-	buf, err := ioutil.ReadFile(filename)
+	buf, err := os.ReadFile(filename)
 
 	if err != nil {
 		logging.ApiLog.Debugf("Failed reading %s, %v\n", filename, err)

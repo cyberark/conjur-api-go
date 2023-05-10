@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -70,7 +69,7 @@ func NewClientFromOidcCode(config Config, code, nonce, code_verifier string) (*C
 // ReadResponseBody fully reads a response and closes it.
 func ReadResponseBody(response io.ReadCloser) ([]byte, error) {
 	defer response.Close()
-	return ioutil.ReadAll(response)
+	return io.ReadAll(response)
 }
 
 func NewClientFromToken(config Config, token string) (*Client, error) {
@@ -125,15 +124,7 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 		return NewClientFromKey(config, *loginPair)
 	}
 
-	client, err := newClientFromStoredCredentials(config)
-	if err != nil {
-		return nil, err
-	}
-
-	if client != nil {
-		return client, nil
-	}
-	return nil, fmt.Errorf("Environment variables and machine identity files satisfying at least one authentication strategy must be present!")
+	return newClientFromStoredCredentials(config)
 }
 
 func NewClientFromJwt(config Config, authnJwtServiceID string) (*Client, error) {
@@ -146,7 +137,7 @@ func NewClientFromJwt(config Config, authnJwtServiceID string) (*Client, error) 
 			jwtTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 		}
 
-		jwtToken, err := ioutil.ReadFile(jwtTokenPath)
+		jwtToken, err := os.ReadFile(jwtTokenPath)
 		if err != nil {
 			return nil, err
 		}
@@ -273,10 +264,10 @@ func (c *Client) LoginRequest(login string, password string) (*http.Request, err
 	authenticateURL := makeRouterURL(c.authnURL(), "login").String()
 
 	req, err := http.NewRequest("GET", authenticateURL, nil)
-	req.SetBasicAuth(login, password)
 	if err != nil {
 		return nil, err
 	}
+	req.SetBasicAuth(login, password)
 	req.Header.Set("Content-Type", "text/plain")
 
 	return req, nil
@@ -531,7 +522,7 @@ func (c *Client) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.R
 	case PolicyModePut:
 		method = "PUT"
 	default:
-		return nil, fmt.Errorf("Invalid PolicyMode : %d", mode)
+		return nil, fmt.Errorf("Invalid PolicyMode: %d", mode)
 	}
 
 	return http.NewRequest(

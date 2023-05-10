@@ -13,6 +13,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var testCases = []struct {
+	name       string
+	policyMode PolicyMode
+	expectErr  string
+}{
+	{
+		name:       "PolicyModePut",
+		policyMode: PolicyModePut,
+	},
+	{
+		name:       "PolicyModePost",
+		policyMode: PolicyModePost,
+	},
+	{
+		name:       "PolicyModePatch",
+		policyMode: PolicyModePatch,
+	},
+	{
+		name:       "Invalid PolicyMode",
+		policyMode: 99,
+		expectErr:  "Invalid PolicyMode: 99",
+	},
+}
+
 func TestClient_LoadPolicy(t *testing.T) {
 	config := &Config{}
 	config.mergeEnv()
@@ -25,21 +49,29 @@ func TestClient_LoadPolicy(t *testing.T) {
 
 	randomizer := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	t.Run("Successfully load policy", func(t *testing.T) {
-		username := "alice"
-		policy := fmt.Sprintf(`
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			username := "alice"
+			policy := fmt.Sprintf(`
 - !user %s
 `, username)
 
-		resp, err := conjur.LoadPolicy(
-			PolicyModePut,
-			"root",
-			strings.NewReader(policy),
-		)
+			resp, err := conjur.LoadPolicy(
+				tc.policyMode,
+				"root",
+				strings.NewReader(policy),
+			)
 
-		assert.NoError(t, err)
-		assert.GreaterOrEqual(t, resp.Version, uint32(1))
-	})
+			if tc.expectErr == "" {
+				assert.NoError(t, err)
+				assert.GreaterOrEqual(t, resp.Version, uint32(1))
+			} else {
+				assert.Error(t, err)
+				assert.EqualError(t, err, tc.expectErr)
+				assert.Nil(t, resp)
+			}
+		})
+	}
 
 	t.Run("A new role is reported in the policy load response", func(t *testing.T) {
 		const chars = "abcdefghijklmnopqrstuvwxyz0123456789"

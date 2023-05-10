@@ -150,6 +150,16 @@ func TestClient_RotateHostAPIKey(t *testing.T) {
 				assert.Contains(t, err.Error(), "must represent a host")
 			},
 		},
+		{
+			name:   "Rotate the API key of a foreign host: Malformed ID",
+			hostID: "id:with:too:many:colons",
+			login:  "host/bob",
+			assertions: func(t *testing.T, tc rotateHostAPIKeyTestCase, conjur *Client) {
+				_, err := conjur.RotateUserAPIKey(tc.hostID)
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "Malformed ID")
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -212,6 +222,16 @@ func TestClient_RotateUserAPIKey(t *testing.T) {
 				_, err := conjur.RotateUserAPIKey(tc.userID)
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "must represent a user")
+			},
+		},
+		{
+			name:   "Rotate the API key of a user: Malformed ID",
+			userID: "id:with:too:many:colons",
+			login:  "alice",
+			assertions: func(t *testing.T, tc rotateUserAPIKeyTestCase, conjur *Client) {
+				_, err := conjur.RotateUserAPIKey(tc.userID)
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "Malformed ID")
 			},
 		},
 	}

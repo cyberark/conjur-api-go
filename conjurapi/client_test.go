@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -66,6 +67,12 @@ func TestNewClientFromTokenFile(t *testing.T) {
 		assert.NoError(t, err)
 		assert.IsType(t, &authn.TokenFileAuthenticator{}, client.authenticator)
 	})
+	t.Run("Returns error when using nonexistent SSLCertPath", func(t *testing.T) {
+		client, err := NewClientFromTokenFile(Config{Account: "account", ApplianceURL: "https://appliance-url", SSLCertPath: "fake-path"}, "token-file")
+
+		assert.EqualError(t, err, "open fake-path: no such file or directory")
+		assert.Nil(t, client)
+	})
 }
 
 func TestNewClientFromEnvironment(t *testing.T) {
@@ -101,13 +108,29 @@ func TestNewClientFromEnvironment(t *testing.T) {
 		assert.IsType(t, &authn.APIKeyAuthenticator{}, client.authenticator)
 	})
 
+	t.Run("Returns error when config is invalid", func(t *testing.T) {
+		config := Config{Account: ""}
+		client, err := NewClientFromEnvironment(config)
+		assert.ErrorContains(t, err, "Must specify an Account")
+		assert.Nil(t, client)
+	})
+
 	t.Run("Returns error when no credentials found", func(t *testing.T) {
-		config := Config{Account: "account", ApplianceURL: "appliance-url"}
+		config := Config{Account: "account", ApplianceURL: "appliance-url", CredentialStorage: "none"}
 		t.Setenv("CONJUR_AUTHN_LOGIN", "")
 		t.Setenv("CONJUR_AUTHN_API_KEY", "")
 
 		client, err := NewClientFromEnvironment(config)
-		assert.Error(t, err)
+		assert.EqualError(t, err, "No valid credentials found. Please login again.")
+		assert.Nil(t, client)
+	})
+
+	t.Run("Returns error when using nonexistent SSLCertPath", func(t *testing.T) {
+		t.Setenv("CONJUR_AUTHN_LOGIN", "user")
+		t.Setenv("CONJUR_AUTHN_API_KEY", "password")
+		client, err := NewClientFromEnvironment(Config{Account: "account", ApplianceURL: "https://appliance-url", SSLCertPath: "fake-path"})
+
+		assert.EqualError(t, err, "open fake-path: no such file or directory")
 		assert.Nil(t, client)
 	})
 }
@@ -142,6 +165,28 @@ func TestNewClientFromJwt(t *testing.T) {
 		assert.Equal(t, "test-api-key", client.authenticator.(*authn.TokenAuthenticator).Token)
 	})
 
+	t.Run("Fetches JWT from file", func(t *testing.T) {
+		// Listen for JWT authentication requests
+		mockConjurServer := mockConjurServerWithJWT()
+		defer mockConjurServer.Close()
+
+		tempDir := t.TempDir()
+		err := os.WriteFile(tempDir+"/jwt-token", []byte("jwt-token"), 0644)
+		assert.NoError(t, err)
+
+		config := Config{Account: "myaccount", ApplianceURL: mockConjurServer.URL}
+		t.Setenv("JWT_TOKEN_PATH", tempDir+"/jwt-token")
+
+		client, err := NewClientFromJwt(config, "jwt-service")
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+
+		// Verify that the client authenticator is of type TokenAuthenticator
+		assert.IsType(t, &authn.TokenAuthenticator{}, client.authenticator)
+		// Verify that the auth token is set to the expected value
+		assert.Equal(t, "test-api-key", client.authenticator.(*authn.TokenAuthenticator).Token)
+	})
+
 	t.Run("Fetches config and fails with incorrect JWT", func(t *testing.T) {
 		// Listen for JWT authentication requests
 		mockConjurServer := mockConjurServerWithJWT()
@@ -153,6 +198,35 @@ func TestNewClientFromJwt(t *testing.T) {
 		client, err := NewClientFromJwt(config, "jwt-service")
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "401 Unauthorized")
+		assert.Nil(t, client)
+	})
+
+	t.Run("Appends JWT Host ID to authn URL", func(t *testing.T) {
+		// Listen for JWT authentication requests
+		mockConjurServer := mockConjurServerWithJWT()
+		defer mockConjurServer.Close()
+
+		config := Config{Account: "myaccount", ApplianceURL: mockConjurServer.URL}
+		t.Setenv("CONJUR_AUTHN_JWT_TOKEN", "jwt-token")
+		t.Setenv("CONJUR_AUTHN_JWT_HOST_ID", "my-host") // This should be added to the authn URL
+
+		client, err := NewClientFromJwt(config, "jwt-service")
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+
+		// Verify that the client authenticator is of type TokenAuthenticator
+		assert.IsType(t, &authn.TokenAuthenticator{}, client.authenticator)
+		// Verify that the auth token is set to the expected value
+		assert.Equal(t, "test-api-key-from-host", client.authenticator.(*authn.TokenAuthenticator).Token)
+	})
+
+	t.Run("Returns error when using nonexistent SSLCertPath", func(t *testing.T) {
+		config := Config{Account: "account", ApplianceURL: "https://appliance-url", SSLCertPath: "fake-path"}
+		t.Setenv("CONJUR_AUTHN_JWT_TOKEN", "jwt-token")
+
+		client, err := NewClientFromJwt(config, "jwt-service")
+
+		assert.EqualError(t, err, "open fake-path: no such file or directory")
 		assert.Nil(t, client)
 	})
 }
@@ -217,6 +291,24 @@ func Test_newClientFromStoredCredentials(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
 	})
+
+	t.Run("Returns error when using nonexistent SSLCertPath", func(t *testing.T) {
+		badCertConfig := Config{
+			Account:           "account",
+			ApplianceURL:      "https://appliance-url",
+			CredentialStorage: "file",
+			NetRCPath:         filepath.Join(tempDir, ".netrc"),
+			SSLCertPath:       "fake-path",
+		}
+
+		if storageProvider, _ := createStorageProvider(badCertConfig); storageProvider != nil {
+			storageProvider.StoreCredentials("user", "password")
+		}
+		client, err := newClientFromStoredCredentials(badCertConfig)
+
+		assert.EqualError(t, err, "open fake-path: no such file or directory")
+		assert.Nil(t, client)
+	})
 }
 
 func Test_newClientFromStoredOidcCredentials(t *testing.T) {
@@ -243,6 +335,25 @@ func Test_newClientFromStoredOidcCredentials(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
+	})
+	t.Run("Returns error when using nonexistent SSLCertPath", func(t *testing.T) {
+		badCertConfig := Config{
+			ServiceID:         "test",
+			AuthnType:         "oidc",
+			Account:           "account",
+			ApplianceURL:      "appliance-url",
+			CredentialStorage: "file",
+			NetRCPath:         filepath.Join(tempDir, ".netrc"),
+			SSLCertPath:       "fake-path",
+		}
+
+		if storageProvider, _ := createStorageProvider(badCertConfig); storageProvider != nil {
+			storageProvider.StoreCredentials("user", "password")
+		}
+		client, err := newClientFromStoredCredentials(badCertConfig)
+
+		assert.EqualError(t, err, "open fake-path: no such file or directory")
+		assert.Nil(t, client)
 	})
 }
 
@@ -322,6 +433,10 @@ func mockConjurServerWithJWT() *httptest.Server {
 			} else {
 				w.WriteHeader(http.StatusUnauthorized)
 			}
+		} else if strings.HasSuffix(r.URL.Path, "/authn-jwt/jwt-service/myaccount/my-host/authenticate") {
+			// When a host is specified, return a different API key
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("test-api-key-from-host"))
 		} else {
 			w.WriteHeader(http.StatusNotFound)
 		}

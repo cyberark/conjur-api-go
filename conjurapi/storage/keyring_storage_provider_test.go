@@ -1,8 +1,13 @@
 package storage
 
 import (
+	"bytes"
+	"errors"
+	"os"
 	"testing"
 
+	"github.com/cyberark/conjur-api-go/conjurapi/logging"
+	"github.com/sirupsen/logrus"
 	"github.com/zalando/go-keyring"
 
 	"github.com/stretchr/testify/assert"
@@ -191,6 +196,74 @@ func TestKeyringStorageProvider_PurgeCredentials(t *testing.T) {
 	}
 }
 
+func TestKeyringStorageProvider_ErrorHandling(t *testing.T) {
+	storage := setupTestStorageWithError(t, errors.New("test error"))
+
+	testCases := []struct {
+		name   string
+		assert func(t *testing.T, logOutput *bytes.Buffer)
+	}{
+		{
+			name: "StoreCredentials",
+			assert: func(t *testing.T, logOutput *bytes.Buffer) {
+				err := storage.StoreCredentials("test-login", "test-password")
+				assertWriteError(t, logOutput, err)
+			},
+		},
+		{
+			name: "ReadCredentials",
+			assert: func(t *testing.T, logOutput *bytes.Buffer) {
+				_, _, err := storage.ReadCredentials()
+				assertReadError(t, logOutput, err)
+			},
+		},
+		{
+			name: "StoreAuthnToken",
+			assert: func(t *testing.T, logOutput *bytes.Buffer) {
+				err := storage.StoreAuthnToken([]byte("test-authn-token"))
+				assertWriteError(t, logOutput, err)
+			},
+		},
+		{
+			name: "ReadAuthnToken",
+			assert: func(t *testing.T, logOutput *bytes.Buffer) {
+				_, err := storage.ReadAuthnToken()
+				assertReadError(t, logOutput, err)
+			},
+		},
+		{
+			name: "PurgeCredentials",
+			assert: func(t *testing.T, logOutput *bytes.Buffer) {
+				err := storage.PurgeCredentials()
+				// We expect the error to be logged, but not returned
+				assert.NoError(t, err)
+				// There should be a log entry for each key that failed to be deleted
+				assert.Contains(t, logOutput.String(), "Error when deleting login from keyring: test error")
+				assert.Contains(t, logOutput.String(), "Error when deleting password from keyring: test error")
+				assert.Contains(t, logOutput.String(), "Error when deleting authn_token from keyring: test error")
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Intercept the log output
+			var logOutput bytes.Buffer
+			logging.ApiLog.SetOutput(&logOutput)
+			// Set the log level to debug to capture all logs
+			logging.ApiLog.SetLevel(logrus.DebugLevel)
+
+			tc.assert(t, &logOutput)
+
+			// Reset the log output
+			t.Cleanup(func() {
+				logging.ApiLog.SetOutput(os.Stdout)
+				logging.ApiLog.SetLevel(logrus.InfoLevel)
+			})
+		})
+	}
+}
+
 func setupTestStorage(t *testing.T) *KeyringStorageProvider {
 	// Use a mock, in-memory provider for testing
 	keyring.MockInit()
@@ -205,4 +278,23 @@ func setupTestStorage(t *testing.T) *KeyringStorageProvider {
 	})
 
 	return storage
+}
+
+func setupTestStorageWithError(t *testing.T, err error) *KeyringStorageProvider {
+	keyring.MockInitWithError(err)
+
+	testMachineName := "conjur_api_go_test" + t.TempDir()
+	return NewKeyringStorageProvider(testMachineName)
+}
+
+func assertWriteError(t *testing.T, logOutput *bytes.Buffer, err error) {
+	// Check that the original error is logged but only the wrapped error is returned
+	assert.ErrorIs(t, err, ErrWritingCredentials)
+	assert.Contains(t, logOutput.String(), "test error")
+}
+
+func assertReadError(t *testing.T, logOutput *bytes.Buffer, err error) {
+	// Check that the original error is logged but only the wrapped error is returned
+	assert.ErrorIs(t, err, ErrReadingCredentials)
+	assert.Contains(t, logOutput.String(), "test error")
 }

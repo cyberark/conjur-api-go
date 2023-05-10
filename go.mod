@@ -6,7 +6,7 @@ require (
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.2
-	github.com/zalando/go-keyring v0.2.2
+	github.com/zalando/go-keyring v0.2.3-0.20230503081219-17db2e5354bd
 	gopkg.in/yaml.v2 v2.4.0
 )
 

@@ -6,6 +6,8 @@ import (
 	"path"
 	"testing"
 
+	"github.com/cyberark/conjur-api-go/conjurapi/logging"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -89,6 +91,23 @@ func TestConfig_IsValid(t *testing.T) {
 
 		errString := err.Error()
 		assert.Contains(t, errString, "AuthnType must be one of ")
+	})
+
+	t.Run("Includes config when debug logging is enabled", func(t *testing.T) {
+		config := Config{
+			Account: "account",
+		}
+		logLevel := logging.ApiLog.Level
+		logging.ApiLog.SetLevel(logrus.DebugLevel)
+		// Reset log level after test
+		defer logging.ApiLog.SetLevel(logLevel)
+
+		err := config.Validate()
+		assert.Error(t, err)
+
+		errString := err.Error()
+		assert.Contains(t, errString, "Must specify an ApplianceURL")
+		assert.Contains(t, errString, "config: &{Account:account ApplianceURL: ")
 	})
 }
 

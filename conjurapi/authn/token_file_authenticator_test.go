@@ -2,7 +2,6 @@ package authn
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -27,7 +26,7 @@ func ensureWriteFile(filepath, filecontents string) {
 		prevModTime = time.Now().Add(-time.Second)
 	}
 
-	err = ioutil.WriteFile(filepath, []byte(filecontents), 0600)
+	err = os.WriteFile(filepath, []byte(filecontents), 0600)
 	if err != nil {
 		panic(err)
 	}
@@ -55,7 +54,7 @@ func ensureWriteFile(filepath, filecontents string) {
 
 func TestTokenFileAuthenticator_RefreshToken(t *testing.T) {
 	t.Run("Retrieve existent token file", func(t *testing.T) {
-		token_file, _ := ioutil.TempFile("", "existent-token-file")
+		token_file, _ := os.CreateTemp("", "existent-token-file")
 		token_file_name := token_file.Name()
 		defer os.Remove(token_file_name)
 
@@ -74,15 +73,13 @@ func TestTokenFileAuthenticator_RefreshToken(t *testing.T) {
 	})
 
 	t.Run("Retrieve eventually existent token file", func(t *testing.T) {
-		token_dir, _ := ioutil.TempDir("", "existent-token-file")
+		token_dir := t.TempDir()
 		token_file_name := path.Join(token_dir, "token")
-		defer os.RemoveAll(token_dir)
 
 		token_file_contents := "token-from-file-contents"
 		go func() {
-			ioutil.WriteFile(token_file_name, []byte(token_file_contents), 0600)
+			os.WriteFile(token_file_name, []byte(token_file_contents), 0600)
 		}()
-		defer os.Remove(token_file_name)
 
 		authenticator := TokenFileAuthenticator{
 			TokenFile:   token_file_name,
@@ -109,11 +106,33 @@ func TestTokenFileAuthenticator_RefreshToken(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, "Operation waitForTextFile timed out.", err.Error())
 	})
+
+	t.Run("Doesn't time out if MaxWaitTime is -1", func(t *testing.T) {
+		tempDir := t.TempDir()
+		token_file_name := path.Join(tempDir, "token")
+
+		go func() {
+			// Wait some time before writing the file
+			time.Sleep(500 * time.Millisecond)
+			token_file_contents := "token-from-file-contents"
+			os.WriteFile(token_file_name, []byte(token_file_contents), 0600)
+		}()
+
+		authenticator := TokenFileAuthenticator{
+			TokenFile:   token_file_name,
+			MaxWaitTime: -1, // Disable timeout
+		}
+
+		token, err := authenticator.RefreshToken()
+
+		assert.NoError(t, err)
+		assert.Equal(t, "token-from-file-contents", string(token))
+	})
 }
 
 func TestTokenFileAuthenticator_NeedsTokenRefresh(t *testing.T) {
 	t.Run("Token refresh needed after updates", func(t *testing.T) {
-		token_file, _ := ioutil.TempFile("", "existent-token-file")
+		token_file, _ := os.CreateTemp("", "existent-token-file")
 		token_file_name := token_file.Name()
 		defer os.Remove(token_file_name)
 
