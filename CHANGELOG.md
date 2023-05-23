@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   [cyberark/conjur-api-go#169](https://github.com/cyberark/conjur-api-go/pull/169)
 
 ### Security
+- Upgrade Go to 1.20 and golang.org/x/sys to 0.8.0
+  [cyberark/conjur-api-go#175](https://github.com/cyberark/conjur-api-go/pull/175)
 - Upgrade ruby in bin/parse-changelog.sh from 2.5 to 3.1
   [cyberark/conjur-api-go#172](https://github.com/cyberark/conjur-api-go/pull/172)
 
