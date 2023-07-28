@@ -12,8 +12,9 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"encoding/base64"
-	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 	"path/filepath"
+
+	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 )
 
 const (
@@ -30,23 +31,23 @@ const (
 var supportedAuthnTypes = []string{"authn", "ldap", "oidc", "jwt", "iam", "azure", "gcp"}
 
 type Config struct {
-	Account            string `yaml:"account,omitempty"`
-	ApplianceURL       string `yaml:"appliance_url,omitempty"`
-	NetRCPath          string `yaml:"netrc_path,omitempty"`
-	SSLCert            string `yaml:"-"`
-	SSLCertPath        string `yaml:"cert_file,omitempty"`
-	AuthnType          string `yaml:"authn_type,omitempty"`
-	ServiceID          string `yaml:"service_id,omitempty"`
-	CredentialStorage  string `yaml:"credential_storage,omitempty"`
-	JWTHostID          string `yaml:"jwt_host_id,omitempty"`
-	JWTContent         string `yaml:"-"`
-	JWTFilePath        string `yaml:"jwt_file,omitempty"`
-	HTTPTimeout        int    `yaml:"http_timeout,omitempty"`
-	IntegrationName    string `yaml:"-"`
-	IntegrationType    string `yaml:"-"`
-	IntegrationVersion string `yaml:"-"`
-	VendorVersion      string `yaml:"-"`
-	VendorName         string `yaml:"-"`
+	Account              string `yaml:"account,omitempty"`
+	ApplianceURL         string `yaml:"appliance_url,omitempty"`
+	NetRCPath            string `yaml:"netrc_path,omitempty"`
+	SSLCert              string `yaml:"-"`
+	SSLCertPath          string `yaml:"cert_file,omitempty"`
+	AuthnType            string `yaml:"authn_type,omitempty"`
+	ServiceID            string `yaml:"service_id,omitempty"`
+	CredentialStorage    string `yaml:"credential_storage,omitempty"`
+	JWTHostID            string `yaml:"jwt_host_id,omitempty"`
+	JWTContent           string `yaml:"-"`
+	JWTFilePath          string `yaml:"jwt_file,omitempty"`
+	HTTPTimeout          int    `yaml:"http_timeout,omitempty"`
+	IntegrationName      string `yaml:"-"`
+	IntegrationType      string `yaml:"-"`
+	IntegrationVersion   string `yaml:"-"`
+	VendorVersion        string `yaml:"-"`
+	VendorName           string `yaml:"-"`
 	finalTelemetryHeader string `yaml:"-"`
 }
 
@@ -73,7 +74,7 @@ func (c *Config) Validate() error {
 		errors = append(errors, fmt.Sprintf("Must specify a ServiceID when using %s", c.AuthnType))
 	}
 
-	if (c.AuthnType == "jwt" || c.AuthnType == "iam" || c.AuthnType == "azure" || c.AuthnType == "gcp") && (c.JWTContent == "" && c.JWTFilePath == "") {
+	if c.AuthnType == "jwt" && (c.JWTContent == "" && c.JWTFilePath == "") {
 		errors = append(errors, fmt.Sprintf("Must specify a JWT token when using %s authentication", c.AuthnType))
 	}
 
@@ -324,7 +325,7 @@ func (c *Config) SetIntegrationName(inname string) {
 	c.finalTelemetryHeader = ""
 }
 
-// SetIntegrationType sets the type of the integration. 
+// SetIntegrationType sets the type of the integration.
 // Parameters:
 //   - intype (string): The type of the integration.
 func (c *Config) SetIntegrationType(intype string) {
@@ -359,9 +360,9 @@ func (c *Config) SetIntegrationVersion(inversion string) {
 
 // SetVendorName sets the name of the vendor.
 // Parameters:
-//   - vname (string): The name of the vendor. 
+//   - vname (string): The name of the vendor.
 func (c *Config) SetVendorName(vname string) {
-    c.VendorName = vname
+	c.VendorName = vname
 	c.finalTelemetryHeader = ""
 }
 

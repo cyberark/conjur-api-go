@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.13.5] - 2025-09-09
+
+### Added
+- Add support for automatic AWS IAM authentication using EC2 instance metadata. CNJR-10957
+
 ## [0.13.4] - 2025-09-08
 
 ### Added
@@ -329,7 +334,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.13.4...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.13.5...HEAD
+[0.13.5]: https://github.com/cyberark/conjur-api-go/compare/v0.13.4...v0.13.5
 [0.13.4]: https://github.com/cyberark/conjur-api-go/compare/v0.13.3...v0.13.4
 [0.13.3]: https://github.com/cyberark/conjur-api-go/compare/v0.13.2...v0.13.3
 [0.13.2]: https://github.com/cyberark/conjur-api-go/compare/v0.13.1...v0.13.2
