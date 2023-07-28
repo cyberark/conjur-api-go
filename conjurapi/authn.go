@@ -1,12 +1,17 @@
 package conjurapi
 
 import (
+	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
+	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
@@ -23,8 +28,8 @@ type OidcProvider struct {
 }
 
 func (c *Client) RefreshToken() (err error) {
-	// Fetch cached conjur access token if using OIDC
-	if c.GetConfig().AuthnType == "oidc" {
+	// Fetch cached conjur access token if using OIDC or IAM
+	if c.GetConfig().AuthnType == "oidc" || c.GetConfig().AuthnType == "iam" {
 		token := c.readCachedAccessToken()
 		if token != nil {
 			c.authToken = token
@@ -249,6 +254,81 @@ func (c *Client) OidcAuthenticate(code, nonce, code_verifier string) ([]byte, er
 	}
 
 	return resp, err
+}
+
+func (c *Client) IAMAuthenticate() ([]byte, error) {
+	signedHeaders, err := c.IAMAuthenticateHeaders()
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := c.IAMAuthenticateRequest(signedHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := response.DataResponse(res)
+
+	if err == nil && c.storage != nil {
+		c.storage.StoreAuthnToken(resp)
+	}
+
+	return resp, err
+}
+
+func (c *Client) IAMAuthenticateHeaders() ([]byte, error) {
+	ctx := context.TODO()
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		fmt.Println("Error loading AWS config:", err)
+		return nil, err
+	}
+
+	creds, err := cfg.Credentials.Retrieve(ctx)
+	if err != nil {
+		fmt.Println("Error loading AWS credentials:", err)
+		return nil, err
+	}
+
+	signer := v4.NewSigner()
+
+	stsEndpoint := fmt.Sprintf("https://sts.%s.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15", cfg.Region)
+
+	request, err := http.NewRequest(http.MethodGet, stsEndpoint, nil)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return nil, err
+	}
+
+	request.Header.Set("Host", request.Host)
+
+	// Sign the request
+	// NOTE: The random string is a hash of an empty payload which is necessary for the correct signature
+	err = signer.SignHTTP(ctx, creds, request, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "sts", cfg.Region, time.Now().UTC())
+	if err != nil {
+		fmt.Println("Error:", err)
+		return nil, err
+	}
+
+	headerMap := make(map[string]interface{})
+	for key, values := range request.Header {
+		if len(values) == 1 {
+			headerMap[key] = values[0]
+		}
+	}
+
+	jsonData, err := json.Marshal(headerMap)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return nil, err
+	}
+
+	return jsonData, nil
 }
 
 func (c *Client) ListOidcProviders() ([]OidcProvider, error) {

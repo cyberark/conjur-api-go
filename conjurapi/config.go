@@ -13,7 +13,7 @@ import (
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 )
 
-var supportedAuthnTypes = []string{"authn", "ldap", "oidc"}
+var supportedAuthnTypes = []string{"authn", "ldap", "oidc", "iam"}
 
 type Config struct {
 	Account           string `yaml:"account,omitempty"`
@@ -23,6 +23,7 @@ type Config struct {
 	SSLCertPath       string `yaml:"cert_file,omitempty"`
 	AuthnType         string `yaml:"authn_type,omitempty"`
 	ServiceID         string `yaml:"service_id,omitempty"`
+	HostID            string `yaml:"host_id,omitempty"`
 	CredentialStorage string `yaml:"credential_storage,omitempty"`
 }
 
@@ -45,8 +46,12 @@ func (c *Config) Validate() error {
 		errors = append(errors, fmt.Sprintf("AuthnType must be one of %v", supportedAuthnTypes))
 	}
 
-	if (c.AuthnType == "ldap" || c.AuthnType == "oidc") && c.ServiceID == "" {
+	if (c.AuthnType == "ldap" || c.AuthnType == "oidc" || c.AuthnType == "iam") && c.ServiceID == "" {
 		errors = append(errors, fmt.Sprintf("Must specify a ServiceID when using %s", c.AuthnType))
+	}
+
+	if c.AuthnType == "iam" && c.HostID == "" {
+		errors = append(errors, fmt.Sprintf("Must specify a HostID when using %s", c.AuthnType))
 	}
 
 	if len(errors) == 0 {
@@ -189,6 +194,13 @@ func LoadConfig() (Config, error) {
 	}
 
 	config.mergeEnv()
+
+	logging.ApiLog.Debugf("Final config: %+v\n", config)
+	return config, nil
+}
+
+func ConfigFromAWSCredentials() (Config, error) {
+	config := Config{}
 
 	logging.ApiLog.Debugf("Final config: %+v\n", config)
 	return config, nil
