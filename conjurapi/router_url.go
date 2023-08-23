@@ -3,23 +3,27 @@ package conjurapi
 import (
 	"fmt"
 	"strings"
+	"path"
 )
 
 type routerURL string
 
-func makeRouterURL(components ...string) routerURL {
-	return routerURL(strings.Join(components, "/"))
+func makeRouterURL(base string, components ...string) routerURL {
+	urlBase := strings.TrimSuffix(base, "/")
+	urlPath := path.Join(components...)
+	urlPath = strings.TrimPrefix(urlPath, "/")
+	return routerURL(urlBase + "/" + urlPath)
 }
 
-func (url routerURL) withFormattedQuery(queryFormat string, queryArgs ...interface{}) routerURL {
+func (u routerURL) withFormattedQuery(queryFormat string, queryArgs ...interface{}) routerURL {
 	query := fmt.Sprintf(queryFormat, queryArgs...)
-	return routerURL(strings.Join([]string{string(url), query}, "?"))
+	return routerURL(strings.Join([]string{string(u), query}, "?"))
 }
 
-func (url routerURL) withQuery(query string) routerURL {
-	return routerURL(strings.Join([]string{string(url), query}, "?"))
+func (u routerURL) withQuery(query string) routerURL {
+	return routerURL(strings.Join([]string{string(u), query}, "?"))
 }
 
-func (url routerURL) String() string {
-	return string(url)
+func (u routerURL) String() string {
+	return string(u)
 }
