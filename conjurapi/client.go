@@ -1,6 +1,7 @@
 package conjurapi
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -62,6 +63,18 @@ func NewClientFromOidcCode(config Config, code, nonce, code_verifier string) (*C
 	)
 	if err == nil {
 		authenticator.Authenticate = client.OidcAuthenticate
+	}
+	return client, err
+}
+
+func NewClientFromAWSCredentials(config Config) (*Client, error) {
+	authenticator := &authn.IAMAuthenticator{}
+	client, err := newClientWithAuthenticator(
+		config,
+		authenticator,
+	)
+	if err == nil {
+		authenticator.Authenticate = client.IAMAuthenticate
 	}
 	return client, err
 }
@@ -191,6 +204,10 @@ func newClientFromStoredCredentials(config Config) (*Client, error) {
 		return newClientFromStoredOidcCredentials(config)
 	}
 
+	if config.AuthnType == "iam" {
+		return newClientFromStoredAWSConfig(config)
+	}
+
 	// Attempt to load credentials from whatever storage provider is configured
 	if storageProvider, _ := createStorageProvider(config); storageProvider != nil {
 		login, password, err := storageProvider.ReadCredentials()
@@ -215,6 +232,23 @@ func newClientFromStoredOidcCredentials(config Config) (*Client, error) {
 		return client, nil
 	}
 	return nil, fmt.Errorf("No valid OIDC token found. Please login again.")
+}
+
+func newClientFromStoredAWSConfig(config Config) (*Client, error) {
+	client, err := NewClientFromAWSCredentials(config)
+	if err != nil {
+		return nil, err
+	}
+
+	// RefreshToken() will first check for a cached token
+	// If not found it will go through the authenticator
+	err = client.RefreshToken()
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+
 }
 
 func (c *Client) GetAuthenticator() Authenticator {
@@ -293,6 +327,17 @@ func (c *Client) OidcAuthenticateRequest(code, nonce, code_verifier string) (*ht
 	authenticateURL := makeRouterURL(c.authnURL(), "authenticate").withFormattedQuery("code=%s&nonce=%s&code_verifier=%s", code, nonce, code_verifier).String()
 
 	req, err := http.NewRequest("GET", authenticateURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+func (c *Client) IAMAuthenticateRequest(signedHeaders []byte) (*http.Request, error) {
+	authenticateURL := makeRouterURL(c.authnURL(), url.QueryEscape("host/"+c.config.HostID), "authenticate").String()
+
+	req, err := http.NewRequest("POST", authenticateURL, bytes.NewBuffer(signedHeaders))
 	if err != nil {
 		return nil, err
 	}
