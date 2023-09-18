@@ -149,6 +149,7 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 		os.Setenv("CONJUR_AUTHN_TYPE", "ldap")
 		os.Setenv("CONJUR_SERVICE_ID", "service-id")
 		os.Setenv("CONJUR_CREDENTIAL_STORAGE", "keyring")
+		os.Setenv("CONJUR_HTTP_TIMEOUT", "10")
 
 		t.Run("Returns Config loaded with values from env", func(t *testing.T) {
 			config := &Config{}
@@ -160,6 +161,7 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 				AuthnType:         "ldap",
 				ServiceID:         "service-id",
 				CredentialStorage: "keyring",
+				HttpTimeout:       10,
 			})
 		})
 	})
@@ -209,6 +211,7 @@ cert_file: "/path/to/cert/file/pem%v"
 netrc_path: "/path/to/netrc/file%v"
 authn_type: ldap
 service_id: my-ldap-service
+http_timeout: 10
 %s
 `, index, index, index, index, versiontest.in)
 
@@ -227,6 +230,7 @@ service_id: my-ldap-service
 					SSLCertPath:  fmt.Sprintf("/path/to/cert/file/pem%v", index),
 					AuthnType:    "ldap",
 					ServiceID:    "my-ldap-service",
+					HttpTimeout:  10,
 				})
 			})
 		})
@@ -297,6 +301,7 @@ appliance_url: test-appliance-url
 			NetRCPath:         "test-netrc-path",
 			SSLCert:           "test-cert",
 			CredentialStorage: "keyring",
+			HttpTimeout:       10,
 		},
 		expected: `account: test-account
 appliance_url: test-appliance-url
@@ -305,6 +310,7 @@ cert_file: test-cert-path
 authn_type: oidc
 service_id: test-service-id
 credential_storage: keyring
+http_timeout: 10
 `,
 	},
 }

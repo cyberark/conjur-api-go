@@ -150,13 +150,13 @@ func NewClientFromJwt(config Config, authnJwtServiceID string) (*Client, error) 
 		if err != nil {
 			return nil, err
 		}
-		httpClient, err = newHTTPSClient(cert)
+		httpClient, err = newHTTPSClient(cert, config)
 		if err != nil {
 			return nil, err
 		}
 
 	} else {
-		httpClient = &http.Client{Timeout: time.Second * 10}
+		httpClient = &http.Client{Timeout: time.Second * time.Duration(config.HttpTimeout)}
 	}
 
 	authnJwtHostID := os.Getenv("CONJUR_AUTHN_JWT_HOST_ID")
@@ -827,12 +827,12 @@ func createHttpClient(config Config) (*http.Client, error) {
 		if err != nil {
 			return nil, err
 		}
-		httpClient, err = newHTTPSClient(cert)
+		httpClient, err = newHTTPSClient(cert, config)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		httpClient = &http.Client{Timeout: time.Second * 10}
+		httpClient = &http.Client{Timeout: time.Second * time.Duration(config.HttpTimeout)}
 	}
 	return httpClient, nil
 }
@@ -847,7 +847,7 @@ func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Cl
 	return client, nil
 }
 
-func newHTTPSClient(cert []byte) (*http.Client, error) {
+func newHTTPSClient(cert []byte, config Config) (*http.Client, error) {
 	pool := x509.NewCertPool()
 	ok := pool.AppendCertsFromPEM(cert)
 	if !ok {
@@ -858,5 +858,5 @@ func newHTTPSClient(cert []byte) (*http.Client, error) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{RootCAs: pool},
 	}
-	return &http.Client{Transport: tr, Timeout: time.Second * 10}, nil
+	return &http.Client{Transport: tr, Timeout: time.Second * time.Duration(config.HttpTimeout)}, nil
 }

@@ -407,13 +407,15 @@ func TestClient_createHttpClient(t *testing.T) {
 
 func TestClient_newHTTPSClient(t *testing.T) {
 	t.Run("New HTTPS client error with invalid cert", func(t *testing.T) {
-		client, err := newHTTPSClient([]byte("invalid cert"))
+		config := Config{}
+		client, err := newHTTPSClient([]byte("invalid cert"), config)
 
 		assert.EqualError(t, err, "Can't append Conjur SSL cert")
 		assert.Nil(t, client)
 	})
 	t.Run("New HTTPS client with valid cert", func(t *testing.T) {
-		client, err := newHTTPSClient([]byte(sample_cert))
+		config := Config{}
+		client, err := newHTTPSClient([]byte(sample_cert), config)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, client)

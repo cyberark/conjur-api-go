@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -24,6 +25,7 @@ type Config struct {
 	AuthnType         string `yaml:"authn_type,omitempty"`
 	ServiceID         string `yaml:"service_id,omitempty"`
 	CredentialStorage string `yaml:"credential_storage,omitempty"`
+	HttpTimeout       int    `yaml:"http_timeout,omitempty"`
 }
 
 func (c *Config) IsHttps() bool {
@@ -83,6 +85,13 @@ func mergeValue(a, b string) string {
 	return a
 }
 
+func mergeValueInt(a, b int) int {
+	if b > 0 {
+		return b
+	}
+	return a
+}
+
 func (c *Config) merge(o *Config) {
 	c.ApplianceURL = mergeValue(c.ApplianceURL, o.ApplianceURL)
 	c.Account = mergeValue(c.Account, o.Account)
@@ -92,6 +101,7 @@ func (c *Config) merge(o *Config) {
 	c.CredentialStorage = mergeValue(c.CredentialStorage, o.CredentialStorage)
 	c.AuthnType = mergeValue(c.AuthnType, o.AuthnType)
 	c.ServiceID = mergeValue(c.ServiceID, o.ServiceID)
+	c.HttpTimeout = mergeValueInt(c.HttpTimeout, o.HttpTimeout)
 }
 
 func (c *Config) mergeYAML(filename string) error {
@@ -141,6 +151,16 @@ func (c *Config) mergeYAML(filename string) error {
 }
 
 func (c *Config) mergeEnv() {
+	conjurHttpTimeoutStr := os.Getenv("CONJUR_HTTP_TIMEOUT")
+	var conjurHttpTimeout int
+	if conjurHttpTimeoutStr != "" {
+		var err error
+		conjurHttpTimeout, err = strconv.Atoi(os.Getenv("CONJUR_HTTP_TIMEOUT"))
+		if err != nil {
+			logging.ApiLog.Warningf("Could not parse env var CONJUR_HTTP_TIMEOUT.")
+		}
+	}
+
 	env := Config{
 		ApplianceURL:      os.Getenv("CONJUR_APPLIANCE_URL"),
 		SSLCert:           os.Getenv("CONJUR_SSL_CERTIFICATE"),
@@ -150,6 +170,7 @@ func (c *Config) mergeEnv() {
 		CredentialStorage: os.Getenv("CONJUR_CREDENTIAL_STORAGE"),
 		AuthnType:         os.Getenv("CONJUR_AUTHN_TYPE"),
 		ServiceID:         os.Getenv("CONJUR_SERVICE_ID"),
+		HttpTimeout:       conjurHttpTimeout,
 	}
 
 	logging.ApiLog.Debugf("Config from environment: %+v\n", env)
