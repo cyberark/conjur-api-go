@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 	"github.com/stretchr/testify/assert"
@@ -407,16 +408,45 @@ func TestClient_createHttpClient(t *testing.T) {
 
 func TestClient_newHTTPSClient(t *testing.T) {
 	t.Run("New HTTPS client error with invalid cert", func(t *testing.T) {
-		client, err := newHTTPSClient([]byte("invalid cert"))
+		config := Config{}
+		client, err := newHTTPSClient([]byte("invalid cert"), config)
 
 		assert.EqualError(t, err, "Can't append Conjur SSL cert")
 		assert.Nil(t, client)
 	})
 	t.Run("New HTTPS client with valid cert", func(t *testing.T) {
-		client, err := newHTTPSClient([]byte(sample_cert))
+		config := Config{}
+		client, err := newHTTPSClient([]byte(sample_cert), config)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
+	})
+}
+
+func TestClient_HttpClientTimeoutValue(t *testing.T) {
+	t.Run("Create HTTP client with default timeout value", func(t *testing.T) {
+		config := Config{Account: "account", ApplianceURL: "http://appliance-url"}
+		client, err := createHttpClient(config)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+		assert.Equal(t, time.Second * time.Duration(HttpTimeoutDefaultValue), client.Timeout)
+	})
+	t.Run("Create HTTP client with no timeout", func(t *testing.T) {
+		config := Config{Account: "account", ApplianceURL: "http://appliance-url", HttpTimeout: -1}
+		client, err := createHttpClient(config)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+		assert.Equal(t, time.Second * time.Duration(0), client.Timeout)
+	})
+	t.Run("Create HTTP client with specific timeout", func(t *testing.T) {
+		config := Config{Account: "account", ApplianceURL: "http://appliance-url", HttpTimeout: 5}
+		client, err := createHttpClient(config)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+		assert.Equal(t, time.Second * time.Duration(5), client.Timeout)
 	})
 }
 

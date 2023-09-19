@@ -13,6 +13,10 @@ import (
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 )
 
+const (
+	HttpTimeoutDefaultValue = 10
+)
+
 var supportedAuthnTypes = []string{"authn", "ldap", "oidc"}
 
 type Config struct {
@@ -24,6 +28,7 @@ type Config struct {
 	AuthnType         string `yaml:"authn_type,omitempty"`
 	ServiceID         string `yaml:"service_id,omitempty"`
 	CredentialStorage string `yaml:"credential_storage,omitempty"`
+	HttpTimeout       int    `yaml:"-"`
 }
 
 func (c *Config) IsHttps() bool {
@@ -74,6 +79,22 @@ func (c *Config) BaseURL() string {
 		}
 	}
 	return prefix + c.ApplianceURL
+}
+
+// The GetHttpTimeout function retrieves the Timeout value from the config struc. 
+// If config.HttpTimeout is 
+// - less than 0, GetHttpTimeout returns 0 (no timeout)
+// - equal to 0, GetHttpTimeout returns the default value (constant HttpTimeoutDefaultValue)
+// Otherwise, GetHttpTimeout returns the value of config.HttpTimeout
+func (c *Config) GetHttpTimeout() int {
+	switch {
+	case c.HttpTimeout < 0:
+		return 0
+	case c.HttpTimeout == 0:
+		return HttpTimeoutDefaultValue
+	default:
+		return c.HttpTimeout
+	}
 }
 
 func mergeValue(a, b string) string {

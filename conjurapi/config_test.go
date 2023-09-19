@@ -402,3 +402,37 @@ func TestConfig_BaseURL(t *testing.T) {
 		})
 	}
 }
+
+func TestConfig_GetHttpTimeout(t *testing.T) {
+	testCases := []struct {
+		name                string
+		configHttpTimeout   int
+		expectedHttpTimeout int
+	}{
+		{
+			name:                "smaller than zero",
+			configHttpTimeout:   -1,
+			expectedHttpTimeout: 0,
+		},
+		{
+			name:                "equal to zero",
+			configHttpTimeout:   0,
+			expectedHttpTimeout: HttpTimeoutDefaultValue,
+		},
+		{
+			name:                "greater then zero",
+			configHttpTimeout:   5,
+			expectedHttpTimeout: 5,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			config := Config{
+				HttpTimeout: testCase.configHttpTimeout,
+			}
+
+			assert.Equal(t, testCase.expectedHttpTimeout, config.GetHttpTimeout())
+		})
+	}
+}
