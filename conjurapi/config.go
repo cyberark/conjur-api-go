@@ -5,13 +5,16 @@ import (
 	"os"
 	"path"
 	"runtime"
-	"strconv"
 	"strings"
 
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
+)
+
+const (
+	HttpTimeoutDefaultValue = 10
 )
 
 var supportedAuthnTypes = []string{"authn", "ldap", "oidc"}
@@ -25,7 +28,7 @@ type Config struct {
 	AuthnType         string `yaml:"authn_type,omitempty"`
 	ServiceID         string `yaml:"service_id,omitempty"`
 	CredentialStorage string `yaml:"credential_storage,omitempty"`
-	HttpTimeout       int    `yaml:"http_timeout,omitempty"`
+	HttpTimeout       int    `yaml:"-"`
 }
 
 func (c *Config) IsHttps() bool {
@@ -78,15 +81,24 @@ func (c *Config) BaseURL() string {
 	return prefix + c.ApplianceURL
 }
 
-func mergeValue(a, b string) string {
-	if len(b) != 0 {
-		return b
+// The GetHttpTimeout function retrieves the Timeout value from the config struc. 
+// If config.HttpTimeout is 
+// - less than 0, GetHttpTimeout returns 0 (no timeout)
+// - equal to 0, GetHttpTimeout returns the default value (constant HttpTimeoutDefaultValue)
+// Otherwise, GetHttpTimeout returns the value of config.HttpTimeout
+func (c *Config) GetHttpTimeout() int {
+	switch {
+	case c.HttpTimeout < 0:
+		return 0
+	case c.HttpTimeout == 0:
+		return HttpTimeoutDefaultValue
+	default:
+		return c.HttpTimeout
 	}
-	return a
 }
 
-func mergeValueInt(a, b int) int {
-	if b > 0 {
+func mergeValue(a, b string) string {
+	if len(b) != 0 {
 		return b
 	}
 	return a
@@ -101,7 +113,6 @@ func (c *Config) merge(o *Config) {
 	c.CredentialStorage = mergeValue(c.CredentialStorage, o.CredentialStorage)
 	c.AuthnType = mergeValue(c.AuthnType, o.AuthnType)
 	c.ServiceID = mergeValue(c.ServiceID, o.ServiceID)
-	c.HttpTimeout = mergeValueInt(c.HttpTimeout, o.HttpTimeout)
 }
 
 func (c *Config) mergeYAML(filename string) error {
@@ -151,16 +162,6 @@ func (c *Config) mergeYAML(filename string) error {
 }
 
 func (c *Config) mergeEnv() {
-	conjurHttpTimeoutStr := os.Getenv("CONJUR_HTTP_TIMEOUT")
-	var conjurHttpTimeout int
-	if conjurHttpTimeoutStr != "" {
-		var err error
-		conjurHttpTimeout, err = strconv.Atoi(os.Getenv("CONJUR_HTTP_TIMEOUT"))
-		if err != nil {
-			logging.ApiLog.Warningf("Could not parse env var CONJUR_HTTP_TIMEOUT.")
-		}
-	}
-
 	env := Config{
 		ApplianceURL:      os.Getenv("CONJUR_APPLIANCE_URL"),
 		SSLCert:           os.Getenv("CONJUR_SSL_CERTIFICATE"),
@@ -170,7 +171,6 @@ func (c *Config) mergeEnv() {
 		CredentialStorage: os.Getenv("CONJUR_CREDENTIAL_STORAGE"),
 		AuthnType:         os.Getenv("CONJUR_AUTHN_TYPE"),
 		ServiceID:         os.Getenv("CONJUR_SERVICE_ID"),
-		HttpTimeout:       conjurHttpTimeout,
 	}
 
 	logging.ApiLog.Debugf("Config from environment: %+v\n", env)

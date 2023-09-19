@@ -156,7 +156,7 @@ func NewClientFromJwt(config Config, authnJwtServiceID string) (*Client, error) 
 		}
 
 	} else {
-		httpClient = &http.Client{Timeout: time.Second * time.Duration(config.HttpTimeout)}
+		httpClient = &http.Client{Timeout: time.Second * time.Duration(config.GetHttpTimeout())}
 	}
 
 	authnJwtHostID := os.Getenv("CONJUR_AUTHN_JWT_HOST_ID")
@@ -832,7 +832,7 @@ func createHttpClient(config Config) (*http.Client, error) {
 			return nil, err
 		}
 	} else {
-		httpClient = &http.Client{Timeout: time.Second * time.Duration(config.HttpTimeout)}
+		httpClient = &http.Client{Timeout: time.Second * time.Duration(config.GetHttpTimeout())}
 	}
 	return httpClient, nil
 }
@@ -858,5 +858,5 @@ func newHTTPSClient(cert []byte, config Config) (*http.Client, error) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{RootCAs: pool},
 	}
-	return &http.Client{Transport: tr, Timeout: time.Second * time.Duration(config.HttpTimeout)}, nil
+	return &http.Client{Transport: tr, Timeout: time.Second * time.Duration(config.GetHttpTimeout())}, nil
 }

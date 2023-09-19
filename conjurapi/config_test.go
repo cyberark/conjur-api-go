@@ -149,7 +149,6 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 		os.Setenv("CONJUR_AUTHN_TYPE", "ldap")
 		os.Setenv("CONJUR_SERVICE_ID", "service-id")
 		os.Setenv("CONJUR_CREDENTIAL_STORAGE", "keyring")
-		os.Setenv("CONJUR_HTTP_TIMEOUT", "10")
 
 		t.Run("Returns Config loaded with values from env", func(t *testing.T) {
 			config := &Config{}
@@ -161,7 +160,6 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 				AuthnType:         "ldap",
 				ServiceID:         "service-id",
 				CredentialStorage: "keyring",
-				HttpTimeout:       10,
 			})
 		})
 	})
@@ -211,7 +209,6 @@ cert_file: "/path/to/cert/file/pem%v"
 netrc_path: "/path/to/netrc/file%v"
 authn_type: ldap
 service_id: my-ldap-service
-http_timeout: 10
 %s
 `, index, index, index, index, versiontest.in)
 
@@ -230,7 +227,6 @@ http_timeout: 10
 					SSLCertPath:  fmt.Sprintf("/path/to/cert/file/pem%v", index),
 					AuthnType:    "ldap",
 					ServiceID:    "my-ldap-service",
-					HttpTimeout:  10,
 				})
 			})
 		})
@@ -301,7 +297,6 @@ appliance_url: test-appliance-url
 			NetRCPath:         "test-netrc-path",
 			SSLCert:           "test-cert",
 			CredentialStorage: "keyring",
-			HttpTimeout:       10,
 		},
 		expected: `account: test-account
 appliance_url: test-appliance-url
@@ -310,7 +305,6 @@ cert_file: test-cert-path
 authn_type: oidc
 service_id: test-service-id
 credential_storage: keyring
-http_timeout: 10
 `,
 	},
 }
@@ -405,6 +399,40 @@ func TestConfig_BaseURL(t *testing.T) {
 
 			actual := config.BaseURL()
 			assert.Equal(t, testCase.expected, actual)
+		})
+	}
+}
+
+func TestConfig_GetHttpTimeout(t *testing.T) {
+	testCases := []struct {
+		name                string
+		configHttpTimeout   int
+		expectedHttpTimeout int
+	}{
+		{
+			name:                "smaller than zero",
+			configHttpTimeout:   -1,
+			expectedHttpTimeout: 0,
+		},
+		{
+			name:                "equal to zero",
+			configHttpTimeout:   0,
+			expectedHttpTimeout: HttpTimeoutDefaultValue,
+		},
+		{
+			name:                "greater then zero",
+			configHttpTimeout:   5,
+			expectedHttpTimeout: 5,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			config := Config{
+				HttpTimeout: testCase.configHttpTimeout,
+			}
+
+			assert.Equal(t, testCase.expectedHttpTimeout, config.GetHttpTimeout())
 		})
 	}
 }
