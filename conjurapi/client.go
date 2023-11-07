@@ -857,6 +857,7 @@ func newHTTPSClient(cert []byte, config Config) (*http.Client, error) {
 	//TODO: What if server cert is rotated
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{RootCAs: pool},
+		Proxy:           http.ProxyFromEnvironment,
 	}
 	return &http.Client{Transport: tr, Timeout: time.Second * time.Duration(config.GetHttpTimeout())}, nil
 }
