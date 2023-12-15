@@ -13,9 +13,9 @@ function announce() {
 exec_on() {
   local container="$1"; shift
 
-  docker exec "$(docker-compose ps -q $container)" "$@"
+  docker exec "$(docker compose ps -q $container)" "$@"
 }
 
 function teardown {
-  docker-compose down -v
+  docker compose down -v
 }
