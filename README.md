@@ -23,9 +23,8 @@ questions, please contact us on [Discourse](https://discuss.cyberarkcommons.org/
 
 The `conjur-api-go` has been tested against the following Go versions:
 
-    - 1.17 (EOL)
-    - 1.18
-    - 1.19
+    - 1.21
+    - 1.22
 
 ## Installation
 
