@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 trap teardown EXIT
 
 export COMPOSE_PROJECT_NAME="conjurapigo_$(openssl rand -hex 3)"
-export GO_VERSION="${1:-"1.18"}"
+export GO_VERSION="${1:-"1.22"}"
 
 # Spin up Conjur environment
 source ./start-conjur.sh
@@ -24,7 +24,7 @@ failed() {
   exit 1
 }
 
-# Golang container version to use: `1.18` or `1.19`
+# Golang container version to use: `1.21` or `1.22`
 announce "Running tests for Go version: $GO_VERSION...";
 docker compose run \
   --no-deps \

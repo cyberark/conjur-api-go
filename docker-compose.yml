@@ -19,11 +19,11 @@ services:
       CONJUR_APPLIANCE_URL: http://conjur
       CONJUR_ACCOUNT: cucumber
 
-  test-1.18:
+  test-1.21:
     build:
       context: .
       args:
-        FROM_IMAGE: "golang:1.18"
+        FROM_IMAGE: "golang:1.21"
     ports:
       - 8080
     depends_on:
@@ -38,11 +38,11 @@ services:
       CONJUR_AUTHN_API_KEY:
       GO_VERSION:
 
-  test-1.19:
+  test-1.22:
     build:
       context: .
       args:
-        FROM_IMAGE: "golang:1.19"
+        FROM_IMAGE: "golang:1.22"
     ports:
       - 8080
     depends_on:
@@ -61,7 +61,7 @@ services:
     build:
       context: .
       args:
-        FROM_IMAGE: "golang:1.19"
+        FROM_IMAGE: "golang:1.22"
     ports:
       - 8080
     depends_on:

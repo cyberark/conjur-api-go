@@ -40,25 +40,25 @@ pipeline {
     }
     stage('Run Tests') {
       parallel {
-        stage('Golang 1.19') {
+        stage('Golang 1.22') {
           steps {
             script {
-              INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './bin/test.sh 1.19'
-              INFRAPOOL_EXECUTORV2_AGENT_0.agentStash name: '1.19-out', includes: 'output/1.19/*.xml'
-              unstash '1.19-out'
+              INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './bin/test.sh 1.22'
+              INFRAPOOL_EXECUTORV2_AGENT_0.agentStash name: '1.22-out', includes: 'output/1.22/*.xml'
+              unstash '1.22-out'
             }
           }
         }
 
-        stage('Golang 1.18') {
+        stage('Golang 1.21') {
           steps {
             script {
-              INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './bin/test.sh 1.18'
-              INFRAPOOL_EXECUTORV2_AGENT_0.agentStash name: '1.18-out', includes: 'output/1.18/*.xml'
-              unstash '1.18-out'
+              INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './bin/test.sh 1.21'
+              INFRAPOOL_EXECUTORV2_AGENT_0.agentStash name: '1.21-out', includes: 'output/1.21/*.xml'
+              unstash '1.21-out'
               cobertura autoUpdateHealth: false,
                         autoUpdateStability: false,
-                        coberturaReportFile: 'output/1.18/coverage.xml',
+                        coberturaReportFile: 'output/1.21/coverage.xml',
                         conditionalCoverageTargets: '30, 0, 0',
                         failUnhealthy: true,
                         failUnstable: false,
@@ -68,15 +68,15 @@ pipeline {
                         onlyStable: false,
                         sourceEncoding: 'ASCII',
                         zoomCoverageChart: false
-              INFRAPOOL_EXECUTORV2_AGENT_0.agentSh 'cp output/1.18/c.out .'
-              codacy action: 'reportCoverage', filePath: "output/1.18/coverage.xml"
+              INFRAPOOL_EXECUTORV2_AGENT_0.agentSh 'cp output/1.21/c.out .'
+              codacy action: 'reportCoverage', filePath: "output/1.21/coverage.xml"
             }
           }
         }
       }
       post {
         always {
-          junit 'output/1.19/junit.xml, output/1.18/junit.xml'
+          junit 'output/1.22/junit.xml, output/1.21/junit.xml'
         }
       }
     }
