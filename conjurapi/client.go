@@ -504,14 +504,25 @@ func (c *Client) RoleMembershipsRequest(roleID string) (*http.Request, error) {
 	)
 }
 
-func (c *Client) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader) (*http.Request, error) {
+func (c *Client) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader, validate bool) (*http.Request, error) {
 	fullPolicyID := makeFullId(c.config.Account, "policy", policyID)
 
 	account, kind, id, err := c.parseID(fullPolicyID)
 	if err != nil {
 		return nil, err
 	}
-	policyURL := makeRouterURL(c.policiesURL(account), kind, url.QueryEscape(id)).String()
+
+	routerUrl := makeRouterURL(
+	  c.policiesURL(account),
+	  kind,
+	  url.QueryEscape(id),
+	)
+	
+	if validate {
+	  routerUrl = routerUrl.withQuery("validate=true")
+	}
+	
+	policyURL := routerUrl.String()
 
 	var method string
 	switch mode {

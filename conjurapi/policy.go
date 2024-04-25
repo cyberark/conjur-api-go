@@ -33,11 +33,15 @@ type PolicyResponse struct {
 	Version uint32 `json:"version"`
 }
 
+type ValidatePolicyResponse struct {
+	Status bool   `json:"ok"`
+}
+
 // LoadPolicy submits new policy data or polciy changes to the server.
 //
 // The required permission depends on the mode.
 func (c *Client) LoadPolicy(mode PolicyMode, policyID string, policy io.Reader) (*PolicyResponse, error) {
-	req, err := c.LoadPolicyRequest(mode, policyID, policy)
+	req, err := c.LoadPolicyRequest(mode, policyID, policy, false)
 	if err != nil {
 		return nil, err
 	}
@@ -49,4 +53,19 @@ func (c *Client) LoadPolicy(mode PolicyMode, policyID string, policy io.Reader) 
 
 	policyResponse := PolicyResponse{}
 	return &policyResponse, response.JSONResponse(resp, &policyResponse)
+}
+
+func (c *Client) ValidatePolicy(mode PolicyMode, policyID string, policy io.Reader) (*ValidatePolicyResponse, error) {
+	req, err := c.LoadPolicyRequest(mode, policyID, policy, true)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.SubmitRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	ValidatePolicyResponse := ValidatePolicyResponse{}
+	return &ValidatePolicyResponse, response.JSONResponse(resp, &ValidatePolicyResponse)
 }

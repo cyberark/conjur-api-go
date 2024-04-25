@@ -7,6 +7,8 @@ trap teardown EXIT
 
 export COMPOSE_PROJECT_NAME="conjurapigo_$(openssl rand -hex 3)"
 export GO_VERSION="${1:-"1.22"}"
+export REGISTRY_URL="${2:-docker.io}"
+echo "REGISTRY_URL is set to: $REGISTRY_URL"
 
 # Spin up Conjur environment
 source ./start-conjur.sh

@@ -113,6 +113,28 @@ func TestClient_LoadPolicy(t *testing.T) {
 			conjurError := err.(*response.ConjurError)
 			assert.Equal(t, 401, conjurError.Code)
 		})
+	})
 
+	t.Run("A policy is validated, role is not reported in the policy load response", func(t *testing.T) {
+		const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+		result := make([]byte, 12)
+		for i := range result {
+			result[i] = chars[randomizer.Intn(len(chars))]
+		}
+
+		username := string(result)
+		policy := fmt.Sprintf(`
+- !user %s
+`, username)
+
+		resp, err := conjur.ValidatePolicy(
+			PolicyModePut,
+			"root",
+			strings.NewReader(policy),
+		)
+
+		assert.NoError(t, err)
+		status := resp.Status
+		assert.True(t, status)
 	})
 }
