@@ -1,10 +1,21 @@
 version: '2.1'
 services:
   postgres:
-    image: postgres:9.3
+    image: postgres:15
+    environment:
+      # To avoid the following error:
+      #
+      #   Error: Database is uninitialized and superuser password is not
+      #   specified.  You must specify POSTGRES_PASSWORD for the superuser. Use
+      #   "-e POSTGRES_PASSWORD=password" to set it in "docker run".
+      #
+      #   You may also use POSTGRES_HOST_AUTH_METHOD=trust to allow all
+      #   connections without a password. This is *not* recommended. See
+      #   PostgreSQL documentation about "trust"
+      POSTGRES_HOST_AUTH_METHOD: trust
 
   conjur:
-    image: cyberark/conjur:edge
+    image: ${REGISTRY_URL:-docker.io}/cyberark/conjur:edge
     command: server -a cucumber
     environment:
       DATABASE_URL: postgres://postgres@postgres/postgres

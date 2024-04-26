@@ -6,7 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.11.2] - 2024-03-21
+## [0.11.2] - 2024-04-18
+
+### Changed
+- Added validate policy (CNJR-4539)
 
 ### Security
 - Upgrade to Go 1.22 (CONJSE-1842)

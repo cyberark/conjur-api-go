@@ -266,14 +266,14 @@ func TestClient_RetrieveSecret(t *testing.T) {
 	t.Run("Given configuration has invalid login credentials", func(t *testing.T) {
 		login = "invalid-user"
 
-		t.Run("Returns 401", func(t *testing.T) {
+		t.Run("Returns 401 and a user not found error", func(t *testing.T) {
 			conjur, err := NewClientFromKey(*config, authn.LoginPair{Login: login, APIKey: apiKey})
 			assert.NoError(t, err)
 
 			_, err = conjur.RetrieveSecret("existent-or-non-existent-variable")
 
 			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "Unauthorized")
+			assert.Contains(t, err.Error(), "not found")
 			conjurError := err.(*response.ConjurError)
 			assert.Equal(t, 401, conjurError.Code)
 		})

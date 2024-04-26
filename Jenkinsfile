@@ -39,11 +39,17 @@ pipeline {
       }
     }
     stage('Run Tests') {
+      environment {
+        // Currently, we're not updating DockerHub during version releases/promotions, which we need to fix.
+        // Added a switch in Jenkinsfile and test configurations to toggle between registry.tld for internal testing and docker.io for using the conjur:edge image externally. 
+        // Tests default to using DockerHub images. In our internal Jenkins setup, this is overridden to pull from our internal registry instead.
+        REGISTRY_URL = "registry.tld"
+      }
       parallel {
         stage('Golang 1.22') {
           steps {
             script {
-              INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './bin/test.sh 1.22'
+              INFRAPOOL_EXECUTORV2_AGENT_0.agentSh "./bin/test.sh 1.22 $REGISTRY_URL"
               INFRAPOOL_EXECUTORV2_AGENT_0.agentStash name: '1.22-out', includes: 'output/1.22/*.xml'
               unstash '1.22-out'
             }
@@ -53,7 +59,7 @@ pipeline {
         stage('Golang 1.21') {
           steps {
             script {
-              INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './bin/test.sh 1.21'
+              INFRAPOOL_EXECUTORV2_AGENT_0.agentSh "./bin/test.sh 1.21 $REGISTRY_URL"
               INFRAPOOL_EXECUTORV2_AGENT_0.agentStash name: '1.21-out', includes: 'output/1.21/*.xml'
               unstash '1.21-out'
               cobertura autoUpdateHealth: false,
