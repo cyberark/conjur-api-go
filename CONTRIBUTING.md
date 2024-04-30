@@ -60,23 +60,27 @@ exit_code=$?;
 echo "Exit code: $exit_code"
 ```
 
-## Releasing
+## Releases
 
-This project follows the standard [Conjur community release guidelines](https://github.com/cyberark/community/blob/main/Conjur/CONTRIBUTING.md#release-process).
+Releases should be created by maintainers only. To create a tag and release,
+follow the instructions in this section.
 
-In particular, for each release you should:
+### Pre-requisites
 
-- Review the changes since the last release, and update the [version](./VERSION)
-  following [semantic versioning](https://semver.org/).
-- Determine whether any dependencies were added, removed, or updated in
-  [`go.mod`](./go.mod) since the last release. If any changes have been made,
-  update the [NOTICES](./NOTICES.txt) file.
-- Update the [CHANGELOG](./CHANGELOG.md) to reflect the new version.
-- Update the [VERSION](./VERSION) file to reflect the new version.
-- Commit the changes to the files above in a branch and submit a version bump PR
-- Once the PR has been merged, tag the version using
-  `git tag -s vx.y.z -m vx.y.z`. Note: this requires you to be able to sign
-  releases. Consult the [github documentation on signing commits](https://help.github.com/articles/signing-commits-with-gpg/).
-- Push the tag by running `git push origin vx.y.z`
-- Create a GitHub release for the tag, and copy the changelog for this version
-  into the GitHub release description
+1. Review the git log and ensure the [changelog](CHANGELOG.md) contains all
+   relevant recent changes with references to GitHub issues or PRs, if possible.
+   Also ensure the latest unreleased version is accurate - our pipeline generates 
+   a VERSION file based on the changelog, which is then used to assign the version
+   of the release and any release artifacts.
+1. Review the changes since the last tag, and if the dependencies have changed
+   revise the [NOTICES](NOTICES.txt) to correctly capture the included
+   dependencies and their licenses / copyrights.
+1. Ensure that all documentation that needs to be written has been 
+   written by TW, approved by PO/Engineer, and pushed to the forward-facing documentation.
+1. Scan the project for vulnerabilities
+
+### Release and Promote
+
+1. Merging into main/master branches will automatically trigger a release. If successful, this release can be promoted at a later time.
+1. Jenkins build parameters can be utilized to promote a successful release or manually trigger aditional releases as needed.
+1. Reference the [internal automated release doc](https://github.com/conjurinc/docs/blob/master/reference/infrastructure/automated_releases.md#release-and-promotion-process) for releasing and promoting.
