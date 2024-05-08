@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.11.3] - 2024-05-08
+
+### Security
+- Rollback to Go 1.20 as a requirement to build conjur-cli-go as FIPS
+  compliant (CONJSE-1864)
+
 ## [0.11.2] - 2024-04-18
 
 ### Changed
