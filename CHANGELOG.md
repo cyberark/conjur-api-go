@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.11.3] - 2024-05-08
+## [0.11.4] - 2024-05-09
 
 ### Security
 - Rollback to Go 1.20 as a requirement to build conjur-cli-go as FIPS
@@ -185,7 +185,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.11.2...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.11.4...HEAD
+[0.11.4]: https://github.com/cyberark/conjur-api-go/compare/v0.11.2...v0.11.4
 [0.11.2]: https://github.com/cyberark/conjur-api-go/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/cyberark/conjur-api-go/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/cyberark/conjur-api-go/compare/v0.10.2...v0.11.0
