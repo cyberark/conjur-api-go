@@ -71,3 +71,18 @@ func EmptyResponse(resp *http.Response) error {
 	}
 	return NewConjurError(resp)
 }
+
+// PolicyValidationResponse checks the HTTP status of the response. If it's less than
+// 300 or equal to 422, it returns the response body as JSON. Otherwise it
+// returns a NewConjurError.
+func PolicyValidationResponse(resp *http.Response, obj interface{}) error {
+	logResponse(resp)
+	if resp.StatusCode < 300 || resp.StatusCode == 422 {
+		body, err := readBody(resp)
+		if err != nil {
+			return err
+		}
+		return json.Unmarshal(body, obj)
+	}
+	return NewConjurError(resp)
+}

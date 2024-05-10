@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Automatically add 'api' prefix to Conjur Cloud base URLs (CNJR-5493)
 - Default Account to 'conjur' for Conjur Cloud (CNJR-5494)
+- Update validate policy type definition from (CNJR-4593)
 
 ## [0.12.0] - 2024-05-05
 

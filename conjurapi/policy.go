@@ -33,8 +33,20 @@ type PolicyResponse struct {
 	Version uint32 `json:"version"`
 }
 
+// ValidationErrors contains information about any errors that occurred during
+// policy validation.
+type ValidationErrors struct {
+	Line    int    `json:"line"`
+	Column  int    `json:"column"`
+	Message string `json:"message"`
+}
+
+// ValidatePolicyResponse contains information about the policy validation and
+// whether it was successful.
 type ValidatePolicyResponse struct {
-	Status bool   `json:"ok"`
+	// Status of the policy validation.
+	Status string             `json:"status"`
+	Errors []ValidationErrors `json:"errors"`
 }
 
 // LoadPolicy submits new policy data or polciy changes to the server.
@@ -66,6 +78,6 @@ func (c *Client) ValidatePolicy(mode PolicyMode, policyID string, policy io.Read
 		return nil, err
 	}
 
-	ValidatePolicyResponse := ValidatePolicyResponse{}
-	return &ValidatePolicyResponse, response.JSONResponse(resp, &ValidatePolicyResponse)
+	policyResponse := ValidatePolicyResponse{}
+	return &policyResponse, response.PolicyValidationResponse(resp, &policyResponse)
 }
