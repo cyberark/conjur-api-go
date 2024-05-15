@@ -14,7 +14,6 @@ import (
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
-	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
 type Authenticator interface {
@@ -114,9 +113,8 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 		return NewClientFromToken(config, authnToken)
 	}
 
-	authnJwtServiceID := os.Getenv("CONJUR_AUTHN_JWT_SERVICE_ID")
-	if authnJwtServiceID != "" {
-		return NewClientFromJwt(config, authnJwtServiceID)
+	if config.JWTFilePath != "" || os.Getenv("CONJUR_AUTHN_JWT_SERVICE_ID") != "" {
+		return NewClientFromJwt(config)
 	}
 
 	loginPair, err := LoginPairFromEnv()
@@ -127,63 +125,20 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 	return newClientFromStoredCredentials(config)
 }
 
-func NewClientFromJwt(config Config, authnJwtServiceID string) (*Client, error) {
-	var jwtTokenString string
-	jwtToken := os.Getenv("CONJUR_AUTHN_JWT_TOKEN")
-	jwtTokenString = fmt.Sprintf("jwt=%s", jwtToken)
-	if jwtToken == "" {
-		jwtTokenPath := os.Getenv("JWT_TOKEN_PATH")
-		if jwtTokenPath == "" {
-			jwtTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
-		}
-
-		jwtToken, err := os.ReadFile(jwtTokenPath)
-		if err != nil {
-			return nil, err
-		}
-		jwtTokenString = fmt.Sprintf("jwt=%s", string(jwtToken))
+func NewClientFromJwt(config Config) (*Client, error) {
+	authenticator := &authn.JWTAuthenticator{
+		JWT:         config.JWTContent,
+		JWTFilePath: config.JWTFilePath,
+		HostID:      config.JWTHostID,
 	}
-
-	var httpClient *http.Client
-	if config.IsHttps() {
-		cert, err := config.ReadSSLCert()
-		if err != nil {
-			return nil, err
-		}
-		httpClient, err = newHTTPSClient(cert, config)
-		if err != nil {
-			return nil, err
-		}
-
-	} else {
-		httpClient = &http.Client{Timeout: time.Second * time.Duration(config.GetHttpTimeout())}
+	client, err := newClientWithAuthenticator(
+		config,
+		authenticator,
+	)
+	if err == nil {
+		authenticator.Authenticate = client.JWTAuthenticate
 	}
-
-	authnJwtHostID := os.Getenv("CONJUR_AUTHN_JWT_HOST_ID")
-	var authnJwtUrl string
-	if authnJwtHostID != "" {
-		authnJwtUrl = makeRouterURL(config.ApplianceURL, "authn-jwt", authnJwtServiceID, config.Account, url.PathEscape(authnJwtHostID), "authenticate").String()
-	} else {
-		authnJwtUrl = makeRouterURL(config.ApplianceURL, "authn-jwt", authnJwtServiceID, config.Account, "authenticate").String()
-	}
-
-	req, err := http.NewRequest("POST", authnJwtUrl, strings.NewReader(jwtTokenString))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	token, err := response.DataResponse(resp)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewClientFromToken(config, string(token))
+	return client, err
 }
 
 func newClientFromStoredCredentials(config Config) (*Client, error) {
@@ -281,6 +236,24 @@ func (c *Client) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, 
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "text/plain")
+
+	return req, nil
+}
+
+func (c *Client) JWTAuthenticateRequest(token, hostID string) (*http.Request, error) {
+	var authenticateURL string
+	if hostID != "" {
+		authenticateURL = makeRouterURL(c.authnURL(), url.PathEscape(hostID), "authenticate").String()
+	} else {
+		authenticateURL = makeRouterURL(c.authnURL(), "authenticate").String()
+	}
+
+	token = fmt.Sprintf("jwt=%s", token)
+	req, err := http.NewRequest("POST", authenticateURL, strings.NewReader(token))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	return req, nil
 }
@@ -513,15 +486,15 @@ func (c *Client) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.R
 	}
 
 	routerUrl := makeRouterURL(
-	  c.policiesURL(account),
-	  kind,
-	  url.QueryEscape(id),
+		c.policiesURL(account),
+		kind,
+		url.QueryEscape(id),
 	)
-	
+
 	if validate {
-	  routerUrl = routerUrl.withQuery("validate=true")
+		routerUrl = routerUrl.withQuery("validate=true")
 	}
-	
+
 	policyURL := routerUrl.String()
 
 	var method string

@@ -95,10 +95,8 @@ func TestNewClientFromEnvironment(t *testing.T) {
 		config := Config{Account: "account", ApplianceURL: "appliance-url"}
 		t.Setenv("CONJUR_AUTHN_JWT_SERVICE_ID", "jwt-service")
 		client, err := NewClientFromEnvironment(config)
-
-		// Expect it to fail without a mocked JWT server
-		assert.Error(t, err)
-		assert.Nil(t, client)
+		assert.NoError(t, err)
+		assert.IsType(t, &authn.JWTAuthenticator{}, client.authenticator)
 	})
 	t.Run("Calls NewClientFromKey with when LoginPair is retrieved from env variables", func(t *testing.T) {
 		config := Config{Account: "account", ApplianceURL: "appliance-url"}
@@ -138,14 +136,26 @@ func TestNewClientFromEnvironment(t *testing.T) {
 
 func TestNewClientFromJwt(t *testing.T) {
 	t.Run("Fetches config but fails due to unreachable host", func(t *testing.T) {
-		config := Config{Account: "account", ApplianceURL: "https://appliance-url", SSLCert: sample_cert}
-		t.Setenv("CONJUR_AUTHN_JWT_TOKEN", "jwt-token")
+		config := Config{
+			Account:      "account",
+			ApplianceURL: "https://appliance-url",
+			SSLCert:      sample_cert,
+			AuthnType:    "jwt",
+			ServiceID:    "jwt-service",
+			JWTContent:   "jwt-token",
+		}
 
-		client, err := NewClientFromJwt(config, "jwt-service")
+		client, err := NewClientFromJwt(config)
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+
+		// Verify that the client authenticator is of type TokenAuthenticator
+		assert.IsType(t, &authn.JWTAuthenticator{}, client.authenticator)
 
 		// Expect it to fail without a mocked JWT server
+		token, err := client.authenticator.(*authn.JWTAuthenticator).RefreshToken()
 		assert.Error(t, err)
-		assert.Nil(t, client)
+		assert.Equal(t, "", string(token))
 	})
 
 	t.Run("Fetches config and succeeds", func(t *testing.T) {
@@ -153,17 +163,25 @@ func TestNewClientFromJwt(t *testing.T) {
 		mockConjurServer := mockConjurServerWithJWT()
 		defer mockConjurServer.Close()
 
-		config := Config{Account: "myaccount", ApplianceURL: mockConjurServer.URL}
-		t.Setenv("CONJUR_AUTHN_JWT_TOKEN", "jwt-token")
+		config := Config{
+			Account:      "myaccount",
+			ApplianceURL: mockConjurServer.URL,
+			AuthnType:    "jwt",
+			ServiceID:    "jwt-service",
+			JWTContent:   "jwt-token",
+		}
 
-		client, err := NewClientFromJwt(config, "jwt-service")
+		client, err := NewClientFromJwt(config)
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
 
 		// Verify that the client authenticator is of type TokenAuthenticator
-		assert.IsType(t, &authn.TokenAuthenticator{}, client.authenticator)
-		// Verify that the auth token is set to the expected value
-		assert.Equal(t, "test-api-key", client.authenticator.(*authn.TokenAuthenticator).Token)
+		assert.IsType(t, &authn.JWTAuthenticator{}, client.authenticator)
+
+		// Verify that the JWT authenticator succeeds
+		token, err := client.authenticator.(*authn.JWTAuthenticator).RefreshToken()
+		assert.NoError(t, err)
+		assert.Equal(t, "test-access-token", string(token))
 	})
 
 	t.Run("Fetches JWT from file", func(t *testing.T) {
@@ -175,17 +193,23 @@ func TestNewClientFromJwt(t *testing.T) {
 		err := os.WriteFile(tempDir+"/jwt-token", []byte("jwt-token"), 0644)
 		assert.NoError(t, err)
 
-		config := Config{Account: "myaccount", ApplianceURL: mockConjurServer.URL}
-		t.Setenv("JWT_TOKEN_PATH", tempDir+"/jwt-token")
+		config := Config{
+			Account:      "myaccount",
+			ApplianceURL: mockConjurServer.URL,
+			AuthnType:    "jwt",
+			ServiceID:    "jwt-service",
+			JWTFilePath:  tempDir + "/jwt-token",
+		}
 
-		client, err := NewClientFromJwt(config, "jwt-service")
+		client, err := NewClientFromJwt(config)
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
 
 		// Verify that the client authenticator is of type TokenAuthenticator
-		assert.IsType(t, &authn.TokenAuthenticator{}, client.authenticator)
-		// Verify that the auth token is set to the expected value
-		assert.Equal(t, "test-api-key", client.authenticator.(*authn.TokenAuthenticator).Token)
+		assert.IsType(t, &authn.JWTAuthenticator{}, client.authenticator)
+		// Verify that the JWT token is read correctly
+		client.authenticator.(*authn.JWTAuthenticator).RefreshJWT()
+		assert.Equal(t, "jwt-token", client.authenticator.(*authn.JWTAuthenticator).JWT)
 	})
 
 	t.Run("Fetches config and fails with incorrect JWT", func(t *testing.T) {
@@ -193,13 +217,21 @@ func TestNewClientFromJwt(t *testing.T) {
 		mockConjurServer := mockConjurServerWithJWT()
 		defer mockConjurServer.Close()
 
-		config := Config{Account: "myaccount", ApplianceURL: mockConjurServer.URL}
-		t.Setenv("CONJUR_AUTHN_JWT_TOKEN", "incorrect-jwt-token")
+		config := Config{
+			Account:      "myaccount",
+			ApplianceURL: mockConjurServer.URL,
+			AuthnType:    "jwt",
+			ServiceID:    "jwt-service",
+			JWTContent:   "incorrect-jwt-token",
+		}
 
-		client, err := NewClientFromJwt(config, "jwt-service")
-		assert.Error(t, err)
+		client, err := NewClientFromJwt(config)
+		assert.NoError(t, err)
+
+		// Expect it to fail without a mocked JWT server
+		token, err := client.authenticator.RefreshToken()
 		assert.ErrorContains(t, err, "401 Unauthorized")
-		assert.Nil(t, client)
+		assert.Equal(t, "", string(token))
 	})
 
 	t.Run("Appends JWT Host ID to authn URL", func(t *testing.T) {
@@ -207,25 +239,36 @@ func TestNewClientFromJwt(t *testing.T) {
 		mockConjurServer := mockConjurServerWithJWT()
 		defer mockConjurServer.Close()
 
-		config := Config{Account: "myaccount", ApplianceURL: mockConjurServer.URL}
-		t.Setenv("CONJUR_AUTHN_JWT_TOKEN", "jwt-token")
-		t.Setenv("CONJUR_AUTHN_JWT_HOST_ID", "my-host") // This should be added to the authn URL
+		config := Config{
+			Account:      "myaccount",
+			ApplianceURL: mockConjurServer.URL,
+			AuthnType:    "jwt",
+			ServiceID:    "jwt-service",
+			JWTContent:   "jwt-token",
+			JWTHostID:    "my-host", // This should be added to the authn URL
+		}
 
-		client, err := NewClientFromJwt(config, "jwt-service")
+		client, err := NewClientFromJwt(config)
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
 
-		// Verify that the client authenticator is of type TokenAuthenticator
-		assert.IsType(t, &authn.TokenAuthenticator{}, client.authenticator)
-		// Verify that the auth token is set to the expected value
-		assert.Equal(t, "test-api-key-from-host", client.authenticator.(*authn.TokenAuthenticator).Token)
+		// Verify that the JWT authenticator succeeds
+		token, err := client.authenticator.RefreshToken()
+		assert.NoError(t, err)
+		assert.Equal(t, "test-access-token-with-host-id", string(token))
 	})
 
 	t.Run("Returns error when using nonexistent SSLCertPath", func(t *testing.T) {
-		config := Config{Account: "account", ApplianceURL: "https://appliance-url", SSLCertPath: "fake-path"}
-		t.Setenv("CONJUR_AUTHN_JWT_TOKEN", "jwt-token")
+		config := Config{
+			Account:      "account",
+			ApplianceURL: "https://appliance-url",
+			SSLCertPath:  "fake-path",
+			AuthnType:    "jwt",
+			ServiceID:    "jwt-service",
+			JWTContent:   "jwt-token",
+		}
 
-		client, err := NewClientFromJwt(config, "jwt-service")
+		client, err := NewClientFromJwt(config)
 
 		assert.EqualError(t, err, "open fake-path: no such file or directory")
 		assert.Nil(t, client)
@@ -430,7 +473,7 @@ func TestClient_HttpClientTimeoutValue(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
-		assert.Equal(t, time.Second * time.Duration(HttpTimeoutDefaultValue), client.Timeout)
+		assert.Equal(t, time.Second*time.Duration(HttpTimeoutDefaultValue), client.Timeout)
 	})
 	t.Run("Create HTTP client with no timeout", func(t *testing.T) {
 		config := Config{Account: "account", ApplianceURL: "http://appliance-url", HttpTimeout: -1}
@@ -438,7 +481,7 @@ func TestClient_HttpClientTimeoutValue(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
-		assert.Equal(t, time.Second * time.Duration(0), client.Timeout)
+		assert.Equal(t, time.Second*time.Duration(0), client.Timeout)
 	})
 	t.Run("Create HTTP client with specific timeout", func(t *testing.T) {
 		config := Config{Account: "account", ApplianceURL: "http://appliance-url", HttpTimeout: 5}
@@ -446,7 +489,7 @@ func TestClient_HttpClientTimeoutValue(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
-		assert.Equal(t, time.Second * time.Duration(5), client.Timeout)
+		assert.Equal(t, time.Second*time.Duration(5), client.Timeout)
 	})
 }
 
@@ -459,14 +502,14 @@ func mockConjurServerWithJWT() *httptest.Server {
 
 			if string(body) == "jwt=jwt-token" {
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte("test-api-key"))
+				w.Write([]byte("test-access-token"))
 			} else {
 				w.WriteHeader(http.StatusUnauthorized)
 			}
 		} else if strings.HasSuffix(r.URL.Path, "/authn-jwt/jwt-service/myaccount/my-host/authenticate") {
-			// When a host is specified, return a different API key
+			// When a host is specified, return a different access token
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("test-api-key-from-host"))
+			w.Write([]byte("test-access-token-with-host-id"))
 		} else {
 			w.WriteHeader(http.StatusNotFound)
 		}
