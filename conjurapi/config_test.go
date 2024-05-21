@@ -93,6 +93,21 @@ func TestConfig_IsValid(t *testing.T) {
 		assert.Contains(t, errString, "AuthnType must be one of ")
 	})
 
+	t.Run("Return error for invalid configuration missing JWT", func(t *testing.T) {
+		config := Config{
+			Account:      "account",
+			ApplianceURL: "appliance-url",
+			AuthnType:    "jwt",
+			ServiceID:    "service-id",
+		}
+
+		err := config.Validate()
+		assert.Error(t, err)
+
+		errString := err.Error()
+		assert.Contains(t, errString, "Must specify a JWT token when using JWT authentication")
+	})
+
 	t.Run("Includes config when debug logging is enabled", func(t *testing.T) {
 		config := Config{
 			Account: "account",

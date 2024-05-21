@@ -17,7 +17,7 @@ const (
 	HttpTimeoutDefaultValue = 10
 )
 
-var supportedAuthnTypes = []string{"authn", "ldap", "oidc"}
+var supportedAuthnTypes = []string{"authn", "ldap", "oidc", "jwt"}
 
 type Config struct {
 	Account           string `yaml:"account,omitempty"`
@@ -28,6 +28,9 @@ type Config struct {
 	AuthnType         string `yaml:"authn_type,omitempty"`
 	ServiceID         string `yaml:"service_id,omitempty"`
 	CredentialStorage string `yaml:"credential_storage,omitempty"`
+	JWTHostID         string `yaml:"jwt_host_id,omitempty"`
+	JWTContent        string `yaml:"-"`
+	JWTFilePath       string `yaml:"jwt_file,omitempty"`
 	HttpTimeout       int    `yaml:"-"`
 }
 
@@ -50,8 +53,12 @@ func (c *Config) Validate() error {
 		errors = append(errors, fmt.Sprintf("AuthnType must be one of %v", supportedAuthnTypes))
 	}
 
-	if (c.AuthnType == "ldap" || c.AuthnType == "oidc") && c.ServiceID == "" {
+	if (c.AuthnType == "ldap" || c.AuthnType == "oidc" || c.AuthnType == "jwt") && c.ServiceID == "" {
 		errors = append(errors, fmt.Sprintf("Must specify a ServiceID when using %s", c.AuthnType))
+	}
+
+	if c.AuthnType == "jwt" && (c.JWTContent == "" && c.JWTFilePath == "") {
+		errors = append(errors, "Must specify a JWT token when using JWT authentication")
 	}
 
 	if len(errors) == 0 {
@@ -81,8 +88,8 @@ func (c *Config) BaseURL() string {
 	return prefix + c.ApplianceURL
 }
 
-// The GetHttpTimeout function retrieves the Timeout value from the config struc. 
-// If config.HttpTimeout is 
+// The GetHttpTimeout function retrieves the Timeout value from the config struc.
+// If config.HttpTimeout is
 // - less than 0, GetHttpTimeout returns 0 (no timeout)
 // - equal to 0, GetHttpTimeout returns the default value (constant HttpTimeoutDefaultValue)
 // Otherwise, GetHttpTimeout returns the value of config.HttpTimeout
@@ -113,6 +120,9 @@ func (c *Config) merge(o *Config) {
 	c.CredentialStorage = mergeValue(c.CredentialStorage, o.CredentialStorage)
 	c.AuthnType = mergeValue(c.AuthnType, o.AuthnType)
 	c.ServiceID = mergeValue(c.ServiceID, o.ServiceID)
+	c.JWTHostID = mergeValue(c.JWTHostID, o.JWTHostID)
+	c.JWTContent = mergeValue(c.JWTContent, o.JWTContent)
+	c.JWTFilePath = mergeValue(c.JWTFilePath, o.JWTFilePath)
 }
 
 func (c *Config) mergeYAML(filename string) error {
@@ -171,6 +181,16 @@ func (c *Config) mergeEnv() {
 		CredentialStorage: os.Getenv("CONJUR_CREDENTIAL_STORAGE"),
 		AuthnType:         os.Getenv("CONJUR_AUTHN_TYPE"),
 		ServiceID:         os.Getenv("CONJUR_SERVICE_ID"),
+		JWTContent:        os.Getenv("CONJUR_AUTHN_JWT_TOKEN"),
+		JWTFilePath:       os.Getenv("JWT_TOKEN_PATH"),
+		JWTHostID:         os.Getenv("CONJUR_AUTHN_JWT_HOST_ID"),
+	}
+
+	if os.Getenv("CONJUR_AUTHN_JWT_SERVICE_ID") != "" {
+		// If the CONJUR_AUTHN_JWT_SERVICE_ID env var is set, we are implicitly using authn-jwt
+		env.AuthnType = "jwt"
+		// If using authn-jwt, CONJUR_AUTHN_JWT_SERVICE_ID overrides CONJUR_SERVICE_ID
+		env.ServiceID = mergeValue(env.ServiceID, os.Getenv("CONJUR_AUTHN_JWT_SERVICE_ID"))
 	}
 
 	logging.ApiLog.Debugf("Config from environment: %+v\n", env)

@@ -329,6 +329,18 @@ func TestClient_Login(t *testing.T) {
 		assert.Contains(t, string(contents), client.GetConfig().ApplianceURL+"/authn-oidc/test-service-id")
 		assert.Contains(t, string(contents), "test-token-oidc")
 	})
+
+	t.Run("JWT authentication", func(t *testing.T) {
+		ts, client := setupTestClient(t)
+		defer ts.Close()
+
+		client.config.AuthnType = "jwt"
+		client.config.ServiceID = "test-service-id"
+
+		token, err := client.JWTAuthenticate("jwt", "")
+		assert.NoError(t, err)
+		assert.Equal(t, "test-token-jwt", string(token))
+	})
 }
 
 func TestClient_AuthenticateReader(t *testing.T) {
@@ -632,6 +644,9 @@ func setupTestClient(t *testing.T) (*httptest.Server, *Client) {
 		} else if strings.HasSuffix(r.URL.Path, "/authn-oidc/test-service-id/cucumber/authenticate") {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("test-token-oidc"))
+		} else if strings.HasSuffix(r.URL.Path, "/authn-jwt/test-service-id/cucumber/authenticate") {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("test-token-jwt"))
 		} else if strings.HasSuffix(r.URL.Path, "/authn-oidc/cucumber/providers") {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`[{"service_id": "test-service-id"}]`))

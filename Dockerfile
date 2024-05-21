@@ -1,17 +1,17 @@
 ARG FROM_IMAGE="golang:1.22"
 FROM ${FROM_IMAGE}
-MAINTAINER Conjur Inc.
+LABEL maintainer="CyberArk Software Ltd."
 
 CMD /bin/bash
 EXPOSE 8080
 
-RUN apt update -y && \
-    apt install -y bash \
-                   gcc \
-                   git \
-                   jq \
-                   less \
-                   libc-dev
+RUN apt-get update -y && \
+    apt-get install -y bash \
+                       gcc \
+                       git \
+                       jq \
+                       less \
+                       libc-dev
 
 RUN go install github.com/jstemmer/go-junit-report@latest && \
     go install github.com/axw/gocov/gocov@latest && \

@@ -251,6 +251,26 @@ func (c *Client) OidcAuthenticate(code, nonce, code_verifier string) ([]byte, er
 	return resp, err
 }
 
+func (c *Client) JWTAuthenticate(jwt, hostID string) ([]byte, error) {
+	req, err := c.JWTAuthenticateRequest(jwt, hostID)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := response.DataResponse(res)
+
+	if err == nil && c.storage != nil {
+		c.storage.StoreAuthnToken(resp)
+	}
+
+	return resp, err
+}
+
 func (c *Client) ListOidcProviders() ([]OidcProvider, error) {
 	req, err := c.ListOidcProvidersRequest()
 	if err != nil {
