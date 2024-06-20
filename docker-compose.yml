@@ -48,11 +48,11 @@ services:
       CONJUR_AUTHN_API_KEY:
       GO_VERSION:
 
-  test-1.20:
+  test-1.22:
     build:
       context: .
       args:
-        FROM_IMAGE: "golang:1.20"
+        FROM_IMAGE: "golang:1.22"
     ports:
       - 8080
     depends_on:

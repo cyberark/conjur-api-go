@@ -2,7 +2,7 @@ module github.com/cyberark/conjur-api-go
 
 // This version has to be the lowest of the versions that we run tests with. Currently
 // we test with 1.21 and 1.22 (See Jenkinsfile) so this needs to be 1.21.
-go 1.20
+go 1.21.8
 
 require (
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d
