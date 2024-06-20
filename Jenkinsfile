@@ -87,12 +87,12 @@ pipeline {
         REGISTRY_URL = "registry.tld"
       }
       parallel {
-        stage('Golang 1.20') {
+        stage('Golang 1.22') {
           steps {
             script {
-              infrapool.agentSh "./bin/test.sh 1.20 $REGISTRY_URL"
-              infrapool.agentStash name: '1.20-out', includes: 'output/1.20/*.xml'
-              unstash '1.20-out'
+              infrapool.agentSh "./bin/test.sh 1.22 $REGISTRY_URL"
+              infrapool.agentStash name: '1.22-out', includes: 'output/1.22/*.xml'
+              unstash '1.22-out'
             }
           }
         }
