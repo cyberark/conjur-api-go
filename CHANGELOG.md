@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.1] - 2024-07-08
+
+### Changed
+- Automatically add 'api' prefix to Conjur Cloud base URLs (CNJR-5493)
+
 ## [0.12.0] - 2024-05-05
 
 ### Changed
