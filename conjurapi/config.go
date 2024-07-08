@@ -197,6 +197,13 @@ func (c *Config) mergeEnv() {
 	c.merge(&env)
 }
 
+func (c *Config) applyDefaults() {
+	if isConjurCloudURL(c.ApplianceURL) && c.Account == "" {
+		logging.ApiLog.Info("Detected Conjur Cloud URL, setting 'Account' to 'conjur")
+		c.Account = "conjur"
+	}
+}
+
 func (c *Config) Conjurrc() []byte {
 	data, _ := yaml.Marshal(&c)
 	return data
@@ -230,6 +237,8 @@ func LoadConfig() (Config, error) {
 	}
 
 	config.mergeEnv()
+
+	config.applyDefaults()
 
 	logging.ApiLog.Debugf("Final config: %+v\n", config)
 	return config, nil

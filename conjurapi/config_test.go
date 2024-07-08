@@ -27,7 +27,7 @@ func TempFileForTesting(prefix string, fileContents string, t *testing.T) (strin
 	return tmpfile.Name(), err
 }
 
-func TestConfig_IsValid(t *testing.T) {
+func TestConfig_Validate(t *testing.T) {
 	t.Run("Return without error for valid configuration", func(t *testing.T) {
 		config := Config{
 			Account:      "account",
@@ -38,7 +38,7 @@ func TestConfig_IsValid(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Return error for invalid configuration missing ApplianceUrl", func(t *testing.T) {
+	t.Run("Return error for invalid configuration missing ApplianceURL", func(t *testing.T) {
 		config := Config{
 			Account: "account",
 		}
@@ -212,6 +212,21 @@ func TestConfig_mergeYAML(t *testing.T) {
 				NetRCPath:    path.Join(home, ".netrc"),
 			})
 		})
+	})
+
+	t.Run("Defaults Account to 'conjur' with Conjur Cloud ApplianceURL", func(t *testing.T) {
+		e := ClearEnv()
+		defer e.RestoreEnv()
+
+		os.Setenv("CONJUR_APPLIANCE_URL", "https://test.secretsmgr.cyberark.cloud")
+
+		config, err := LoadConfig()
+		assert.NoError(t, err)
+
+		assert.Equal(t, "conjur", config.Account)
+
+		err = config.Validate()
+		assert.NoError(t, err)
 	})
 
 	for index, versiontest := range versiontests {
