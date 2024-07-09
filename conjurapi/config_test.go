@@ -178,6 +178,27 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 			})
 		})
 	})
+
+	t.Run("When CONJUR_AUTHN_JWT_SERVICE_ID is set", func(t *testing.T) {
+		e := ClearEnv()
+		defer e.RestoreEnv()
+
+		os.Setenv("CONJUR_ACCOUNT", "account")
+		os.Setenv("CONJUR_APPLIANCE_URL", "appliance-url")
+		os.Setenv("CONJUR_AUTHN_JWT_SERVICE_ID", "jwt-service-id")
+
+		t.Run("Defaults AuthnType to jwt", func(t *testing.T) {
+			config := &Config{}
+			config.mergeEnv()
+
+			assert.EqualValues(t, *config, Config{
+				Account:      "account",
+				ApplianceURL: "appliance-url",
+				AuthnType:    "jwt",
+				ServiceID:    "jwt-service-id",
+			})
+		})
+	})
 }
 
 var versiontests = []struct {
