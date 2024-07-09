@@ -279,6 +279,35 @@ cert_file: "C:\badly\escaped\path"
 		assert.Error(t, err)
 	})
 
+	t.Run("Values in environment variables override conjurrc file", func(t *testing.T) {
+		conjurrcFileContents := `
+---
+appliance_url: http://path/to/appliance
+account: some_account
+cert_file: "/path/to/cert/file/pem"
+`
+
+		tmpFileName, err := TempFileForTesting("TestConfigEnvOverConjurrc", conjurrcFileContents, t)
+		defer os.Remove(tmpFileName) // clean up
+		assert.NoError(t, err)
+
+		e := ClearEnv()
+		defer e.RestoreEnv()
+
+		os.Setenv("CONJURRC", tmpFileName) // Use the temp file as the conjurrc file
+		os.Setenv("CONJUR_ACCOUNT", "env_account")
+		os.Setenv("CONJUR_APPLIANCE_URL", "env_appliance_url")
+
+		config, err := LoadConfig()
+		assert.NoError(t, err)
+
+		assert.EqualValues(t, config, Config{
+			Account:      "env_account",
+			ApplianceURL: "env_appliance_url",
+			SSLCertPath:  "/path/to/cert/file/pem", // from conjurrc, since not set in env
+		})
+	})
+
 	// BEGIN COMPATIBILITY WITH PYTHON CLI
 	t.Run("Accepts conjur_url and conjur_account for backwards compatibility", func(t *testing.T) {
 		conjurrcFileContents := `
