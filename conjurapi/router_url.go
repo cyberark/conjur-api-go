@@ -8,6 +8,8 @@ import (
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 )
 
+const ConjurCloudSuffix = ".secretsmgr.cyberark.cloud"
+
 type routerURL string
 
 func makeRouterURL(base string, components ...string) routerURL {
@@ -34,10 +36,16 @@ func normalizeBaseURL(baseURL string) string {
 	url := strings.TrimSuffix(baseURL, "/")
 
 	// If using '*.secretsmgr.cyberark.cloud', add '/api'
-	if strings.HasSuffix(url, ".secretsmgr.cyberark.cloud") {
-		logging.ApiLog.Debugf("Detected Conjur Cloud URL, adding '/api' prefix")
+	if strings.HasSuffix(url, ConjurCloudSuffix) {
+		logging.ApiLog.Info("Detected Conjur Cloud URL, adding '/api' prefix")
 		return url + "/api"
 	}
 
 	return url
+}
+
+func isConjurCloudURL(baseURL string) bool {
+	url := strings.TrimSuffix(baseURL, "/")
+
+	return strings.HasSuffix(url, ConjurCloudSuffix) || strings.HasSuffix(url, ConjurCloudSuffix+"/api")
 }

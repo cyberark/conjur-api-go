@@ -27,7 +27,7 @@ func TempFileForTesting(prefix string, fileContents string, t *testing.T) (strin
 	return tmpfile.Name(), err
 }
 
-func TestConfig_IsValid(t *testing.T) {
+func TestConfig_Validate(t *testing.T) {
 	t.Run("Return without error for valid configuration", func(t *testing.T) {
 		config := Config{
 			Account:      "account",
@@ -38,7 +38,7 @@ func TestConfig_IsValid(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Return error for invalid configuration missing ApplianceUrl", func(t *testing.T) {
+	t.Run("Return error for invalid configuration missing ApplianceURL", func(t *testing.T) {
 		config := Config{
 			Account: "account",
 		}
@@ -178,6 +178,27 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 			})
 		})
 	})
+
+	t.Run("When CONJUR_AUTHN_JWT_SERVICE_ID is set", func(t *testing.T) {
+		e := ClearEnv()
+		defer e.RestoreEnv()
+
+		os.Setenv("CONJUR_ACCOUNT", "account")
+		os.Setenv("CONJUR_APPLIANCE_URL", "appliance-url")
+		os.Setenv("CONJUR_AUTHN_JWT_SERVICE_ID", "jwt-service-id")
+
+		t.Run("Defaults AuthnType to jwt", func(t *testing.T) {
+			config := &Config{}
+			config.mergeEnv()
+
+			assert.EqualValues(t, *config, Config{
+				Account:      "account",
+				ApplianceURL: "appliance-url",
+				AuthnType:    "jwt",
+				ServiceID:    "jwt-service-id",
+			})
+		})
+	})
 }
 
 var versiontests = []struct {
@@ -212,6 +233,21 @@ func TestConfig_mergeYAML(t *testing.T) {
 				NetRCPath:    path.Join(home, ".netrc"),
 			})
 		})
+	})
+
+	t.Run("Defaults Account to 'conjur' with Conjur Cloud ApplianceURL", func(t *testing.T) {
+		e := ClearEnv()
+		defer e.RestoreEnv()
+
+		os.Setenv("CONJUR_APPLIANCE_URL", "https://test.secretsmgr.cyberark.cloud")
+
+		config, err := LoadConfig()
+		assert.NoError(t, err)
+
+		assert.Equal(t, "conjur", config.Account)
+
+		err = config.Validate()
+		assert.NoError(t, err)
 	})
 
 	for index, versiontest := range versiontests {
@@ -262,6 +298,35 @@ cert_file: "C:\badly\escaped\path"
 		config := &Config{}
 		err = config.mergeYAML(tmpFileName)
 		assert.Error(t, err)
+	})
+
+	t.Run("Values in environment variables override conjurrc file", func(t *testing.T) {
+		conjurrcFileContents := `
+---
+appliance_url: http://path/to/appliance
+account: some_account
+cert_file: "/path/to/cert/file/pem"
+`
+
+		tmpFileName, err := TempFileForTesting("TestConfigEnvOverConjurrc", conjurrcFileContents, t)
+		defer os.Remove(tmpFileName) // clean up
+		assert.NoError(t, err)
+
+		e := ClearEnv()
+		defer e.RestoreEnv()
+
+		os.Setenv("CONJURRC", tmpFileName) // Use the temp file as the conjurrc file
+		os.Setenv("CONJUR_ACCOUNT", "env_account")
+		os.Setenv("CONJUR_APPLIANCE_URL", "env_appliance_url")
+
+		config, err := LoadConfig()
+		assert.NoError(t, err)
+
+		assert.EqualValues(t, config, Config{
+			Account:      "env_account",
+			ApplianceURL: "env_appliance_url",
+			SSLCertPath:  "/path/to/cert/file/pem", // from conjurrc, since not set in env
+		})
 	})
 
 	// BEGIN COMPATIBILITY WITH PYTHON CLI
