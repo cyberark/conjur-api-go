@@ -33,20 +33,20 @@ type PolicyResponse struct {
 	Version uint32 `json:"version"`
 }
 
-// ValidationErrors contains information about any errors that occurred during
+// DryRunErrors contains information about any errors that occurred during
 // policy validation.
-type ValidationErrors struct {
+type DryRunErrors struct {
 	Line    int    `json:"line"`
 	Column  int    `json:"column"`
 	Message string `json:"message"`
 }
 
-// ValidatePolicyResponse contains information about the policy validation and
+// DryRunPolicyResponse contains information about the policy validation and
 // whether it was successful.
-type ValidatePolicyResponse struct {
+type DryRunPolicyResponse struct {
 	// Status of the policy validation.
-	Status string             `json:"status"`
-	Errors []ValidationErrors `json:"errors"`
+	Status string         `json:"status"`
+	Errors []DryRunErrors `json:"errors"`
 }
 
 // LoadPolicy submits new policy data or polciy changes to the server.
@@ -67,7 +67,7 @@ func (c *Client) LoadPolicy(mode PolicyMode, policyID string, policy io.Reader) 
 	return &policyResponse, response.JSONResponse(resp, &policyResponse)
 }
 
-func (c *Client) ValidatePolicy(mode PolicyMode, policyID string, policy io.Reader) (*ValidatePolicyResponse, error) {
+func (c *Client) DryRunPolicy(mode PolicyMode, policyID string, policy io.Reader) (*DryRunPolicyResponse, error) {
 	req, err := c.LoadPolicyRequest(mode, policyID, policy, true)
 	if err != nil {
 		return nil, err
@@ -78,6 +78,6 @@ func (c *Client) ValidatePolicy(mode PolicyMode, policyID string, policy io.Read
 		return nil, err
 	}
 
-	policyResponse := ValidatePolicyResponse{}
-	return &policyResponse, response.PolicyValidationResponse(resp, &policyResponse)
+	policyResponse := DryRunPolicyResponse{}
+	return &policyResponse, response.DryRunPolicyJSONResponse(resp, &policyResponse)
 }

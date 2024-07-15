@@ -127,7 +127,7 @@ func TestClient_LoadPolicy(t *testing.T) {
 - !user %s
 `, username)
 
-		resp, err := conjur.ValidatePolicy(
+		resp, err := conjur.DryRunPolicy(
 			PolicyModePut,
 			"root",
 			strings.NewReader(policy),
@@ -149,7 +149,7 @@ func TestClient_LoadPolicy(t *testing.T) {
 - user %s
 `, username)
 
-		resp, err := conjur.ValidatePolicy(
+		resp, err := conjur.DryRunPolicy(
 			PolicyModePut,
 			"root",
 			strings.NewReader(policy),

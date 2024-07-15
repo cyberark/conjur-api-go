@@ -6,12 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.2] - 2024-07-15
+
+### Changed
+- Rename validate policy type definition to Dry Run (CNJR-4593)
+
 ## [0.12.1] - 2024-07-08
 
 ### Changed
 - Automatically add 'api' prefix to Conjur Cloud base URLs (CNJR-5493)
 - Default Account to 'conjur' for Conjur Cloud (CNJR-5494)
-- Update validate policy type definition from (CNJR-4593)
+- Update validate policy type definition (CNJR-4593)
 
 ## [0.12.0] - 2024-05-05
 
@@ -197,7 +202,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.11.4...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.12.2...HEAD
+[v0.12.2]: https://github.com/cyberark/conjur-api-go/compare/v0.12.1...v0.12.2
+[v0.12.1]: https://github.com/cyberark/conjur-api-go/compare/v0.12.0...v0.12.1
+[v0.12.0]: https://github.com/cyberark/conjur-api-go/compare/v0.11.4...v0.12.0
 [0.11.4]: https://github.com/cyberark/conjur-api-go/compare/v0.11.2...v0.11.4
 [0.11.2]: https://github.com/cyberark/conjur-api-go/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/cyberark/conjur-api-go/compare/v0.11.0...v0.11.1
