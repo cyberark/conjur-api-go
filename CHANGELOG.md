@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.3] - 2024-07-15
+
+### Changed
+- Rename `validate` query parameter to `dryRun` (CNJR-4593)
+
 ## [0.12.2] - 2024-07-15
 
 ### Changed
@@ -202,7 +207,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.12.2...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.12.3...HEAD
+[v0.12.3]: https://github.com/cyberark/conjur-api-go/compare/v0.12.2...v0.12.3
 [v0.12.2]: https://github.com/cyberark/conjur-api-go/compare/v0.12.1...v0.12.2
 [v0.12.1]: https://github.com/cyberark/conjur-api-go/compare/v0.12.0...v0.12.1
 [v0.12.0]: https://github.com/cyberark/conjur-api-go/compare/v0.11.4...v0.12.0
