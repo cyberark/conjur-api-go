@@ -115,7 +115,7 @@ func TestClient_LoadPolicy(t *testing.T) {
 		})
 	})
 
-	t.Run("A policy is validated, role is not reported in the policy load response", func(t *testing.T) {
+	t.Run("A policy is successfully validated", func(t *testing.T) {
 		const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
 		result := make([]byte, 12)
 		for i := range result {
@@ -134,7 +134,32 @@ func TestClient_LoadPolicy(t *testing.T) {
 		)
 
 		assert.NoError(t, err)
-		status := resp.Status
-		assert.True(t, status)
+		assert.Equal(t, "Valid YAML", resp.Status)
+		assert.Empty(t, resp.Errors)
+	})
+	t.Run("A policy is not successfully validated", func(t *testing.T) {
+		const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+		result := make([]byte, 12)
+		for i := range result {
+			result[i] = chars[randomizer.Intn(len(chars))]
+		}
+
+		username := string(result)
+		policy := fmt.Sprintf(`
+- user %s
+`, username)
+
+		resp, err := conjur.ValidatePolicy(
+			PolicyModePut,
+			"root",
+			strings.NewReader(policy),
+		)
+
+		assert.Nil(t, err)
+		assert.Equal(t, "Invalid YAML", resp.Status)
+		assert.Equal(t, 1, len(resp.Errors))
+		assert.Equal(t, 0, resp.Errors[0].Line)
+		assert.Equal(t, 0, resp.Errors[0].Column)
+		assert.Equal(t, fmt.Sprintf("undefined method `referenced_records' for \"user %s\":String\n", username), resp.Errors[0].Message)
 	})
 }
