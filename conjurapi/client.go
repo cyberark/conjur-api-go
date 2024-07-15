@@ -492,7 +492,7 @@ func (c *Client) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.R
 	)
 
 	if validate {
-		routerUrl = routerUrl.withQuery("validate=true")
+		routerUrl = routerUrl.withQuery("dryRun=true")
 	}
 
 	policyURL := routerUrl.String()
