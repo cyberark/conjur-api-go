@@ -25,7 +25,7 @@ main() {
 
   echo "Done!"
 
-  api_key=$(exec_on conjur conjurctl role retrieve-key cucumber:user:admin | tr -d '\r')
+  api_key=$(exec_on conjur conjurctl role retrieve-key conjur:user:admin | tr -d '\r')
 
   # Export values needed for tests to access Conjur instance
   export CONJUR_AUTHN_API_KEY="$api_key"

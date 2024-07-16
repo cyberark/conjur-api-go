@@ -27,36 +27,33 @@ type rotateAPIKeyTestCase struct {
 func TestClient_RotateAPIKey(t *testing.T) {
 	testCases := []rotateAPIKeyTestCase{
 		{
-			name:             "Rotate the API key of a foreign user role of kind user",
-			roleId:           "cucumber:user:alice",
-			login:            "alice",
-			readResponseBody: false,
-		},
-		{
 			name:             "Rotate the API key of a foreign role of non-user kind",
-			roleId:           "cucumber:host:bob",
-			login:            "host/bob",
+			roleId:           "conjur:host:data/test/bob",
+			login:            "host/data/test/bob",
 			readResponseBody: false,
 		},
 		{
 			name:             "Rotate the API key of a foreign role and read the data stream",
-			roleId:           "cucumber:user:alice",
-			login:            "alice",
+			roleId:           "conjur:host:data/test/alice",
+			login:            "host/data/test/alice",
 			readResponseBody: true,
 		},
 		{
 			name:             "Rotate the API key of a partially-qualified role and read the data stream",
-			roleId:           "user:alice",
-			login:            "alice",
+			roleId:           "host:data/test/alice",
+			login:            "host/data/test/alice",
 			readResponseBody: true,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// SETUP
-			conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
+			utils, err := NewTestUtils(&Config{})
 			assert.NoError(t, err)
+
+			err = utils.Setup(utils.DefaultTestPolicy())
+			assert.NoError(t, err)
+			conjur := utils.Client()
 
 			// EXERCISE
 			runRotateAPIKeyAssertions(t, tc, conjur)
@@ -65,20 +62,20 @@ func TestClient_RotateAPIKey(t *testing.T) {
 }
 
 func runRotateAPIKeyAssertions(t *testing.T, tc rotateAPIKeyTestCase, conjur *Client) {
-	var userApiKey []byte
+	var hostAPIKey []byte
 	var err error
 
 	if tc.readResponseBody {
-		rotateResponse, e := conjur.RotateAPIKeyReader("cucumber:user:alice")
+		rotateResponse, e := conjur.RotateAPIKeyReader("conjur:host:data/test/alice")
 		assert.NoError(t, e)
-		userApiKey, err = ReadResponseBody(rotateResponse)
+		hostAPIKey, err = ReadResponseBody(rotateResponse)
 	} else {
-		userApiKey, err = conjur.RotateAPIKey(tc.roleId)
+		hostAPIKey, err = conjur.RotateAPIKey(tc.roleId)
 	}
 
 	assert.NoError(t, err)
 
-	_, err = conjur.Authenticate(authn.LoginPair{Login: tc.login, APIKey: string(userApiKey)})
+	_, err = conjur.Authenticate(authn.LoginPair{Login: tc.login, APIKey: string(hostAPIKey)})
 	assert.NoError(t, err)
 }
 
@@ -88,18 +85,23 @@ func TestClient_RotateCurrentUserAPIKey(t *testing.T) {
 		// SETUP
 		// Login as admin and rotate alice's API key,
 		// so we can log in as her with her new API key
-		conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
+		utils, err := NewTestUtils(&Config{})
 		assert.NoError(t, err)
-		userApiKey, err := conjur.RotateAPIKey("cucumber:user:alice")
+
+		err = utils.Setup(userPolicy)
+		assert.NoError(t, err)
+		conjur := utils.Client()
+
+		userAPIKey, err := conjur.RotateAPIKey("conjur:user:alice@data-test")
 		assert.NoError(t, err)
 
 		// Login as alice with a mock storage provider to store her API key
 		config := &Config{}
 		config.mergeEnv()
-		conjur, err = NewClientFromKey(*config, authn.LoginPair{Login: "alice", APIKey: string(userApiKey)})
+		conjur, err = NewClientFromKey(*config, authn.LoginPair{Login: "alice@data-test", APIKey: string(userAPIKey)})
 		assert.NoError(t, err)
 		conjur.storage = &mockStorageProvider{}
-		_, err = conjur.Login("alice", string(userApiKey))
+		_, err = conjur.Login("alice@data-test", string(userAPIKey))
 		assert.NoError(t, err)
 
 		// EXERCISE
@@ -109,7 +111,7 @@ func TestClient_RotateCurrentUserAPIKey(t *testing.T) {
 
 		// VERIFY
 		// Ensure the new API key works
-		_, err = conjur.Authenticate(authn.LoginPair{Login: "alice", APIKey: string(newAPIKey)})
+		_, err = conjur.Authenticate(authn.LoginPair{Login: "alice@data-test", APIKey: string(newAPIKey)})
 		assert.NoError(t, err)
 	})
 }
@@ -125,25 +127,25 @@ func TestClient_RotateHostAPIKey(t *testing.T) {
 	testCases := []rotateHostAPIKeyTestCase{
 		{
 			name:       "Rotate the API key of a foreign host: ID only",
-			hostID:     "bob",
-			login:      "host/bob",
+			hostID:     "data/test/bob",
+			login:      "host/data/test/bob",
 			assertions: runRotateHostAPIKeyAssertions,
 		},
 		{
 			name:       "Rotate the API key of a foreign host: partially qualified",
-			hostID:     "host:bob",
-			login:      "host/bob",
+			hostID:     "host:data/test/bob",
+			login:      "host/data/test/bob",
 			assertions: runRotateHostAPIKeyAssertions,
 		},
 		{
 			name:       "Rotate the API key of a foreign host: fully qualified",
-			hostID:     "cucumber:host:bob",
-			login:      "host/bob",
+			hostID:     "conjur:host:data/test/bob",
+			login:      "host/data/test/bob",
 			assertions: runRotateHostAPIKeyAssertions,
 		},
 		{
 			name:   "Rotate the API key of a foreign host: wrong role kind",
-			hostID: "user:alice",
+			hostID: "user:data/test/bob",
 			assertions: func(t *testing.T, tc rotateHostAPIKeyTestCase, conjur *Client) {
 				_, err := conjur.RotateHostAPIKey(tc.hostID)
 				assert.Error(t, err)
@@ -155,7 +157,7 @@ func TestClient_RotateHostAPIKey(t *testing.T) {
 			hostID: "id:with:too:many:colons",
 			login:  "host/bob",
 			assertions: func(t *testing.T, tc rotateHostAPIKeyTestCase, conjur *Client) {
-				_, err := conjur.RotateUserAPIKey(tc.hostID)
+				_, err := conjur.RotateHostAPIKey(tc.hostID)
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "Malformed ID")
 			},
@@ -165,8 +167,12 @@ func TestClient_RotateHostAPIKey(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// SETUP
-			conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
+			utils, err := NewTestUtils(&Config{})
 			assert.NoError(t, err)
+
+			err = utils.Setup(utils.DefaultTestPolicy())
+			assert.NoError(t, err)
+			conjur := utils.Client()
 
 			// EXERCISE
 			tc.assertions(t, tc, conjur)
@@ -199,25 +205,25 @@ func TestClient_RotateUserAPIKey(t *testing.T) {
 	testCases := []rotateUserAPIKeyTestCase{
 		{
 			name:       "Rotate the API key of a user: ID only",
-			userID:     "alice",
-			login:      "alice",
+			userID:     "alice@data-test",
+			login:      "alice@data-test",
 			assertions: runRotateUserAPIKeyAssertions,
 		},
 		{
 			name:       "Rotate the API key of a user: partially qualified",
-			userID:     "user:alice",
-			login:      "alice",
+			userID:     "user:alice@data-test",
+			login:      "alice@data-test",
 			assertions: runRotateUserAPIKeyAssertions,
 		},
 		{
 			name:       "Rotate the API key of a user: fully qualified",
-			userID:     "cucumber:user:alice",
-			login:      "alice",
+			userID:     "conjur:user:alice@data-test",
+			login:      "alice@data-test",
 			assertions: runRotateUserAPIKeyAssertions,
 		},
 		{
 			name:   "Rotate the API key of a user: wrong role kind",
-			userID: "host:bob",
+			userID: "host:data/test/bob",
 			assertions: func(t *testing.T, tc rotateUserAPIKeyTestCase, conjur *Client) {
 				_, err := conjur.RotateUserAPIKey(tc.userID)
 				assert.Error(t, err)
@@ -227,7 +233,7 @@ func TestClient_RotateUserAPIKey(t *testing.T) {
 		{
 			name:   "Rotate the API key of a user: Malformed ID",
 			userID: "id:with:too:many:colons",
-			login:  "alice",
+			login:  "alice@data-test",
 			assertions: func(t *testing.T, tc rotateUserAPIKeyTestCase, conjur *Client) {
 				_, err := conjur.RotateUserAPIKey(tc.userID)
 				assert.Error(t, err)
@@ -239,8 +245,12 @@ func TestClient_RotateUserAPIKey(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// SETUP
-			conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
+			utils, err := NewTestUtils(&Config{})
 			assert.NoError(t, err)
+
+			err = utils.Setup(userPolicy)
+			assert.NoError(t, err)
+			conjur := utils.Client()
 
 			// EXERCISE
 			tc.assertions(t, tc, conjur)
@@ -262,15 +272,18 @@ func runRotateUserAPIKeyAssertions(t *testing.T, tc rotateUserAPIKeyTestCase, co
 
 func TestClient_Whoami(t *testing.T) {
 	t.Run("Whoami", func(t *testing.T) {
-		conjur, err := conjurSetup(&Config{}, defaultTestPolicy)
+		utils, err := NewTestUtils(&Config{})
 		assert.NoError(t, err)
+
+		conjur := utils.Client()
 
 		resp, err := conjur.WhoAmI()
 		assert.NoError(t, err)
 
 		respStr := string(resp)
-		assert.Contains(t, respStr, `"account":"cucumber"`)
-		assert.Contains(t, respStr, `"username":"admin"`)
+
+		assert.Contains(t, respStr, `"account":"conjur"`)
+		assert.Contains(t, respStr, `"username":"`+utils.AdminUser()+`"`)
 	})
 }
 
@@ -392,7 +405,7 @@ func (m *mockStorageProvider) PurgeCredentials() error {
 func TestClient_PurgeCredentials(t *testing.T) {
 	client := &Client{
 		config: Config{
-			Account:      "cucumber",
+			Account:      "conjur",
 			ApplianceURL: "https://conjur",
 		},
 		httpClient: &http.Client{},
@@ -424,7 +437,7 @@ func TestPurgeCredentials(t *testing.T) {
 	t.Run("Purges credentials from netrc", func(t *testing.T) {
 		tempDir := t.TempDir()
 		config := Config{
-			Account:           "cucumber",
+			Account:           "conjur",
 			ApplianceURL:      "https://conjur",
 			NetRCPath:         filepath.Join(tempDir, ".netrc"),
 			CredentialStorage: "file",
@@ -432,7 +445,7 @@ func TestPurgeCredentials(t *testing.T) {
 
 		initialContent := `
 machine https://conjur/authn
-	login cucumber
+	login conjur
 	password test-api-key`
 
 		err := os.WriteFile(config.NetRCPath, []byte(initialContent), 0600)
@@ -444,13 +457,13 @@ machine https://conjur/authn
 		contents, err := os.ReadFile(config.NetRCPath)
 		assert.NoError(t, err)
 		assert.NotContains(t, string(contents), "https://conjur/authn")
-		assert.NotContains(t, string(contents), "cucumber")
+		assert.NotContains(t, string(contents), "conjur")
 		assert.NotContains(t, string(contents), "test-api-key")
 	})
 
 	t.Run("Doesn't fail when not storing credentials", func(t *testing.T) {
 		config := Config{
-			Account:           "cucumber",
+			Account:           "conjur",
 			ApplianceURL:      "https://conjur",
 			CredentialStorage: "none",
 		}
@@ -460,7 +473,7 @@ machine https://conjur/authn
 
 	t.Run("Returns error for unrecognized storage provider", func(t *testing.T) {
 		config := Config{
-			Account:           "cucumber",
+			Account:           "conjur",
 			ApplianceURL:      "https://conjur",
 			CredentialStorage: "invalid",
 		}
@@ -471,7 +484,7 @@ machine https://conjur/authn
 
 func TestClient_InternalAuthenticate(t *testing.T) {
 	config := Config{
-		Account:      "cucumber",
+		Account:      "conjur",
 		ApplianceURL: "https://conjur",
 	}
 
@@ -525,7 +538,7 @@ func TestClient_InternalAuthenticate(t *testing.T) {
 
 func TestClient_RefreshToken(t *testing.T) {
 	config := Config{
-		Account:      "cucumber",
+		Account:      "conjur",
 		ApplianceURL: "https://conjur",
 	}
 
@@ -567,7 +580,7 @@ func TestClient_RefreshToken(t *testing.T) {
 
 	t.Run("Retrieves cached token when using OIDC", func(t *testing.T) {
 		client, err := NewClient(Config{
-			Account:      "cucumber",
+			Account:      "conjur",
 			ApplianceURL: "https://conjur",
 			AuthnType:    "oidc",
 			ServiceID:    "test-service",
@@ -587,7 +600,7 @@ func TestClient_RefreshToken(t *testing.T) {
 
 func TestClient_ForceRefreshToken(t *testing.T) {
 	config := Config{
-		Account:      "cucumber",
+		Account:      "conjur",
 		ApplianceURL: "https://conjur",
 	}
 
@@ -611,7 +624,7 @@ func TestClient_ForceRefreshToken(t *testing.T) {
 
 func runOIDCInternalAuthenticateTest(t *testing.T, token string, injectErr error) ([]byte, error) {
 	client, err := NewClient(Config{
-		Account:      "cucumber",
+		Account:      "conjur",
 		ApplianceURL: "https://conjur",
 		AuthnType:    "oidc",
 		ServiceID:    "test-service",
@@ -629,10 +642,10 @@ func runOIDCInternalAuthenticateTest(t *testing.T, token string, injectErr error
 func setupTestClient(t *testing.T) (*httptest.Server, *Client) {
 	mockConjurServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Listen for the login, authenticate, and oidc endpoints and return test values
-		if strings.HasSuffix(r.URL.Path, "/authn/cucumber/login") {
+		if strings.HasSuffix(r.URL.Path, "/authn/conjur/login") {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("test-api-key"))
-		} else if strings.HasSuffix(r.URL.Path, "/authn/cucumber/alice/authenticate") {
+		} else if strings.HasSuffix(r.URL.Path, "/authn/conjur/alice/authenticate") {
 			// Ensure that the api key we returned in /login is being used
 			body, _ := io.ReadAll(r.Body)
 			if string(body) == "test-api-key" {
@@ -641,13 +654,13 @@ func setupTestClient(t *testing.T) (*httptest.Server, *Client) {
 			} else {
 				w.WriteHeader(http.StatusUnauthorized)
 			}
-		} else if strings.HasSuffix(r.URL.Path, "/authn-oidc/test-service-id/cucumber/authenticate") {
+		} else if strings.HasSuffix(r.URL.Path, "/authn-oidc/test-service-id/conjur/authenticate") {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("test-token-oidc"))
-		} else if strings.HasSuffix(r.URL.Path, "/authn-jwt/test-service-id/cucumber/authenticate") {
+		} else if strings.HasSuffix(r.URL.Path, "/authn-jwt/test-service-id/conjur/authenticate") {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("test-token-jwt"))
-		} else if strings.HasSuffix(r.URL.Path, "/authn-oidc/cucumber/providers") {
+		} else if strings.HasSuffix(r.URL.Path, "/authn-oidc/conjur/providers") {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`[{"service_id": "test-service-id"}]`))
 		} else {
@@ -657,7 +670,7 @@ func setupTestClient(t *testing.T) (*httptest.Server, *Client) {
 
 	tempDir := t.TempDir()
 	config := Config{
-		Account:           "cucumber",
+		Account:           "conjur",
 		ApplianceURL:      mockConjurServer.URL,
 		NetRCPath:         filepath.Join(tempDir, ".netrc"),
 		CredentialStorage: "file",
@@ -679,12 +692,16 @@ type changeUserPasswordTestCase struct {
 	newPassword string
 }
 
+var userPolicy = `
+- !user alice
+- !host bob`
+
 func TestClient_ChangeUserPassword(t *testing.T) {
 	testCases := []changeUserPasswordTestCase{
 		{
 			name:        "Change the password of a user",
-			userID:      "alice",
-			login:       "alice",
+			userID:      "alice@data-test",
+			login:       "alice@data-test",
 			newPassword: "SUp3r$3cr3t!!",
 		},
 	}
@@ -695,8 +712,12 @@ func TestClient_ChangeUserPassword(t *testing.T) {
 			config := &Config{
 				CredentialStorage: "none",
 			}
-			conjur, err := conjurSetup(config, defaultTestPolicy)
+			utils, err := NewTestUtils(config)
 			assert.NoError(t, err)
+
+			err = utils.Setup(userPolicy)
+			assert.NoError(t, err)
+			conjur := utils.Client()
 
 			// EXERCISE
 			runChangeUserPasswordAssertions(t, tc, conjur)
@@ -709,6 +730,7 @@ func runChangeUserPasswordAssertions(t *testing.T, tc changeUserPasswordTestCase
 	var err error
 
 	userAPIKey, err = conjur.RotateUserAPIKey(tc.userID)
+	assert.NoError(t, err)
 
 	_, err = conjur.ChangeUserPassword(tc.login, string(userAPIKey), tc.newPassword)
 	assert.NoError(t, err)
@@ -741,8 +763,12 @@ func TestClient_ChangeCurrentUserPassword(t *testing.T) {
 				NetRCPath:         filepath.Join(tempDir, ".netrc"),
 				CredentialStorage: "file",
 			}
-			conjur, err := conjurSetup(config, defaultTestPolicy)
+			utils, err := NewTestUtils(config)
 			assert.NoError(t, err)
+
+			err = utils.Setup(userPolicy)
+			assert.NoError(t, err)
+			conjur := utils.Client()
 
 			// EXERCISE
 			runChangeCurrentUserPasswordAssertions(t, tc, conjur)
@@ -754,21 +780,22 @@ func runChangeCurrentUserPasswordAssertions(t *testing.T, tc changeCurrentUserPa
 	var userAPIKey []byte
 	var err error
 
-	userAPIKey, err = conjur.RotateUserAPIKey("alice")
+	userAPIKey, err = conjur.RotateUserAPIKey("alice@data-test")
+	assert.NoError(t, err)
 
 	// Create empty netrc file, then login to write user credentials
 	err = os.WriteFile(conjur.config.NetRCPath, []byte(""), 0600)
 	assert.NoError(t, err)
-	conjur.Login("alice", string(userAPIKey))
+	conjur.Login("alice@data-test", string(userAPIKey))
 
 	// Change the user password, then login + authenticate to test the new password
 	_, err = conjur.ChangeCurrentUserPassword(tc.newPassword)
 	assert.NoError(t, err)
 
-	userAPIKey, err = conjur.Login("alice", tc.newPassword)
+	userAPIKey, err = conjur.Login("alice@data-test", tc.newPassword)
 	assert.NoError(t, err)
 
-	_, err = conjur.Authenticate(authn.LoginPair{Login: "alice", APIKey: string(userAPIKey)})
+	_, err = conjur.Authenticate(authn.LoginPair{Login: "alice@data-test", APIKey: string(userAPIKey)})
 	assert.NoError(t, err)
 }
 
@@ -791,7 +818,7 @@ func TestClient_PublicKeys(t *testing.T) {
 		{
 			name:       "Display public keys",
 			kind:       "user",
-			identifier: "alice",
+			identifier: "alice@data-test",
 		},
 	}
 
@@ -801,8 +828,12 @@ func TestClient_PublicKeys(t *testing.T) {
 			config := &Config{
 				CredentialStorage: "none",
 			}
-			conjur, err := conjurSetup(config, publicKeysTestPolicy)
+			utils, err := NewTestUtils(config)
 			assert.NoError(t, err)
+
+			err = utils.Setup(publicKeysTestPolicy)
+			assert.NoError(t, err)
+			conjur := utils.Client()
 
 			// EXERCISE
 			runPublicKeysAssertions(t, tc, conjur)

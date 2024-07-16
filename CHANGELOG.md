@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.4] - 2024-07-16
+
+### Added
+- Added support for creating hosts with annotations via HostFactory (CNJR-5495)
+
 ## [0.12.3] - 2024-07-15
 
 ### Changed

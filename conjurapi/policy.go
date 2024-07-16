@@ -22,7 +22,7 @@ const (
 // by the server when loading a policy.
 type CreatedRole struct {
 	ID     string `json:"id"`
-	APIKey string `json:"api_key"`
+	APIKey string `json:"api_key,omitempty"`
 }
 
 // PolicyResponse contains information about the policy update.
