@@ -15,7 +15,7 @@ services:
 
   conjur:
     image: ${REGISTRY_URL:-docker.io}/cyberark/conjur:edge
-    command: server -a cucumber
+    command: server -a conjur
     environment:
       DATABASE_URL: postgres://postgres@postgres/postgres
       CONJUR_DATA_KEY:
@@ -27,7 +27,7 @@ services:
     image: cyberark/conjur-cli:5
     environment:
       CONJUR_APPLIANCE_URL: http://conjur
-      CONJUR_ACCOUNT: cucumber
+      CONJUR_ACCOUNT: conjur
 
   test-1.21:
     build:
@@ -43,7 +43,7 @@ services:
     environment:
       CONJUR_DATA_KEY:
       CONJUR_APPLIANCE_URL: http://conjur
-      CONJUR_ACCOUNT: cucumber
+      CONJUR_ACCOUNT: conjur
       CONJUR_AUTHN_LOGIN: admin
       CONJUR_AUTHN_API_KEY:
       GO_VERSION:
@@ -62,7 +62,7 @@ services:
     environment:
       CONJUR_DATA_KEY:
       CONJUR_APPLIANCE_URL: http://conjur
-      CONJUR_ACCOUNT: cucumber
+      CONJUR_ACCOUNT: conjur
       CONJUR_AUTHN_LOGIN: admin
       CONJUR_AUTHN_API_KEY:
       GO_VERSION:
@@ -81,7 +81,7 @@ services:
     environment:
       CONJUR_DATA_KEY:
       CONJUR_APPLIANCE_URL: http://conjur
-      CONJUR_ACCOUNT: cucumber
+      CONJUR_ACCOUNT: conjur
       CONJUR_AUTHN_LOGIN: admin
       CONJUR_AUTHN_API_KEY:
     entrypoint: sleep

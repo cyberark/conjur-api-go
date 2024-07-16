@@ -78,30 +78,38 @@ func TestNewClientFromTokenFile(t *testing.T) {
 
 func TestNewClientFromEnvironment(t *testing.T) {
 	t.Run("Calls NewClientFromTokenFile when CONJUR_AUTHN_TOKEN_FILE is set", func(t *testing.T) {
+		e := ClearEnv()
+		defer e.RestoreEnv()
 		config := Config{Account: "account", ApplianceURL: "appliance-url"}
-		t.Setenv("CONJUR_AUTHN_TOKEN_FILE", "token-file")
+		os.Setenv("CONJUR_AUTHN_TOKEN_FILE", "token-file")
 		client, err := NewClientFromEnvironment(config)
 		assert.NoError(t, err)
 		assert.IsType(t, &authn.TokenFileAuthenticator{}, client.authenticator)
 	})
 	t.Run("Calls NewClientFromToken when CONJUR_AUTHN_TOKEN is set", func(t *testing.T) {
+		e := ClearEnv()
+		defer e.RestoreEnv()
 		config := Config{Account: "account", ApplianceURL: "appliance-url"}
-		t.Setenv("CONJUR_AUTHN_TOKEN", "some-token")
+		os.Setenv("CONJUR_AUTHN_TOKEN", "some-token")
 		client, err := NewClientFromEnvironment(config)
 		assert.NoError(t, err)
 		assert.IsType(t, &authn.TokenAuthenticator{}, client.authenticator)
 	})
 	t.Run("Calls NewClientFromJwt when CONJUR_AUTHN_JWT_SERVICE is set", func(t *testing.T) {
+		e := ClearEnv()
+		defer e.RestoreEnv()
 		config := Config{Account: "account", ApplianceURL: "appliance-url"}
-		t.Setenv("CONJUR_AUTHN_JWT_SERVICE_ID", "jwt-service")
+		os.Setenv("CONJUR_AUTHN_JWT_SERVICE_ID", "jwt-service")
 		client, err := NewClientFromEnvironment(config)
 		assert.NoError(t, err)
 		assert.IsType(t, &authn.JWTAuthenticator{}, client.authenticator)
 	})
 	t.Run("Calls NewClientFromKey with when LoginPair is retrieved from env variables", func(t *testing.T) {
+		e := ClearEnv()
+		defer e.RestoreEnv()
 		config := Config{Account: "account", ApplianceURL: "appliance-url"}
-		t.Setenv("CONJUR_AUTHN_LOGIN", "user")
-		t.Setenv("CONJUR_AUTHN_API_KEY", "password")
+		os.Setenv("CONJUR_AUTHN_LOGIN", "user")
+		os.Setenv("CONJUR_AUTHN_API_KEY", "password")
 		client, err := NewClientFromEnvironment(config)
 		assert.NoError(t, err)
 		assert.IsType(t, &authn.APIKeyAuthenticator{}, client.authenticator)
@@ -115,9 +123,11 @@ func TestNewClientFromEnvironment(t *testing.T) {
 	})
 
 	t.Run("Returns error when no credentials found", func(t *testing.T) {
+		e := ClearEnv()
+		defer e.RestoreEnv()
 		config := Config{Account: "account", ApplianceURL: "appliance-url", CredentialStorage: "none"}
-		t.Setenv("CONJUR_AUTHN_LOGIN", "")
-		t.Setenv("CONJUR_AUTHN_API_KEY", "")
+		os.Setenv("CONJUR_AUTHN_LOGIN", "")
+		os.Setenv("CONJUR_AUTHN_API_KEY", "")
 
 		client, err := NewClientFromEnvironment(config)
 		assert.EqualError(t, err, "No valid credentials found. Please login again.")
@@ -125,8 +135,10 @@ func TestNewClientFromEnvironment(t *testing.T) {
 	})
 
 	t.Run("Returns error when using nonexistent SSLCertPath", func(t *testing.T) {
-		t.Setenv("CONJUR_AUTHN_LOGIN", "user")
-		t.Setenv("CONJUR_AUTHN_API_KEY", "password")
+		e := ClearEnv()
+		defer e.RestoreEnv()
+		os.Setenv("CONJUR_AUTHN_LOGIN", "user")
+		os.Setenv("CONJUR_AUTHN_API_KEY", "password")
 		client, err := NewClientFromEnvironment(Config{Account: "account", ApplianceURL: "https://appliance-url", SSLCertPath: "fake-path"})
 
 		assert.EqualError(t, err, "open fake-path: no such file or directory")

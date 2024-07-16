@@ -2,19 +2,15 @@ package conjurapi
 
 import (
 	"fmt"
-	"github.com/cyberark/conjur-api-go/conjurapi/authn"
-	"github.com/stretchr/testify/assert"
-	"os"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestClient_Token(t *testing.T) {
 	config := &Config{}
 	config.mergeEnv()
 
-	login := os.Getenv("CONJUR_AUTHN_LOGIN")
-	apiKey := os.Getenv("CONJUR_AUTHN_API_KEY")
 	var token string
 
 	testCases := []struct {
@@ -30,7 +26,7 @@ func TestClient_Token(t *testing.T) {
 		{
 			name:        "Create a token",
 			duration:    "10m",
-			hostFactory: "cucumber:host_factory:factory",
+			hostFactory: "conjur:host_factory:data/test/factory",
 			count:       1,
 			cidr:        []string{"0.0.0.0/0"},
 			assert: func(t *testing.T, err error) {
@@ -44,7 +40,7 @@ func TestClient_Token(t *testing.T) {
 		{
 			name:        "Create a token with a partial hostfactory id",
 			duration:    "10m",
-			hostFactory: "host_factory:factory",
+			hostFactory: "host_factory:data/test/factory",
 			count:       1,
 			cidr:        []string{"0.0.0.0/0"},
 			assert: func(t *testing.T, err error) {
@@ -58,7 +54,7 @@ func TestClient_Token(t *testing.T) {
 		{
 			name:        "Create a token with a partial (singular) hostfactory id",
 			duration:    "10m",
-			hostFactory: "factory",
+			hostFactory: "data/test/factory",
 			count:       1,
 			cidr:        []string{"0.0.0.0/0"},
 			assert: func(t *testing.T, err error) {
@@ -72,7 +68,7 @@ func TestClient_Token(t *testing.T) {
 		{
 			name:        "Create a token with two cidrs",
 			duration:    "10m",
-			hostFactory: "cucumber:host_factory:factory",
+			hostFactory: "conjur:host_factory:data/test/factory",
 			count:       1,
 			cidr:        []string{"0.0.0.0/0", "0.0.0.0/32"},
 			assert: func(t *testing.T, err error) {
@@ -86,7 +82,7 @@ func TestClient_Token(t *testing.T) {
 		{
 			name:        "Create a token with empty cidrs",
 			duration:    "10m",
-			hostFactory: "cucumber:host_factory:factory",
+			hostFactory: "conjur:host_factory:data/test/factory",
 			count:       1,
 			cidr:        []string{},
 			assert: func(t *testing.T, err error) {
@@ -100,7 +96,7 @@ func TestClient_Token(t *testing.T) {
 		{
 			name:        "Create Two tokens",
 			duration:    "10m",
-			hostFactory: "cucumber:host_factory:factory",
+			hostFactory: "conjur:host_factory:data/test/factory",
 			count:       2,
 			cidr:        []string{"0.0.0.0/0", "0.0.0.0/32"},
 			assert: func(t *testing.T, err error) {
@@ -114,7 +110,7 @@ func TestClient_Token(t *testing.T) {
 		{
 			name:        "Create a token with invalid cidr",
 			duration:    "10m",
-			hostFactory: "cucumber:host_factory:factory",
+			hostFactory: "conjur:host_factory:data/test/factory",
 			count:       1,
 			cidr:        []string{"127.0.0.1"},
 			assert: func(t *testing.T, err error) {
@@ -127,7 +123,7 @@ func TestClient_Token(t *testing.T) {
 		{
 			name:          "Invalid duration",
 			duration:      "10",
-			hostFactory:   "cucumber:host_factory:factory",
+			hostFactory:   "conjur:host_factory:data/test/factory",
 			count:         1,
 			cidr:          []string{"0.0.0.0/0"},
 			expectNoToken: true,
@@ -141,7 +137,7 @@ func TestClient_Token(t *testing.T) {
 		{
 			name:          "Invalid hostfactory id",
 			duration:      "10m",
-			hostFactory:   "cucumber:factory",
+			hostFactory:   "conjur:data/test/factory",
 			count:         1,
 			cidr:          []string{"0.0.0.0/0"},
 			expectNoToken: true,
@@ -160,14 +156,13 @@ func TestClient_Token(t *testing.T) {
 - !host-factory
   id: %s
   layers: [!layer lay]`, identifier)
-		conjur, err := NewClientFromKey(*config, authn.LoginPair{Login: login, APIKey: apiKey})
+
+		utils, err := NewTestUtils(config)
 		assert.NoError(t, err)
 
-		conjur.LoadPolicy(
-			PolicyModePut,
-			"root",
-			strings.NewReader(policy),
-		)
+		utils.Setup(policy)
+		conjur := utils.Client()
+
 		for _, tc := range testCases {
 			token = ""
 			t.Run(tc.name, func(t *testing.T) {
@@ -186,11 +181,11 @@ func TestClient_Token(t *testing.T) {
 				continue
 			}
 			t.Run("Create Host", func(t *testing.T) {
-				host, err := conjur.CreateHost("new-host", token)
+				host, err := conjur.CreateHostWithAnnotations("data/test/new-host", token, map[string]string{"authn/api-key": "true", "creator": "me"})
 				tc.assertHost(t, len(host.ApiKey), err)
 			})
 			t.Run("Delete Token", func(t *testing.T) {
-				err := conjur.DeleteToken(token)
+				err = conjur.DeleteToken(token)
 				assert.NoError(t, err)
 			})
 		}

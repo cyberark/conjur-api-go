@@ -3,7 +3,6 @@ package conjurapi
 import (
 	"fmt"
 	"math/rand"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -41,24 +40,23 @@ func TestClient_LoadPolicy(t *testing.T) {
 	config := &Config{}
 	config.mergeEnv()
 
-	apiKey := os.Getenv("CONJUR_AUTHN_API_KEY")
-	login := os.Getenv("CONJUR_AUTHN_LOGIN")
-
-	conjur, err := NewClientFromKey(*config, authn.LoginPair{Login: login, APIKey: apiKey})
+	utils, err := NewTestUtils(config)
 	assert.NoError(t, err)
+
+	conjur := utils.Client()
 
 	randomizer := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			username := "alice"
+			hostname := "alice"
 			policy := fmt.Sprintf(`
-- !user %s
-`, username)
+- !host %s
+`, hostname)
 
 			resp, err := conjur.LoadPolicy(
 				tc.policyMode,
-				"root",
+				utils.PolicyBranch(),
 				strings.NewReader(policy),
 			)
 
@@ -80,32 +78,32 @@ func TestClient_LoadPolicy(t *testing.T) {
 			result[i] = chars[randomizer.Intn(len(chars))]
 		}
 
-		username := string(result)
+		hostname := string(result)
 		policy := fmt.Sprintf(`
-- !user %s
-`, username)
+- !host
+  id: %s
+  annotations:
+    authn/api-key: true`, hostname)
 
 		resp, err := conjur.LoadPolicy(
 			PolicyModePut,
-			"root",
+			utils.PolicyBranch(),
 			strings.NewReader(policy),
 		)
 
 		assert.NoError(t, err)
-		createdRole, ok := resp.CreatedRoles["cucumber:user:"+username]
+		createdRole, ok := resp.CreatedRoles["conjur:host:"+utils.IDWithPath(hostname)]
 		assert.NotEmpty(t, createdRole.ID)
 		assert.NotEmpty(t, createdRole.APIKey)
 		assert.True(t, ok)
 	})
 
 	t.Run("Given invalid login credentials", func(t *testing.T) {
-		login = "invalid-user"
-
 		t.Run("Returns 401", func(t *testing.T) {
-			conjur, err := NewClientFromKey(*config, authn.LoginPair{Login: login, APIKey: apiKey})
+			conjurClient, err := NewClientFromKey(*config, authn.LoginPair{Login: "invalid-login", APIKey: "invalid-key"})
 			assert.NoError(t, err)
 
-			resp, err := conjur.LoadPolicy(PolicyModePut, "root", strings.NewReader(""))
+			resp, err := conjurClient.LoadPolicy(PolicyModePut, utils.PolicyBranch(), strings.NewReader(""))
 
 			assert.Error(t, err)
 			assert.Nil(t, resp)
@@ -122,14 +120,13 @@ func TestClient_LoadPolicy(t *testing.T) {
 			result[i] = chars[randomizer.Intn(len(chars))]
 		}
 
-		username := string(result)
+		hostname := string(result)
 		policy := fmt.Sprintf(`
-- !user %s
-`, username)
+- !host %s`, hostname)
 
 		resp, err := conjur.DryRunPolicy(
 			PolicyModePut,
-			"root",
+			utils.PolicyBranch(),
 			strings.NewReader(policy),
 		)
 
@@ -144,14 +141,14 @@ func TestClient_LoadPolicy(t *testing.T) {
 			result[i] = chars[randomizer.Intn(len(chars))]
 		}
 
-		username := string(result)
+		hostname := string(result)
 		policy := fmt.Sprintf(`
-- user %s
-`, username)
+- host %s
+`, hostname)
 
 		resp, err := conjur.DryRunPolicy(
 			PolicyModePut,
-			"root",
+			utils.PolicyBranch(),
 			strings.NewReader(policy),
 		)
 
@@ -160,6 +157,6 @@ func TestClient_LoadPolicy(t *testing.T) {
 		assert.Equal(t, 1, len(resp.Errors))
 		assert.Equal(t, 0, resp.Errors[0].Line)
 		assert.Equal(t, 0, resp.Errors[0].Column)
-		assert.Equal(t, fmt.Sprintf("undefined method `referenced_records' for \"user %s\":String\n", username), resp.Errors[0].Message)
+		assert.Equal(t, fmt.Sprintf("undefined method `referenced_records' for \"host %s\":String\n", hostname), resp.Errors[0].Message)
 	})
 }

@@ -3,9 +3,10 @@ package conjurapi
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cyberark/conjur-api-go/conjurapi/response"
 	"net/url"
 	"time"
+
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
 type HostFactoryTokenResponse struct {
@@ -15,13 +16,18 @@ type HostFactoryTokenResponse struct {
 }
 
 type HostFactoryHostResponse struct {
-	CreatedAt    string   `json:"created_at"`
-	Id           string   `json:"id"`
-	Owner        string   `json:"owner"`
-	Permissions  []string `json:"permissions"`
-	Annotations  []string `json:"annotations"`
-	RestrictedTo []string `json:"restricted_to"`
-	ApiKey       string   `json:"api_key"`
+	CreatedAt    string       `json:"created_at"`
+	Id           string       `json:"id"`
+	Owner        string       `json:"owner"`
+	Permissions  []string     `json:"permissions"`
+	Annotations  []annotation `json:"annotations"`
+	RestrictedTo []string     `json:"restricted_to"`
+	ApiKey       string       `json:"api_key"`
+}
+
+type annotation struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 func (c *Client) CreateToken(durationStr string, hostFactory string, cidrs []string, count int) ([]HostFactoryTokenResponse, error) {
@@ -87,8 +93,17 @@ func (c *Client) DeleteToken(token string) error {
 }
 
 func (c *Client) CreateHost(id string, token string) (HostFactoryHostResponse, error) {
+	return c.CreateHostWithAnnotations(id, token, nil)
+}
+
+// CreateHostWithAnnotations creates a new host given a Host ID, HostFactory token, and a map of annotations
+func (c *Client) CreateHostWithAnnotations(id string, token string, annotations map[string]string) (HostFactoryHostResponse, error) {
 	data := url.Values{}
 	data.Set("id", id)
+	for name, val := range annotations {
+		data.Add(fmt.Sprintf("annotations[%s]", name), val)
+	}
+
 	return c.createHost(data, token)
 }
 

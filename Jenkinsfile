@@ -28,12 +28,16 @@ pipeline {
   }
 
   triggers {
-    cron(getDailyCronString())
+    parameterizedCron(getDailyCronString("%NIGHTLY=true"))
   }
 
   environment {
     // Sets the MODE to the specified or autocalculated value as appropriate
     MODE = release.canonicalizeMode()
+  }
+
+  parameters {
+    booleanParam(name: 'TEST_CLOUD', defaultValue: false, description: 'Run integration tests against a Conjur Cloud tenant')
   }
 
   stages {
@@ -124,6 +128,60 @@ pipeline {
       post {
         always {
           junit 'output/1.22/junit.xml, output/1.21/junit.xml'
+        }
+      }
+    }
+
+    stage('Run Conjur Cloud tests') {
+      when {
+        expression { params.TEST_CLOUD || params.NIGHTLY }
+      }
+      stages {
+        stage('Create a Tenant') {
+          steps {
+            script {
+              TENANT = getConjurCloudTenant()
+            }
+          }
+        }
+        stage('Authenticate') {
+          steps {
+            script {
+              def id_token = getConjurCloudTenant.tokens(
+                infrapool: infrapool,
+                identity_url: "${TENANT.identity_information.idaptive_tenant_fqdn}",
+                username: "${TENANT.login_name}"
+              )
+    
+              def conj_token = getConjurCloudTenant.tokens(
+                infrapool: infrapool,
+                conjur_url: "${TENANT.conjur_cloud_url}",
+                identity_token: "${id_token}"
+                )
+              
+              env.conj_token = conj_token
+            }
+          }
+        }
+        stage('Run tests against Tenant') {
+          environment {
+            INFRAPOOL_CONJUR_APPLIANCE_URL="${TENANT.conjur_cloud_url}"
+            INFRAPOOL_CONJUR_AUTHN_LOGIN="${TENANT.login_name}"
+            INFRAPOOL_CONJUR_AUTHN_TOKEN="${env.conj_token}"
+            INFRAPOOL_TEST_CLOUD=true
+          }
+          steps {
+            script {
+              infrapool.agentSh "./bin/test.sh"
+            }
+          }
+        }
+      }
+      post {
+        always {
+          script {
+            deleteConjurCloudTenant("${TENANT.id}")
+          }
         }
       }
     }
