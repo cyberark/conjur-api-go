@@ -6,10 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.12.4] - 2024-07-16
+## [0.12.4] - 2024-07-23
 
 ### Added
 - Added support for creating hosts with annotations via HostFactory (CNJR-5495)
+- Added support for enabling authenticators (CNJR-5548)
 
 ## [0.12.3] - 2024-07-15
 
@@ -200,7 +201,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Adds new API methods `RotateAPIKey` and `CheckPermission`.
 - Provides API methods that return secret data as an `io.ReadCloser` rather than of `[]byte`. This way, the API client gets the only copy of the secret data and can handle it however she sees fit.
 - Loading a policy requires `PolicyMode` argument.
-- Loading a policy returns `PolicyResponse`. 
+- Loading a policy returns `PolicyResponse`.
 
 ## [0.2.0] - 2018-01-08
 ### Added
