@@ -216,7 +216,7 @@ func (c *Client) WhoAmIRequest() (*http.Request, error) {
 }
 
 func (c *Client) LoginRequest(login string, password string) (*http.Request, error) {
-	authenticateURL := makeRouterURL(c.authnURL(), "login").String()
+	authenticateURL := makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), "login").String()
 
 	req, err := http.NewRequest("GET", authenticateURL, nil)
 	if err != nil {
@@ -229,7 +229,7 @@ func (c *Client) LoginRequest(login string, password string) (*http.Request, err
 }
 
 func (c *Client) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, error) {
-	authenticateURL := makeRouterURL(c.authnURL(), url.QueryEscape(loginPair.Login), "authenticate").String()
+	authenticateURL := makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), url.QueryEscape(loginPair.Login), "authenticate").String()
 
 	req, err := http.NewRequest("POST", authenticateURL, strings.NewReader(loginPair.APIKey))
 	if err != nil {
@@ -243,9 +243,9 @@ func (c *Client) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, 
 func (c *Client) JWTAuthenticateRequest(token, hostID string) (*http.Request, error) {
 	var authenticateURL string
 	if hostID != "" {
-		authenticateURL = makeRouterURL(c.authnURL(), url.PathEscape(hostID), "authenticate").String()
+		authenticateURL = makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), url.PathEscape(hostID), "authenticate").String()
 	} else {
-		authenticateURL = makeRouterURL(c.authnURL(), "authenticate").String()
+		authenticateURL = makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), "authenticate").String()
 	}
 
 	token = fmt.Sprintf("jwt=%s", token)
@@ -263,7 +263,7 @@ func (c *Client) ListOidcProvidersRequest() (*http.Request, error) {
 }
 
 func (c *Client) OidcAuthenticateRequest(code, nonce, code_verifier string) (*http.Request, error) {
-	authenticateURL := makeRouterURL(c.authnURL(), "authenticate").withFormattedQuery("code=%s&nonce=%s&code_verifier=%s", code, nonce, code_verifier).String()
+	authenticateURL := makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), "authenticate").withFormattedQuery("code=%s&nonce=%s&code_verifier=%s", code, nonce, code_verifier).String()
 
 	req, err := http.NewRequest("GET", authenticateURL, nil)
 	if err != nil {
@@ -282,7 +282,7 @@ func (c *Client) RotateAPIKeyRequest(roleID string) (*http.Request, error) {
 	}
 	roleID = fmt.Sprintf("%s:%s:%s", account, kind, identifier)
 
-	rotateURL := makeRouterURL(c.authnURL(), "api_key").withFormattedQuery("role=%s", roleID).String()
+	rotateURL := makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), "api_key").withFormattedQuery("role=%s", roleID).String()
 
 	return http.NewRequest(
 		"PUT",
@@ -292,7 +292,7 @@ func (c *Client) RotateAPIKeyRequest(roleID string) (*http.Request, error) {
 }
 
 func (c *Client) RotateCurrentUserAPIKeyRequest(login string, password string) (*http.Request, error) {
-	rotateUrl := makeRouterURL(c.authnURL(), "api_key")
+	rotateUrl := makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), "api_key")
 
 	req, err := http.NewRequest(
 		"PUT",
@@ -643,6 +643,23 @@ func (c *Client) PublicKeysRequest(kind string, identifier string) (*http.Reques
 	return http.NewRequest("GET", publicKeysURL.String(), nil)
 }
 
+func (c *Client) EnableAuthenticatorRequest(authenticatorType string, serviceID string, enabled bool) (*http.Request, error) {
+	body := url.Values{}
+	body.Set("enabled", strconv.FormatBool(enabled))
+
+	request, err := http.NewRequest(
+		"PATCH",
+		c.authnURL(authenticatorType, serviceID),
+		strings.NewReader(body.Encode()),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	return request, nil
+}
+
 func (c *Client) createTokenURL() string {
 	return makeRouterURL(c.config.ApplianceURL, "host_factory_tokens").String()
 }
@@ -673,13 +690,17 @@ func (c *Client) batchVariableURL(variableIDs []string) string {
 	return makeRouterURL(c.globalSecretsURL()).withFormattedQuery("variable_ids=%s", queryString).String()
 }
 
-func (c *Client) authnURL() string {
-	if c.config.AuthnType != "" && c.config.AuthnType != "authn" {
-		// If using an alternate authn service, such as authn-oidc, the URL will be
-		// '/authn-<type>/<service-id>/<account>'
-		authnType := fmt.Sprintf("authn-%s", c.config.AuthnType)
-		return makeRouterURL(c.config.ApplianceURL, authnType, c.config.ServiceID, c.config.Account).String()
+func (c *Client) authnURL(authenticatorType string, serviceID string) string {
+	authnType := fmt.Sprintf("authn-%s", authenticatorType)
+
+	if authenticatorType == "gcp" {
+		return makeRouterURL(c.config.ApplianceURL, authnType, c.config.Account).String()
 	}
+
+	if authenticatorType != "" && authenticatorType != "authn" {
+		return makeRouterURL(c.config.ApplianceURL, authnType, serviceID, c.config.Account).String()
+	}
+
 	// For the default authn service, the URL will be '/authn/<account>'
 	return makeRouterURL(c.config.ApplianceURL, "authn", c.config.Account).String()
 }
