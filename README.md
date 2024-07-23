@@ -8,22 +8,21 @@ Programmatic Golang access to the Conjur API.
 This repo is a **Community** level project. It's a community contributed project that **is not reviewed or supported
 by CyberArk**. For more detailed information on our certification levels, see [our community guidelines](https://github.com/cyberark/community/blob/master/Conjur/conventions/certification-levels.md#community).
 
-## Using conjur-api-go with Conjur Open Source 
+## Using conjur-api-go with Conjur Open Source
 
-Are you using this project with [Conjur Open Source](https://github.com/cyberark/conjur)? Then we 
-**strongly** recommend choosing the version of this project to use from the latest [Conjur OSS 
-suite release](https://docs.conjur.org/Latest/en/Content/Overview/Conjur-OSS-Suite-Overview.html). 
-Conjur maintainers perform additional testing on the suite release versions to ensure 
-compatibility. When possible, upgrade your Conjur version to match the 
-[latest suite release](https://docs.conjur.org/Latest/en/Content/ReleaseNotes/ConjurOSS-suite-RN.htm); 
-when using integrations, choose the latest suite release that matches your Conjur version. For any 
+Are you using this project with [Conjur Open Source](https://github.com/cyberark/conjur)? Then we
+**strongly** recommend choosing the version of this project to use from the latest [Conjur OSS
+suite release](https://docs.conjur.org/Latest/en/Content/Overview/Conjur-OSS-Suite-Overview.html).
+Conjur maintainers perform additional testing on the suite release versions to ensure
+compatibility. When possible, upgrade your Conjur version to match the
+[latest suite release](https://docs.conjur.org/Latest/en/Content/ReleaseNotes/ConjurOSS-suite-RN.htm);
+when using integrations, choose the latest suite release that matches your Conjur version. For any
 questions, please contact us on [Discourse](https://discuss.cyberarkcommons.org/c/conjur/5).
 
 ## Compatibility
 
 The `conjur-api-go` has been tested against the following Go versions:
 
-    - 1.20
     - 1.21
     - 1.22
 

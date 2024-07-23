@@ -86,7 +86,7 @@ pipeline {
     stage('Run Tests') {
       environment {
         // Currently, we're not updating DockerHub during version releases/promotions, which we need to fix.
-        // Added a switch in Jenkinsfile and test configurations to toggle between registry.tld for internal testing and docker.io for using the conjur:edge image externally. 
+        // Added a switch in Jenkinsfile and test configurations to toggle between registry.tld for internal testing and docker.io for using the conjur:edge image externally.
         // Tests default to using DockerHub images. In our internal Jenkins setup, this is overridden to pull from our internal registry instead.
         REGISTRY_URL = "registry.tld"
       }
@@ -152,13 +152,13 @@ pipeline {
                 identity_url: "${TENANT.identity_information.idaptive_tenant_fqdn}",
                 username: "${TENANT.login_name}"
               )
-    
+
               def conj_token = getConjurCloudTenant.tokens(
                 infrapool: infrapool,
                 conjur_url: "${TENANT.conjur_cloud_url}",
                 identity_token: "${id_token}"
                 )
-              
+
               env.conj_token = conj_token
             }
           }
