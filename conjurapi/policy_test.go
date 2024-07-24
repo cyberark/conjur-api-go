@@ -160,3 +160,62 @@ func TestClient_LoadPolicy(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("undefined method `referenced_records' for \"host %s\":String\n", hostname), resp.Errors[0].Message)
 	})
 }
+
+func TestClient_FetchPolicy(t *testing.T) {
+	// setup
+	config := &Config{}
+	config.mergeEnv()
+
+	utils, err := NewTestUtils(config)
+	assert.NoError(t, err)
+
+	conjur := utils.Client()
+
+	hostname := "alice"
+	policy := fmt.Sprintf(`
+- !host %s
+`, hostname)
+
+	_, err = conjur.LoadPolicy(
+		PolicyModePut,
+		utils.PolicyBranch(),
+		strings.NewReader(policy),
+	)
+	assert.NoError(t, err)
+
+	t.Run("Policy response is formatted as YAML", func(t *testing.T) {
+
+		resp, err := conjur.FetchPolicy(utils.PolicyBranch(), false, 64, 100000)
+		policyYAML := fmt.Sprintf(`---
+- !policy
+  id: test
+  body:
+  - !host %s
+`, hostname)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, resp)
+		assert.Equal(t, policyYAML, string(resp))
+	})
+
+	t.Run("Policy response is formatted as JSON", func(t *testing.T) {
+
+		resp, err := conjur.FetchPolicy(utils.PolicyBranch(), true, 64, 100000)
+		policyJSON := fmt.Sprintf(`[{"policy":{"id":"test","body":[{"host":{"id":"%s"}}]}}]`, hostname)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, resp)
+		assert.Equal(t, policyJSON, string(resp))
+	})
+
+	t.Run("Given invalid policy id", func(t *testing.T) {
+		t.Run("Returns 404", func(t *testing.T) {
+
+			resp, err := conjur.FetchPolicy("non/existing/policy", false, 64, 100000)
+
+			assert.Error(t, err)
+			assert.Nil(t, resp)
+			assert.IsType(t, &response.ConjurError{}, err)
+			conjurError := err.(*response.ConjurError)
+			assert.Equal(t, 404, conjurError.Code)
+		})
+	})
+}
