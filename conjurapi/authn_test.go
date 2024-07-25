@@ -2,6 +2,7 @@ package conjurapi
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var sample_token = `{"protected":"eyJhbGciOiJjb25qdXIub3JnL3Nsb3NpbG8vdjIiLCJraWQiOiI5M2VjNTEwODRmZTM3Zjc3M2I1ODhlNTYyYWVjZGMxMSJ9","payload":"eyJzdWIiOiJhZG1pbiIsImlhdCI6MTUxMDc1MzI1OSwiZXhwIjo0MTAzMzc5MTY0fQo=","signature":"raCufKOf7sKzciZInQTphu1mBbLhAdIJM72ChLB4m5wKWxFnNz_7LawQ9iYEI_we1-tdZtTXoopn_T1qoTplR9_Bo3KkpI5Hj3DB7SmBpR3CSRTnnEwkJ0_aJ8bql5Cbst4i4rSftyEmUqX-FDOqJdAztdi9BUJyLfbeKTW9OGg-QJQzPX1ucB7IpvTFCEjMoO8KUxZpbHj-KpwqAMZRooG4ULBkxp5nSfs-LN27JupU58oRgIfaWASaDmA98O2x6o88MFpxK_M0FeFGuDKewNGrRc8lCOtTQ9cULA080M5CSnruCqu1Qd52r72KIOAfyzNIiBCLTkblz2fZyEkdSKQmZ8J3AakxQE2jyHmMT-eXjfsEIzEt-IRPJIirI3Qm"}`
@@ -854,4 +856,80 @@ ssh-rsa test-key-2 workstation
 `
 
 	assert.Equal(t, expectedOutput, string(publicKeys))
+}
+
+var jwtAuthenticatorPolicy = `
+- !policy
+  id: test
+  body:
+  - !webservice
+  - !variable public-keys
+  - !variable issuer
+  - !variable audience
+  - !variable token-app-property
+  - !variable identity-path
+  - !group authenticatable
+  - !permit
+    role: !group authenticatable
+    privilege: [ read, authenticate ]
+    resource: !webservice
+  - !grant
+    role: !group authenticatable
+    member: !host /data/test/jwt-apps/workload@example.com
+`
+
+var jwtRolePolicy = `
+- !policy
+  id: jwt-apps
+  body:
+  - !host
+    id: workload@example.com
+    annotations:
+      authn-jwt/test/sub: test-workload
+`
+
+func TestClient_JwtAuthenticate(t *testing.T) {
+	t.Run("With a valid authn-jwt config", func(t *testing.T) {
+		utils, err := NewTestUtils(&Config{})
+		require.NoError(t, err)
+
+		err = utils.SetupWithAuthenticator("jwt", jwtAuthenticatorPolicy, jwtRolePolicy)
+		require.NoError(t, err)
+		conjur := utils.Client()
+
+		// Construct the jwks string
+		jwks := "{\"type\":\"jwks\",\"value\":" + os.Getenv("PUBLIC_KEYS") + "}"
+
+		conjur.AddSecret("conjur/authn-jwt/test/public-keys", jwks)
+		conjur.AddSecret("conjur/authn-jwt/test/issuer", "jwt-server")
+		conjur.AddSecret("conjur/authn-jwt/test/audience", "conjur")
+		conjur.AddSecret("conjur/authn-jwt/test/token-app-property", "email")
+		conjur.AddSecret("conjur/authn-jwt/test/identity-path", "data/test/jwt-apps")
+
+		authnType := "jwt"
+		serviceID := "test"
+
+		err = conjur.EnableAuthenticator(authnType, serviceID, true)
+		require.NoError(t, err)
+
+		t.Run("Successfully creates a client", func(t *testing.T) {
+			conjur, err = NewClientFromJwt(Config{
+				Account:      "conjur",
+				ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL"),
+				AuthnType:    authnType,
+				ServiceID:    serviceID,
+				JWTContent:   os.Getenv("JWT"),
+			})
+			require.NoError(t, err)
+
+			t.Run("Successfully authenticates with the client", func(t *testing.T) {
+				_, err := conjur.authenticator.RefreshToken()
+				require.NoError(t, err)
+
+				resp, err := conjur.WhoAmI()
+				require.NoError(t, err)
+				assert.Contains(t, string(resp), fmt.Sprintf(`"username":"%s"`, "host/data/test/jwt-apps/workload@example.com"))
+			})
+		})
+	})
 }

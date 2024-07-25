@@ -11,11 +11,11 @@ import (
 type TestUtils interface {
 	Client() *Client
 	Setup(policy string) error
+	SetupWithAuthenticator(authnType string, authenticatorPolicy string, policy string) error
 	PolicyBranch() string
 	IDWithPath(id string) string
 	AdminUser() string
 	DefaultTestPolicy() string
-	TotalResourceCount() int
 }
 
 type BaseTestUtils struct {
@@ -68,6 +68,25 @@ func (u *CloudTestUtils) Setup(policy string) error {
 	return err
 }
 
+// SetupWithAuthenticator loads a test policy followed by an authenticator policy
+func (u *CloudTestUtils) SetupWithAuthenticator(authnType string, authenticatorPolicy string, policy string) error {
+	err := u.Setup(policy)
+	if err != nil {
+		return err
+	}
+
+	// Cloud is preconfigured with empty authenticator policy branches
+	authenticatorPath := fmt.Sprintf("conjur/authn-%s", authnType)
+
+	_, err = u.client.LoadPolicy(
+		PolicyModePost,
+		authenticatorPath,
+		strings.NewReader(authenticatorPolicy),
+	)
+
+	return err
+}
+
 func (u *CloudTestUtils) AdminUser() string {
 	return os.Getenv("CONJUR_AUTHN_LOGIN")
 }
@@ -108,10 +127,6 @@ func (u *CloudTestUtils) DefaultTestPolicy() string {
 `, u.AdminUser(), u.AdminUser())
 }
 
-func (u *CloudTestUtils) TotalResourceCount() int {
-	return 25
-}
-
 type DefaultTestUtils struct {
 	BaseTestUtils
 }
@@ -142,6 +157,38 @@ func (u *DefaultTestUtils) Setup(policy string) error {
 	if err != nil {
 		fmt.Println("Policy load error: ", err)
 	}
+
+	return err
+}
+
+// SetupWithAuthenticator loads a test policy followed by an authenticator policy
+func (u *DefaultTestUtils) SetupWithAuthenticator(authnType string, authenticatorPolicy string, policy string) error {
+	err := u.Setup(policy)
+	if err != nil {
+		return err
+	}
+
+	authenticatorPath := fmt.Sprintf("conjur/authn-%s", authnType)
+	emptyAuthenticatorBranch := fmt.Sprintf(`
+- !policy
+  id: %s
+`, authenticatorPath)
+
+	// Ensure the policy branch 'conjur/authn-<authnType>' exists
+	_, err = u.client.LoadPolicy(
+		PolicyModePost,
+		"root",
+		strings.NewReader(emptyAuthenticatorBranch),
+	)
+	if err != nil {
+		return err
+	}
+
+	_, err = u.client.LoadPolicy(
+		PolicyModePost,
+		authenticatorPath,
+		strings.NewReader(authenticatorPolicy),
+	)
 
 	return err
 }
@@ -178,13 +225,9 @@ func (u *DefaultTestUtils) DefaultTestPolicy() string {
 `
 }
 
-func (u *DefaultTestUtils) TotalResourceCount() int {
-	return 15
-}
-
 // Creates a set of test utils depending on which Conjur environment is being used.
 //
-// On-Prem - we assume that the env variables include CONJUR_AUTHN_LOGIN and CONJUR_AUTHN_API_KEY
+// OSS/Enterprise - we assume that the env variables include CONJUR_AUTHN_LOGIN and CONJUR_AUTHN_API_KEY
 // were populated with the default admin user credentials during Conjur startup.
 //
 // Cloud - we assume that the env variables include CONJUR_AUTHN_LOGIN and CONJUR_AUTHN_TOKEN
@@ -208,7 +251,7 @@ func NewTestUtils(config *Config) (TestUtils, error) {
 	login := os.Getenv("CONJUR_AUTHN_LOGIN")
 	client, err := NewClientFromKey(*config, authn.LoginPair{Login: login, APIKey: apiKey})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create on-prem client: %w", err)
+		return nil, fmt.Errorf("failed to create default client: %w", err)
 	}
 	return &DefaultTestUtils{BaseTestUtils{client: client}}, nil
 }
