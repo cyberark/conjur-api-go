@@ -10,10 +10,7 @@ export GO_VERSION="${1:-"1.22"}"
 export REGISTRY_URL="${2:-docker.io}"
 echo "REGISTRY_URL is set to: $REGISTRY_URL"
 
-failed() {
-  announce "TESTS FAILED"
-  exit 1
-}
+init_jwt_server
 
 if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
   # Spin up Conjur environment
@@ -33,6 +30,8 @@ if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
   --no-deps \
   -e CONJUR_AUTHN_API_KEY \
   -e GO_VERSION \
+  -e PUBLIC_KEYS \
+  -e JWT \
   "test-$GO_VERSION" bash -c 'set -o pipefail;
            echo "Go version: $(go version)"
            output_dir="./output/$GO_VERSION"
@@ -51,10 +50,14 @@ else
 
   # Tests incompatible with Conjur Cloud which should be passed to the -skip flag
   incompatible_tests=(
+    "TestClient_RotateCurrentUserAPIKey"
     "TestClient_RotateUserAPIKey"
     "TestClient_ChangeUserPassword"
     "TestClient_ChangeCurrentUserPassword"
     "TestClient_PublicKeys"
+    # Temporarily skipping due to recent breaking API change:
+    "TestClient_LoadPolicy/A_policy_is_successfully_validated"
+    "TestClient_LoadPolicy/A_policy_is_not_successfully_validated"
   )
   export INCOMPATIBLE_TESTS=$(IFS='|'; echo "${incompatible_tests[*]}")
 
@@ -62,13 +65,14 @@ else
     --build-arg FROM_IMAGE="golang:$GO_VERSION" \
     -t "test-$GO_VERSION" ..
   
-  # Golang container version to use: `1.21` or `1.22`
   announce "Running Conjur Cloud tests for Go version: $GO_VERSION...";
   docker run \
     -e CONJUR_APPLIANCE_URL \
     -e CONJUR_ACCOUNT \
     -e CONJUR_AUTHN_LOGIN \
     -e CONJUR_AUTHN_TOKEN \
+    -e PUBLIC_KEYS \
+    -e JWT \
     -e INCOMPATIBLE_TESTS \
     "test-$GO_VERSION" bash -c 'set -o pipefail;
             go test -skip "$INCOMPATIBLE_TESTS" -v ./...'

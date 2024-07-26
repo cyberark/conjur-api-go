@@ -3,7 +3,9 @@ package conjurapi
 import (
 	"testing"
 
+	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type checkAssertion func(t *testing.T, result bool, err error)
@@ -130,29 +132,72 @@ func TestClient_ResourceExists(t *testing.T) {
 	t.Run("Resource exists returns false", resourceNonexistent(conjur, "conjur:variable:data/test/nonexistent"))
 }
 
+var resourceTestPolicy = `
+- !host 
+  id: alice
+  annotations:
+    authn/api-key: true
+
+- !policy
+  id: database-policy
+  owner: !host alice
+  body:
+    - !host dev/db-host
+    - !host prod/db-host
+    - &variables
+      - !variable secret1
+      - !variable secret2
+      - !variable secret3
+      - !variable secret4
+      - !variable secret5
+      - !variable secret6
+      - !variable prod/db-login
+      - !variable prod/db-password
+
+- !permit
+  role: !host database-policy/prod/db-host
+  privilege: [ read ]
+  resource: !variable database-policy/prod/db-login
+
+- !permit
+  role: !host database-policy/prod/db-host
+  privilege: [ read ]
+  resource: !variable database-policy/prod/db-password
+`
+
 func TestClient_Resources(t *testing.T) {
 	listResources := func(conjur *Client, filter *ResourceFilter, expected int) func(t *testing.T) {
 		return func(t *testing.T) {
 			resources, err := conjur.Resources(filter)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Len(t, resources, expected)
 		}
 	}
 
 	utils, err := NewTestUtils(&Config{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	err = utils.Setup(utils.DefaultTestPolicy())
-	assert.NoError(t, err)
+	err = utils.Setup(resourceTestPolicy)
+	require.NoError(t, err)
 	conjur := utils.Client()
-	t.Run("Lists all resources", listResources(conjur, nil, utils.TotalResourceCount()))
-	t.Run("Lists resources by kind", listResources(conjur, &ResourceFilter{Kind: "variable"}, 7))
-	t.Run("Lists resources that start with db", listResources(conjur, &ResourceFilter{Search: "db"}, 2))
-	t.Run("Lists variables that start with prod/database", listResources(conjur, &ResourceFilter{Search: "prod/database", Kind: "variable"}, 2))
-	t.Run("Lists variables that start with prod", listResources(conjur, &ResourceFilter{Search: "prod", Kind: "variable"}, 4))
+
+	// Login as Alice
+	aliceAPIKey, err := conjur.RotateAPIKey("conjur:host:data/test/alice")
+	require.NoError(t, err)
+
+	config := Config{}
+	config.mergeEnv()
+
+	conjur, err = NewClientFromKey(config, authn.LoginPair{Login: "host/data/test/alice", APIKey: string(aliceAPIKey)})
+	require.NoError(t, err)
+
+	t.Run("Lists all resources", listResources(conjur, nil, 11))
+	t.Run("Lists resources by kind", listResources(conjur, &ResourceFilter{Kind: "variable"}, 8))
+	t.Run("Lists resources that start with db", listResources(conjur, &ResourceFilter{Search: "db"}, 4))
+	t.Run("Lists variables that start with prod/database", listResources(conjur, &ResourceFilter{Search: "prod/db", Kind: "variable"}, 2))
 	t.Run("Lists resources and limit result to 1", listResources(conjur, &ResourceFilter{Limit: 1}, 1))
-	t.Run("Lists resources after the first", listResources(conjur, &ResourceFilter{Offset: 1, Limit: 50}, utils.TotalResourceCount()-1))
-	t.Run("Lists resources that alice can see", listResources(conjur, &ResourceFilter{Role: "conjur:host:data/test/alice"}, 1))
+	t.Run("Lists resources after the first", listResources(conjur, &ResourceFilter{Offset: 1, Limit: 50}, 10))
+	t.Run("Lists resources that prod/db-host can see", listResources(conjur, &ResourceFilter{Role: "conjur:host:data/test/database-policy/prod/db-host"}, 2))
 }
 
 func TestClient_Resource(t *testing.T) {
@@ -182,19 +227,29 @@ func TestClient_ResourceIDs(t *testing.T) {
 	}
 
 	utils, err := NewTestUtils(&Config{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	err = utils.Setup(utils.DefaultTestPolicy())
-	assert.NoError(t, err)
+	err = utils.Setup(resourceTestPolicy)
+	require.NoError(t, err)
 	conjur := utils.Client()
 
-	t.Run("Lists all resources", listResourceIDs(conjur, nil, utils.TotalResourceCount()))
-	t.Run("Lists resources by kind", listResourceIDs(conjur, &ResourceFilter{Kind: "variable"}, 7))
-	t.Run("Lists resources that start with db", listResourceIDs(conjur, &ResourceFilter{Search: "db"}, 2))
-	t.Run("Lists variables that start with prod/database", listResourceIDs(conjur, &ResourceFilter{Search: "prod/database", Kind: "variable"}, 2))
-	t.Run("Lists variables that start with prod", listResourceIDs(conjur, &ResourceFilter{Search: "prod", Kind: "variable"}, 4))
+	// Login as Alice
+	aliceAPIKey, err := conjur.RotateAPIKey("conjur:host:data/test/alice")
+	require.NoError(t, err)
+
+	config := Config{}
+	config.mergeEnv()
+
+	conjur, err = NewClientFromKey(config, authn.LoginPair{Login: "host/data/test/alice", APIKey: string(aliceAPIKey)})
+	require.NoError(t, err)
+
+	t.Run("Lists all resources", listResourceIDs(conjur, nil, 11))
+	t.Run("Lists resources by kind", listResourceIDs(conjur, &ResourceFilter{Kind: "variable"}, 8))
+	t.Run("Lists resources that start with db", listResourceIDs(conjur, &ResourceFilter{Search: "db"}, 4))
+	t.Run("Lists variables that start with prod/database", listResourceIDs(conjur, &ResourceFilter{Search: "prod/db", Kind: "variable"}, 2))
 	t.Run("Lists resources and limit result to 1", listResourceIDs(conjur, &ResourceFilter{Limit: 1}, 1))
-	t.Run("Lists resources after the first", listResourceIDs(conjur, &ResourceFilter{Offset: 1, Limit: 50}, utils.TotalResourceCount()-1))
+	t.Run("Lists resources after the first", listResourceIDs(conjur, &ResourceFilter{Offset: 1, Limit: 50}, 10))
+	t.Run("Lists resources that prod/db-host can see", listResourceIDs(conjur, &ResourceFilter{Role: "conjur:host:data/test/database-policy/prod/db-host"}, 2))
 }
 
 func TestClient_PermittedRoles(t *testing.T) {

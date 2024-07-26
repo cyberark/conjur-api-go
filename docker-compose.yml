@@ -86,3 +86,13 @@ services:
       CONJUR_AUTHN_API_KEY:
     entrypoint: sleep
     command: infinity
+  
+  jwt-server:
+    image: "ghcr.io/stackitcloud/fake-jwt-server:v0.1.1"
+    ports:
+      - 8008
+    environment:
+      ISSUER: "jwt-server"
+      AUDIENCE: "conjur"
+      SUBJECT: "test-workload"
+      EMAIL: "workload@example.com"

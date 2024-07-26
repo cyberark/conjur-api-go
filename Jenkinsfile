@@ -28,7 +28,7 @@ pipeline {
   }
 
   triggers {
-    parameterizedCron(getDailyCronString("%NIGHTLY=true"))
+    parameterizedCron(getDailyCronString("%TEST_CLOUD=true"))
   }
 
   environment {
@@ -134,7 +134,7 @@ pipeline {
 
     stage('Run Conjur Cloud tests') {
       when {
-        expression { params.TEST_CLOUD || params.NIGHTLY }
+        expression { params.TEST_CLOUD }
       }
       stages {
         stage('Create a Tenant') {
