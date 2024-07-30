@@ -14,8 +14,13 @@ import (
 // with new messages. If the environment variable is not set, logging
 // is disabled.
 var ApiLog = logrus.New()
+var fatalFn = logrus.Fatalf
 
 func init() {
+	initLogger()
+}
+
+func initLogger() {
 	dest, ok := os.LookupEnv("CONJURAPI_LOG")
 	if !ok {
 		return
@@ -33,7 +38,7 @@ func init() {
 	default:
 		out, err = os.OpenFile(dest, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			logrus.Fatalf("Failed to open %s: %v", dest, err.Error())
+			fatalFn("Failed to open %s: %v", dest, err.Error())
 		}
 		logrus.Infof("Logging to %s", dest)
 	}

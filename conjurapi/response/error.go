@@ -44,17 +44,17 @@ func NewConjurError(resp *http.Response) error {
 	return &cerr
 }
 
-func (self *ConjurError) Error() string {
-	logging.ApiLog.Debugf("self.Details: %+v, self.Message: %+v\n", self.Details, self.Message)
+func (cerr *ConjurError) Error() string {
+	logging.ApiLog.Debugf("cerr.Details: %+v, cerr.Message: %+v\n", cerr.Details, cerr.Message)
 
 	var b strings.Builder
 
-	if self.Message != "" {
-		b.WriteString(self.Message + ". ")
+	if cerr.Message != "" {
+		b.WriteString(cerr.Message + ". ")
 	}
 
-	if self.Details != nil && self.Details.Message != "" {
-		b.WriteString(self.Details.Message + ".")
+	if cerr.Details != nil && cerr.Details.Message != "" {
+		b.WriteString(cerr.Details.Message + ".")
 	}
 
 	return b.String()

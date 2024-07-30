@@ -9,6 +9,7 @@ import (
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestClient_RetrieveSecret(t *testing.T) {
@@ -241,5 +242,33 @@ func TestClient_RetrieveSecret(t *testing.T) {
 			conjurError := err.(*response.ConjurError)
 			assert.Equal(t, 401, conjurError.Code)
 		})
+	})
+}
+func TestDecodeBase64Values(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		jsonResponse := map[string]string{
+			"variable1": "SGVsbG8gd29ybGQ=",             // "Hello world"
+			"variable2": "c3VwZXJfc2VjcmV0X3ZhcmlhYmxl", // "super_secret_variable"
+		}
+
+		resolvedVariables, err := decodeBase64Values(jsonResponse)
+
+		require.NoError(t, err)
+		assert.Equal(t, []byte("Hello world"), resolvedVariables["variable1"])
+		assert.Equal(t, []byte("super_secret_variable"), resolvedVariables["variable2"])
+	})
+
+	t.Run("invalid base64", func(t *testing.T) {
+		jsonResponse := map[string]string{
+			"variable1": "SGVsbG8gd29ybGQ=",                 // "Hello world"
+			"variable2": "VGhpcyBpcyBhIG5lZWRlZCB2YWx1ZQ==", // "super_secret_variable"
+			"variable3": "InvalidBase64Value",
+		}
+
+		_, err := decodeBase64Values(jsonResponse)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "illegal base64 data at input byte")
+		// Ensure the values isn't included in the error message
+		assert.NotContains(t, err.Error(), "InvalidBase64Value")
 	})
 }
