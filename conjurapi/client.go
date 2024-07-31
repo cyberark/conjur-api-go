@@ -516,6 +516,46 @@ func (c *Client) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.R
 	)
 }
 
+func (c *Client) fetchPolicyRequest(policyID string, returnJSON bool, policyTreeDepth uint, sizeLimit uint) (*http.Request, error) {
+	fullPolicyID := makeFullId(c.config.Account, "policy", policyID)
+
+	account, kind, id, err := c.parseID(fullPolicyID)
+	if err != nil {
+		return nil, err
+	}
+
+	routerUrl := makeRouterURL(
+		c.policiesURL(account),
+		kind,
+		url.QueryEscape(id),
+	)
+
+	routerUrl = routerUrl.withFormattedQuery(
+		"depth=%s&limit=%s",
+		url.QueryEscape(strconv.Itoa(int(policyTreeDepth))),
+		url.QueryEscape(strconv.Itoa(int(sizeLimit))),
+	)
+	policyURL := routerUrl.String()
+
+	req, err := http.NewRequest(
+		http.MethodGet,
+		policyURL,
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	contentType := "application/x-yaml"
+	if returnJSON {
+		contentType = "application/json"
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, err
+}
+
 func (c *Client) RetrieveBatchSecretsRequest(variableIDs []string, base64Flag bool) (*http.Request, error) {
 	fullVariableIDs := []string{}
 	for _, variableID := range variableIDs {

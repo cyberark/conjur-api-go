@@ -49,7 +49,7 @@ type DryRunPolicyResponse struct {
 	Errors []DryRunErrors `json:"errors"`
 }
 
-// LoadPolicy submits new policy data or polciy changes to the server.
+// LoadPolicy submits new policy data or policy changes to the server.
 //
 // The required permission depends on the mode.
 func (c *Client) LoadPolicy(mode PolicyMode, policyID string, policy io.Reader) (*PolicyResponse, error) {
@@ -80,4 +80,19 @@ func (c *Client) DryRunPolicy(mode PolicyMode, policyID string, policy io.Reader
 
 	policyResponse := DryRunPolicyResponse{}
 	return &policyResponse, response.DryRunPolicyJSONResponse(resp, &policyResponse)
+}
+
+// FetchPolicy creates a request to fetch policy from the system
+func (c *Client) FetchPolicy(policyID string, returnJSON bool, policyTreeDepth uint, sizeLimit uint) ([]byte, error) {
+	req, err := c.fetchPolicyRequest(policyID, returnJSON, policyTreeDepth, sizeLimit)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.SubmitRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return response.DataResponse(resp)
 }
