@@ -21,7 +21,21 @@ func readBody(resp *http.Response) ([]byte, error) {
 
 func logResponse(resp *http.Response) {
 	req := resp.Request
-	logging.ApiLog.Debugf("%d %s %s %+v", resp.StatusCode, req.Method, req.URL, req.Header)
+	redactedHeaders := redactHeaders(req.Header)
+	logging.ApiLog.Debugf("%d %s %s %+v", resp.StatusCode, req.Method, req.URL, redactedHeaders)
+}
+
+const redactedString = "[REDACTED]"
+
+// redactHeaders purges Authorization headers, and returns a function to restore them.
+func redactHeaders(headers http.Header) http.Header {
+	origAuthz := headers.Get("Authorization")
+	if origAuthz != "" {
+		newHeaders := headers.Clone()
+		newHeaders.Set("Authorization", redactedString)
+		return newHeaders
+	}
+	return headers
 }
 
 // DataResponse checks the HTTP status of the response. If it's less than

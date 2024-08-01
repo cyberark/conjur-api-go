@@ -40,17 +40,7 @@ func (c *Client) RetrieveBatchSecretsSafe(variableIDs []string) (map[string][]by
 		return nil, err
 	}
 
-	resolvedVariables := map[string][]byte{}
-	var decodedValue []byte
-	for id, value := range jsonResponse {
-		decodedValue, err = base64.StdEncoding.DecodeString(value)
-		if err != nil {
-			return nil, err
-		}
-		resolvedVariables[id] = decodedValue
-	}
-
-	return resolvedVariables, nil
+	return decodeBase64Values(jsonResponse)
 }
 
 // RetrieveSecret fetches a secret from a variable.
@@ -123,8 +113,8 @@ func (c *Client) retrieveBatchSecrets(variableIDs []string, base64Flag bool) (ma
 	if base64Flag && resp.Header.Get("Content-Encoding") != "base64" {
 		return nil, errors.New(
 			"Conjur response is not Base64-encoded. " +
-			"The Conjur version may not be compatible with this function - " +
-			"try using RetrieveBatchSecrets instead." )
+				"The Conjur version may not be compatible with this function - " +
+				"try using RetrieveBatchSecrets instead.")
 	}
 
 	jsonResponse := map[string]string{}
@@ -169,4 +159,16 @@ func (c *Client) AddSecret(variableID string, secretValue string) error {
 	}
 
 	return response.EmptyResponse(resp)
+}
+
+func decodeBase64Values(jsonResponse map[string]string) (map[string][]byte, error) {
+	resolvedVariables := map[string][]byte{}
+	for id, value := range jsonResponse {
+		decodedValue, err := base64.StdEncoding.DecodeString(value)
+		if err != nil {
+			return nil, err
+		}
+		resolvedVariables[id] = decodedValue
+	}
+	return resolvedVariables, nil
 }

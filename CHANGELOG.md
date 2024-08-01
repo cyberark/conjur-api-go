@@ -6,12 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.12.4] - 2024-07-23
+## [0.12.4] - 2024-07-31
 
 ### Added
 - Added support for creating hosts with annotations via HostFactory (CNJR-5495)
 - Added support for enabling authenticators (CNJR-5548)
 - Added support for fetching effective policy (CNJR-5673)
+
+### Security
+- Redact "Authorization" header when logging requests using CONJURAPI_LOG (CONJSE-1897)
 
 ## [0.12.3] - 2024-07-15
 
