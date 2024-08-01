@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.12.4] - 2024-07-31
+## [0.12.4] - 2024-08-01
 
 ### Added
 - Added support for creating hosts with annotations via HostFactory (CNJR-5495)
@@ -217,11 +217,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.12.3...HEAD
-[v0.12.3]: https://github.com/cyberark/conjur-api-go/compare/v0.12.2...v0.12.3
-[v0.12.2]: https://github.com/cyberark/conjur-api-go/compare/v0.12.1...v0.12.2
-[v0.12.1]: https://github.com/cyberark/conjur-api-go/compare/v0.12.0...v0.12.1
-[v0.12.0]: https://github.com/cyberark/conjur-api-go/compare/v0.11.4...v0.12.0
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.12.4...HEAD
+[0.12.4]: https://github.com/cyberark/conjur-api-go/compare/v0.12.3...v0.12.4
+[0.12.3]: https://github.com/cyberark/conjur-api-go/compare/v0.12.2...v0.12.3
+[0.12.2]: https://github.com/cyberark/conjur-api-go/compare/v0.12.1...v0.12.2
+[0.12.1]: https://github.com/cyberark/conjur-api-go/compare/v0.12.0...v0.12.1
+[0.12.0]: https://github.com/cyberark/conjur-api-go/compare/v0.11.4...v0.12.0
 [0.11.4]: https://github.com/cyberark/conjur-api-go/compare/v0.11.2...v0.11.4
 [0.11.2]: https://github.com/cyberark/conjur-api-go/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/cyberark/conjur-api-go/compare/v0.11.0...v0.11.1
