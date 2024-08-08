@@ -48,7 +48,7 @@ func TestClient_CheckPermission(t *testing.T) {
 	utils, err := NewTestUtils(&Config{})
 	assert.NoError(t, err)
 
-	err = utils.Setup(utils.DefaultTestPolicy())
+	_, err = utils.Setup(utils.DefaultTestPolicy())
 	assert.NoError(t, err)
 	conjur := utils.Client()
 
@@ -74,21 +74,21 @@ func TestClient_CheckPermissionForRole(t *testing.T) {
 	utils, err := NewTestUtils(&Config{})
 	assert.NoError(t, err)
 
-	err = utils.Setup(utils.DefaultTestPolicy())
+	_, err = utils.Setup(utils.DefaultTestPolicy())
 	assert.NoError(t, err)
 	conjur := utils.Client()
 
 	t.Run(
 		"Check an allowed permission for a role",
-		checkAndAssert(conjur, assertSuccess, "conjur:variable:data/test/db-password", "conjur:host:data/test/alice"),
+		checkAndAssert(conjur, assertSuccess, "conjur:variable:data/test/db-password", "conjur:host:data/test/bob"),
 	)
 	t.Run(
 		"Check a permission on a non-existent resource",
-		checkAndAssert(conjur, assertFailure, "conjur:variable:data/test/foobar", "conjur:host:data/test/alice"),
+		checkAndAssert(conjur, assertFailure, "conjur:variable:data/test/foobar", "conjur:host:data/test/bob"),
 	)
 	t.Run(
 		"Check no permission for a role",
-		checkAndAssert(conjur, assertFailure, "conjur:variable:data/test/db-password", "conjur:host:data/test/bob"),
+		checkAndAssert(conjur, assertFailure, "conjur:variable:data/test/db-password", "conjur:host:data/test/jimmy"),
 	)
 	t.Run(
 		"Check a permission with empty role",
@@ -96,11 +96,11 @@ func TestClient_CheckPermissionForRole(t *testing.T) {
 	)
 	t.Run(
 		"Check a permission for account-less role",
-		checkAndAssert(conjur, assertSuccess, "variable:data/test/db-password", "host:data/test/alice"),
+		checkAndAssert(conjur, assertSuccess, "variable:data/test/db-password", "host:data/test/bob"),
 	)
 	t.Run(
 		"Malformed resource id",
-		checkAndAssert(conjur, assertError, "malformed_id", "conjur:host:data/test/alice"),
+		checkAndAssert(conjur, assertError, "malformed_id", "conjur:host:data/test/bob"),
 	)
 }
 
@@ -124,7 +124,7 @@ func TestClient_ResourceExists(t *testing.T) {
 	utils, err := NewTestUtils(&Config{})
 	assert.NoError(t, err)
 
-	err = utils.Setup(utils.DefaultTestPolicy())
+	_, err = utils.Setup(utils.DefaultTestPolicy())
 	assert.NoError(t, err)
 	conjur := utils.Client()
 
@@ -134,13 +134,13 @@ func TestClient_ResourceExists(t *testing.T) {
 
 var resourceTestPolicy = `
 - !host 
-  id: alice
+  id: kate
   annotations:
     authn/api-key: true
 
 - !policy
   id: database-policy
-  owner: !host alice
+  owner: !host kate
   body:
     - !host dev/db-host
     - !host prod/db-host
@@ -177,18 +177,13 @@ func TestClient_Resources(t *testing.T) {
 	utils, err := NewTestUtils(&Config{})
 	require.NoError(t, err)
 
-	err = utils.Setup(resourceTestPolicy)
-	require.NoError(t, err)
-	conjur := utils.Client()
-
-	// Login as Alice
-	aliceAPIKey, err := conjur.RotateAPIKey("conjur:host:data/test/alice")
+	keys, err := utils.Setup(resourceTestPolicy)
 	require.NoError(t, err)
 
 	config := Config{}
 	config.mergeEnv()
 
-	conjur, err = NewClientFromKey(config, authn.LoginPair{Login: "host/data/test/alice", APIKey: string(aliceAPIKey)})
+	conjur, err := NewClientFromKey(config, authn.LoginPair{Login: "host/data/test/kate", APIKey: keys["kate"]})
 	require.NoError(t, err)
 
 	t.Run("Lists all resources", listResources(conjur, nil, 11))
@@ -211,7 +206,7 @@ func TestClient_Resource(t *testing.T) {
 	utils, err := NewTestUtils(&Config{})
 	assert.NoError(t, err)
 
-	err = utils.Setup(utils.DefaultTestPolicy())
+	_, err = utils.Setup(utils.DefaultTestPolicy())
 	assert.NoError(t, err)
 	conjur := utils.Client()
 	t.Run("Shows a resource", showResource(conjur, "conjur:variable:data/test/db-password"))
@@ -229,18 +224,13 @@ func TestClient_ResourceIDs(t *testing.T) {
 	utils, err := NewTestUtils(&Config{})
 	require.NoError(t, err)
 
-	err = utils.Setup(resourceTestPolicy)
-	require.NoError(t, err)
-	conjur := utils.Client()
-
-	// Login as Alice
-	aliceAPIKey, err := conjur.RotateAPIKey("conjur:host:data/test/alice")
+	keys, err := utils.Setup(resourceTestPolicy)
 	require.NoError(t, err)
 
 	config := Config{}
 	config.mergeEnv()
 
-	conjur, err = NewClientFromKey(config, authn.LoginPair{Login: "host/data/test/alice", APIKey: string(aliceAPIKey)})
+	conjur, err := NewClientFromKey(config, authn.LoginPair{Login: "host/data/test/kate", APIKey: keys["kate"]})
 	require.NoError(t, err)
 
 	t.Run("Lists all resources", listResourceIDs(conjur, nil, 11))
@@ -264,7 +254,7 @@ func TestClient_PermittedRoles(t *testing.T) {
 	utils, err := NewTestUtils(&Config{})
 	assert.NoError(t, err)
 
-	err = utils.Setup(utils.DefaultTestPolicy())
+	_, err = utils.Setup(utils.DefaultTestPolicy())
 	assert.NoError(t, err)
 	conjur := utils.Client()
 	assert.NoError(t, err)

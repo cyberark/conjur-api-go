@@ -49,7 +49,7 @@ func TestClient_LoadPolicy(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			hostname := "alice"
+			hostname := "bob"
 			policy := fmt.Sprintf(`
 - !host %s
 `, hostname)
@@ -171,7 +171,7 @@ func TestClient_FetchPolicy(t *testing.T) {
 
 	conjur := utils.Client()
 
-	hostname := "alice"
+	hostname := "bob"
 	policy := fmt.Sprintf(`
 - !host %s
 `, hostname)

@@ -8,14 +8,14 @@ import (
 )
 
 var roleTestPolicy = `
-- !host alice
+- !host bob
 - !host jimmy
 - !layer test-layer
 
 - !variable secret
 
 - !permit
-  role: !host alice
+  role: !host bob
   privilege: [ execute ]
   resource: !variable secret
 
@@ -23,7 +23,7 @@ var roleTestPolicy = `
   role: !layer test-layer
   members: 
   - !host jimmy
-  - !host alice
+  - !host bob
 `
 
 func TestClient_RoleExists(t *testing.T) {
@@ -54,11 +54,11 @@ func TestClient_RoleExists(t *testing.T) {
 	utils, err := NewTestUtils(&Config{})
 	assert.NoError(t, err)
 
-	err = utils.Setup(utils.DefaultTestPolicy())
+	_, err = utils.Setup(utils.DefaultTestPolicy())
 	assert.NoError(t, err)
 	conjur := utils.Client()
 
-	t.Run("Role exists returns true", roleExistent(conjur, "conjur:host:data/test/alice"))
+	t.Run("Role exists returns true", roleExistent(conjur, "conjur:host:data/test/bob"))
 	t.Run("Role exists returns false", roleNonexistent(conjur, "conjur:user:data/test/nonexistent"))
 	t.Run("Role exists returns error", roleInvalid(conjur, ""))
 }
@@ -74,12 +74,12 @@ func TestClient_Role(t *testing.T) {
 	utils, err := NewTestUtils(&Config{})
 	assert.NoError(t, err)
 
-	err = utils.Setup(roleTestPolicy)
+	_, err = utils.Setup(roleTestPolicy)
 	assert.NoError(t, err)
 
 	conjur := utils.Client()
 
-	t.Run("Shows a role", showRole(conjur, "conjur:host:data/test/alice"))
+	t.Run("Shows a role", showRole(conjur, "conjur:host:data/test/bob"))
 }
 
 func TestClient_RoleMembers(t *testing.T) {
@@ -95,7 +95,7 @@ func TestClient_RoleMembers(t *testing.T) {
 	assert.NoError(t, err)
 
 	conjur := utils.Client()
-	err = utils.Setup(roleTestPolicy)
+	_, err = utils.Setup(roleTestPolicy)
 	assert.NoError(t, err)
 
 	t.Run("List admin role members return 1 member", listMembers(conjur, fmt.Sprintf("conjur:user:%s", utils.AdminUser()), 1))
@@ -114,11 +114,11 @@ func TestClient_RoleMemberships(t *testing.T) {
 	utils, err := NewTestUtils(&Config{})
 	assert.NoError(t, err)
 
-	err = utils.Setup(roleTestPolicy)
+	_, err = utils.Setup(roleTestPolicy)
 	assert.NoError(t, err)
 
 	conjur := utils.Client()
 
-	t.Run("List role memberships return memberships", listMemberships(conjur, "conjur:host:data/test/alice", 1))
+	t.Run("List role memberships return memberships", listMemberships(conjur, "conjur:host:data/test/bob", 1))
 	t.Run("List role memberships return no memberships", listMemberships(conjur, "conjur:layer:data/test/test-layer", 0))
 }

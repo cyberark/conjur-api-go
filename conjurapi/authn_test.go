@@ -36,14 +36,14 @@ func TestClient_RotateAPIKey(t *testing.T) {
 		},
 		{
 			name:             "Rotate the API key of a foreign role and read the data stream",
-			roleId:           "conjur:host:data/test/alice",
-			login:            "host/data/test/alice",
+			roleId:           "conjur:host:data/test/bob",
+			login:            "host/data/test/bob",
 			readResponseBody: true,
 		},
 		{
 			name:             "Rotate the API key of a partially-qualified role and read the data stream",
-			roleId:           "host:data/test/alice",
-			login:            "host/data/test/alice",
+			roleId:           "host:data/test/bob",
+			login:            "host/data/test/bob",
 			readResponseBody: true,
 		},
 	}
@@ -53,7 +53,7 @@ func TestClient_RotateAPIKey(t *testing.T) {
 			utils, err := NewTestUtils(&Config{})
 			assert.NoError(t, err)
 
-			err = utils.Setup(utils.DefaultTestPolicy())
+			_, err = utils.Setup(utils.DefaultTestPolicy())
 			assert.NoError(t, err)
 			conjur := utils.Client()
 
@@ -68,7 +68,7 @@ func runRotateAPIKeyAssertions(t *testing.T, tc rotateAPIKeyTestCase, conjur *Cl
 	var err error
 
 	if tc.readResponseBody {
-		rotateResponse, e := conjur.RotateAPIKeyReader("conjur:host:data/test/alice")
+		rotateResponse, e := conjur.RotateAPIKeyReader("conjur:host:data/test/bob")
 		assert.NoError(t, e)
 		hostAPIKey, err = ReadResponseBody(rotateResponse)
 	} else {
@@ -81,29 +81,27 @@ func runRotateAPIKeyAssertions(t *testing.T, tc rotateAPIKeyTestCase, conjur *Cl
 	assert.NoError(t, err)
 }
 
+var userPolicy = `
+- !user alice
+`
+
 func TestClient_RotateCurrentUserAPIKey(t *testing.T) {
 	//TODO: This test is ugly. Refactor it into something more concise.
 	t.Run("Rotate the API key of the current user", func(t *testing.T) {
 		// SETUP
-		// Login as admin and rotate alice's API key,
-		// so we can log in as her with her new API key
 		utils, err := NewTestUtils(&Config{})
 		assert.NoError(t, err)
 
-		err = utils.Setup(userPolicy)
-		assert.NoError(t, err)
-		conjur := utils.Client()
-
-		userAPIKey, err := conjur.RotateAPIKey("conjur:user:alice@data-test")
+		keys, err := utils.Setup(userPolicy)
 		assert.NoError(t, err)
 
 		// Login as alice with a mock storage provider to store her API key
 		config := &Config{}
 		config.mergeEnv()
-		conjur, err = NewClientFromKey(*config, authn.LoginPair{Login: "alice@data-test", APIKey: string(userAPIKey)})
+		conjur, err := NewClientFromKey(*config, authn.LoginPair{Login: "alice@data-test", APIKey: keys["alice@data-test"]})
 		assert.NoError(t, err)
 		conjur.storage = &mockStorageProvider{}
-		_, err = conjur.Login("alice@data-test", string(userAPIKey))
+		_, err = conjur.Login("alice@data-test", keys["alice@data-test"])
 		assert.NoError(t, err)
 
 		// EXERCISE
@@ -115,6 +113,44 @@ func TestClient_RotateCurrentUserAPIKey(t *testing.T) {
 		// Ensure the new API key works
 		_, err = conjur.Authenticate(authn.LoginPair{Login: "alice@data-test", APIKey: string(newAPIKey)})
 		assert.NoError(t, err)
+	})
+}
+
+func TestClient_RotateCurrentRoleAPIKey(t *testing.T) {
+	t.Run("Rotate the API key of the current host", func(t *testing.T) {
+		// SETUP
+		utils, err := NewTestUtils(&Config{})
+		assert.NoError(t, err)
+
+		hostPolicy := `
+- !host
+  id: kate
+  annotations:
+    authn/api-key: true
+`
+
+		keys, err := utils.Setup(hostPolicy)
+		assert.NoError(t, err)
+
+		config := Config{}
+		config.mergeEnv()
+
+		conjur, err := NewClientFromKey(config, authn.LoginPair{Login: "host/data/test/kate", APIKey: keys["kate"]})
+		require.NoError(t, err)
+		conjur.storage = &mockStorageProvider{
+			username: "host/data/test/kate",
+			password: keys["kate"],
+		}
+
+		// EXERCISE
+		// This will use the "stored" API key to rotate Kate's API key
+		newAPIKey, err := conjur.RotateCurrentRoleAPIKey()
+		require.NoError(t, err)
+
+		// VERIFY
+		// Ensure the new API key works
+		_, err = NewClientFromKey(config, authn.LoginPair{Login: "host/data/test/kate", APIKey: string(newAPIKey)})
+		require.NoError(t, err)
 	})
 }
 
@@ -172,7 +208,7 @@ func TestClient_RotateHostAPIKey(t *testing.T) {
 			utils, err := NewTestUtils(&Config{})
 			assert.NoError(t, err)
 
-			err = utils.Setup(utils.DefaultTestPolicy())
+			_, err = utils.Setup(utils.DefaultTestPolicy())
 			assert.NoError(t, err)
 			conjur := utils.Client()
 
@@ -250,7 +286,7 @@ func TestClient_RotateUserAPIKey(t *testing.T) {
 			utils, err := NewTestUtils(&Config{})
 			assert.NoError(t, err)
 
-			err = utils.Setup(userPolicy)
+			_, err = utils.Setup(userPolicy)
 			assert.NoError(t, err)
 			conjur := utils.Client()
 
@@ -694,10 +730,6 @@ type changeUserPasswordTestCase struct {
 	newPassword string
 }
 
-var userPolicy = `
-- !user alice
-- !host bob`
-
 func TestClient_ChangeUserPassword(t *testing.T) {
 	testCases := []changeUserPasswordTestCase{
 		{
@@ -717,7 +749,7 @@ func TestClient_ChangeUserPassword(t *testing.T) {
 			utils, err := NewTestUtils(config)
 			assert.NoError(t, err)
 
-			err = utils.Setup(userPolicy)
+			_, err = utils.Setup(userPolicy)
 			assert.NoError(t, err)
 			conjur := utils.Client()
 
@@ -768,7 +800,7 @@ func TestClient_ChangeCurrentUserPassword(t *testing.T) {
 			utils, err := NewTestUtils(config)
 			assert.NoError(t, err)
 
-			err = utils.Setup(userPolicy)
+			_, err = utils.Setup(userPolicy)
 			assert.NoError(t, err)
 			conjur := utils.Client()
 
@@ -833,7 +865,7 @@ func TestClient_PublicKeys(t *testing.T) {
 			utils, err := NewTestUtils(config)
 			assert.NoError(t, err)
 
-			err = utils.Setup(publicKeysTestPolicy)
+			_, err = utils.Setup(publicKeysTestPolicy)
 			assert.NoError(t, err)
 			conjur := utils.Client()
 
@@ -887,6 +919,53 @@ var jwtRolePolicy = `
     annotations:
       authn-jwt/test/sub: test-workload
 `
+
+func TestClient_EnableAuthenticator(t *testing.T) {
+	testCases := []struct {
+		name      string
+		serviceID string
+		expectErr bool
+	}{
+		{
+			name:      "Enables/disables a valid authenticator successfully",
+			serviceID: "test",
+			expectErr: false,
+		},
+		{
+			name:      "Fails to enable/disable if authenticator doesn't exist or user doesn't have access",
+			serviceID: "non-existent",
+			expectErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			utils, err := NewTestUtils(&Config{})
+			require.NoError(t, err)
+
+			err = utils.SetupWithAuthenticator("jwt", jwtAuthenticatorPolicy, jwtRolePolicy)
+			require.NoError(t, err)
+
+			conjur := utils.Client()
+
+			// Enable
+			err = conjur.EnableAuthenticator("jwt", tc.serviceID, true)
+			if tc.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			// Disable
+			err = conjur.EnableAuthenticator("jwt", tc.serviceID, false)
+			if tc.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
 
 func TestClient_JwtAuthenticate(t *testing.T) {
 	t.Run("With a valid authn-jwt config", func(t *testing.T) {

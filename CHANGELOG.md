@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.5] - 2024-08-08
+
+### Added
+- Added support for rotating the API key of an authenticated host (CNJR-5699)
+
 ## [0.12.4] - 2024-08-01
 
 ### Added
