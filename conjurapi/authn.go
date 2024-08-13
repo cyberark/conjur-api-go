@@ -302,13 +302,22 @@ func (c *Client) RotateAPIKey(roleID string) ([]byte, error) {
 	return response.DataResponse(resp)
 }
 
+// RotateCurrentUserAPIKey replaces the API key of the currently authenticated
+// role with a new random secret. It is a wrapper for RotateCurrentRoleAPIKey
+// for backwards-compatiblity.
 func (c *Client) RotateCurrentUserAPIKey() ([]byte, error) {
-	username, password, err := c.storage.ReadCredentials()
+	return c.RotateCurrentRoleAPIKey()
+}
+
+// RotateCurrentRoleAPIKey replaces the API key of the currently authenticated
+// role with a new random secret.
+func (c *Client) RotateCurrentRoleAPIKey() ([]byte, error) {
+	roleID, password, err := c.storage.ReadCredentials()
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := c.rotateCurrentUserAPIKey(username, password)
+	resp, err := c.rotateCurrentRoleAPIKey(roleID, password)
 	if err != nil {
 		return nil, err
 	}
@@ -370,8 +379,8 @@ func (c *Client) rotateAPIKey(roleID string) (*http.Response, error) {
 	return c.SubmitRequest(req)
 }
 
-func (c *Client) rotateCurrentUserAPIKey(username string, password string) (*http.Response, error) {
-	req, err := c.RotateCurrentUserAPIKeyRequest(username, password)
+func (c *Client) rotateCurrentRoleAPIKey(roleID string, password string) (*http.Response, error) {
+	req, err := c.RotateCurrentRoleAPIKeyRequest(roleID, password)
 	if err != nil {
 		return nil, err
 	}
@@ -391,4 +400,26 @@ func (c *Client) PublicKeys(kind string, identifier string) ([]byte, error) {
 	}
 
 	return response.DataResponse(res)
+}
+
+// EnableAuthenticator enables or disables an authenticator instance
+//
+// The authenticated user must be admin
+func (c *Client) EnableAuthenticator(authenticatorType string, serviceID string, enabled bool) error {
+	req, err := c.EnableAuthenticatorRequest(authenticatorType, serviceID, enabled)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.SubmitRequest(req)
+	if err != nil {
+		return err
+	}
+
+	err = response.EmptyResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

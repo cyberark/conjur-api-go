@@ -10,7 +10,7 @@ import (
 
 type TestUtils interface {
 	Client() *Client
-	Setup(policy string) error
+	Setup(policy string) (map[string]string, error)
 	SetupWithAuthenticator(authnType string, authenticatorPolicy string, policy string) error
 	PolicyBranch() string
 	IDWithPath(id string) string
@@ -41,7 +41,8 @@ type CloudTestUtils struct {
 }
 
 // Setup handles cleaning up resources and loading a test policy into the correct sub-branch (via replace)
-func (u *CloudTestUtils) Setup(policy string) error {
+// It returns the created roles and their API keys as a map.
+func (u *CloudTestUtils) Setup(policy string) (map[string]string, error) {
 	emptyTestBranch := fmt.Sprintf(`
 - !policy
   id: test
@@ -56,7 +57,7 @@ func (u *CloudTestUtils) Setup(policy string) error {
 		fmt.Println("Policy load error: ", err)
 	}
 
-	_, err = u.client.LoadPolicy(
+	roles, err := u.client.LoadPolicy(
 		PolicyModePut,
 		u.PolicyBranch(),
 		strings.NewReader(policy),
@@ -65,12 +66,18 @@ func (u *CloudTestUtils) Setup(policy string) error {
 		fmt.Println("Policy load error: ", err)
 	}
 
-	return err
+	// Extract the last part of the role ID and the API key to return as a map
+	keys := make(map[string]string)
+	for _, role := range roles.CreatedRoles {
+		keys[extractLogin(role.ID)] = role.APIKey
+	}
+
+	return keys, err
 }
 
 // SetupWithAuthenticator loads a test policy followed by an authenticator policy
 func (u *CloudTestUtils) SetupWithAuthenticator(authnType string, authenticatorPolicy string, policy string) error {
-	err := u.Setup(policy)
+	_, err := u.Setup(policy)
 	if err != nil {
 		return err
 	}
@@ -94,12 +101,12 @@ func (u *CloudTestUtils) AdminUser() string {
 func (u *CloudTestUtils) DefaultTestPolicy() string {
 	return fmt.Sprintf(`
 - !host
-  id: alice
+  id: bob
   owner: !user /%s
   annotations:
     authn/api-key: true
 - !host
-  id: bob
+  id: jimmy
   owner: !user /%s
   annotations:
     authn/api-key: true
@@ -109,7 +116,7 @@ func (u *CloudTestUtils) DefaultTestPolicy() string {
 - !variable password
 
 - !permit
-  role: !host alice
+  role: !host bob
   privilege: [ execute ]
   resource: !variable db-password
 
@@ -132,7 +139,8 @@ type DefaultTestUtils struct {
 }
 
 // Setup handles loading a test policy into the correct sub-branch (via replace)
-func (u *DefaultTestUtils) Setup(policy string) error {
+// It returns the created roles and their API keys as a map.
+func (u *DefaultTestUtils) Setup(policy string) (map[string]string, error) {
 	// Ensure we have a 'data/test' policy branch.
 	emptyTestBranch := `
 - !policy
@@ -149,7 +157,7 @@ func (u *DefaultTestUtils) Setup(policy string) error {
 		fmt.Println("Policy load error: ", err)
 	}
 
-	_, err = u.client.LoadPolicy(
+	roles, err := u.client.LoadPolicy(
 		PolicyModePut,
 		u.PolicyBranch(),
 		strings.NewReader(policy),
@@ -158,12 +166,18 @@ func (u *DefaultTestUtils) Setup(policy string) error {
 		fmt.Println("Policy load error: ", err)
 	}
 
-	return err
+	// Extract the last part of the role ID and the API key to return as a map
+	keys := make(map[string]string)
+	for _, role := range roles.CreatedRoles {
+		keys[extractLogin(role.ID)] = role.APIKey
+	}
+
+	return keys, err
 }
 
 // SetupWithAuthenticator loads a test policy followed by an authenticator policy
 func (u *DefaultTestUtils) SetupWithAuthenticator(authnType string, authenticatorPolicy string, policy string) error {
-	err := u.Setup(policy)
+	_, err := u.Setup(policy)
 	if err != nil {
 		return err
 	}
@@ -199,15 +213,15 @@ func (u *DefaultTestUtils) AdminUser() string {
 
 func (u *DefaultTestUtils) DefaultTestPolicy() string {
 	return `
-- !host alice
 - !host bob
+- !host jimmy
 
 - !variable db-password
 - !variable db-password-2
 - !variable password
 
 - !permit
-  role: !host alice
+  role: !host bob
   privilege: [ execute ]
   resource: !variable db-password
 
@@ -254,4 +268,18 @@ func NewTestUtils(config *Config) (TestUtils, error) {
 		return nil, fmt.Errorf("failed to create default client: %w", err)
 	}
 	return &DefaultTestUtils{BaseTestUtils{client: client}}, nil
+}
+
+func extractLogin(fullyQualifiedRoleID string) string {
+	// Remove the account/kind prefixes
+	parts := strings.Split(fullyQualifiedRoleID, ":")
+	roleID := parts[len(parts)-1]
+
+	// Remove the policy path if it exists
+	if strings.Contains(roleID, "/") {
+		subParts := strings.Split(roleID, "/")
+		roleID = subParts[len(subParts)-1]
+	}
+
+	return roleID
 }

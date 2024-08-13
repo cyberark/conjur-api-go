@@ -292,6 +292,10 @@ func (c *Client) RotateAPIKeyRequest(roleID string) (*http.Request, error) {
 }
 
 func (c *Client) RotateCurrentUserAPIKeyRequest(login string, password string) (*http.Request, error) {
+	return c.RotateCurrentRoleAPIKeyRequest(login, password)
+}
+
+func (c *Client) RotateCurrentRoleAPIKeyRequest(login string, password string) (*http.Request, error) {
 	rotateUrl := makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), "api_key")
 
 	req, err := http.NewRequest(
