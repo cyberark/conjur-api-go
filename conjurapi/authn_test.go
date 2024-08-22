@@ -86,6 +86,21 @@ var userPolicy = `
 `
 
 func TestClient_RotateCurrentUserAPIKey(t *testing.T) {
+	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
+		t.Run("Rotate the API key of the current user not supported in Conjur Cloud", func(t *testing.T) {
+			utils, err := NewTestUtils(&Config{})
+			assert.NoError(t, err)
+
+			conjur := utils.Client()
+			conjur.storage = &mockStorageProvider{}
+
+			_, err = conjur.RotateCurrentUserAPIKey()
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "Rotate API Key for users is not supported in Conjur Cloud")
+		})
+		return
+	}
+
 	//TODO: This test is ugly. Refactor it into something more concise.
 	t.Run("Rotate the API key of the current user", func(t *testing.T) {
 		// SETUP
@@ -240,6 +255,21 @@ type rotateUserAPIKeyTestCase struct {
 }
 
 func TestClient_RotateUserAPIKey(t *testing.T) {
+	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
+		t.Run("Rotate the API key of a user not supported in Conjur Cloud", func(t *testing.T) {
+			utils, err := NewTestUtils(&Config{})
+			assert.NoError(t, err)
+
+			conjur := utils.Client()
+			conjur.storage = &mockStorageProvider{}
+
+			_, err = conjur.RotateUserAPIKey("alice@data-test")
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "Rotate API Key for users is not supported in Conjur Cloud")
+		})
+		return
+	}
+
 	testCases := []rotateUserAPIKeyTestCase{
 		{
 			name:       "Rotate the API key of a user: ID only",
@@ -326,40 +356,41 @@ func TestClient_Whoami(t *testing.T) {
 }
 
 func TestClient_ListOidcProviders(t *testing.T) {
-	t.Run("List OIDC Providers", func(t *testing.T) {
-		ts, client := setupTestClient(t)
-		defer ts.Close()
+	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
+		t.Run("List OIDC Providers not supported in Conjur Cloud", func(t *testing.T) {
+			utils, err := NewTestUtils(&Config{})
+			require.NoError(t, err)
 
-		providers, err := client.ListOidcProviders()
-		assert.NoError(t, err)
+			conjur := utils.Client()
 
-		assert.Equal(t, 1, len(providers))
-		assert.Equal(t, "test-service-id", providers[0].ServiceID)
-	})
+			_, err = conjur.ListOidcProviders()
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "List OIDC Providers is not supported in Conjur Cloud")
+		})
+	} else {
+		t.Run("List OIDC Providers", func(t *testing.T) {
+			// Mock server to return OIDC providers
+			ts, client := setupTestClient(t)
+			defer ts.Close()
+
+			providers, err := client.ListOidcProviders()
+			require.NoError(t, err)
+
+			require.Equal(t, 1, len(providers))
+			assert.Equal(t, "test-service-id", providers[0].ServiceID)
+		})
+	}
 }
 
 func TestClient_Login(t *testing.T) {
-	t.Run("Login and Authenticate", func(t *testing.T) {
-		ts, client := setupTestClient(t)
-		defer ts.Close()
-
-		token, err := client.Login("alice", "password")
-		assert.NoError(t, err)
-		assert.Equal(t, "test-api-key", string(token))
-
-		// Check that api key was cached to the correct location
-		contents, err := os.ReadFile(client.GetConfig().NetRCPath)
-		assert.NoError(t, err)
-		assert.Contains(t, string(contents), client.GetConfig().ApplianceURL+"/authn")
-		assert.Contains(t, string(contents), "test-api-key")
-
-		// Check that we can authenticate with the cached api key
-		token, err = client.Authenticate(authn.LoginPair{Login: "alice", APIKey: string(token)})
-		assert.NoError(t, err)
-		assert.Equal(t, "test-token", string(token))
-	})
+	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
+		testLoginConjurCloud(t)
+	} else {
+		testLoginConjurSelfHosted(t)
+	}
 
 	t.Run("OIDC authentication", func(t *testing.T) {
+		// Mock server to return OIDC token
 		ts, client := setupTestClient(t)
 		defer ts.Close()
 
@@ -382,6 +413,7 @@ func TestClient_Login(t *testing.T) {
 	})
 
 	t.Run("JWT authentication", func(t *testing.T) {
+		// Mock server to return JWT token
 		ts, client := setupTestClient(t)
 		defer ts.Close()
 
@@ -396,6 +428,7 @@ func TestClient_Login(t *testing.T) {
 
 func TestClient_AuthenticateReader(t *testing.T) {
 	t.Run("Retrieves access token reader", func(t *testing.T) {
+		// Mock server to return access token
 		ts, client := setupTestClient(t)
 		defer ts.Close()
 
@@ -404,6 +437,59 @@ func TestClient_AuthenticateReader(t *testing.T) {
 		token, err := ReadResponseBody(reader)
 		assert.NoError(t, err)
 		assert.Equal(t, "test-token", string(token))
+	})
+}
+
+func testLoginConjurCloud(t *testing.T) {
+	t.Run("Login not supported in Conjur Cloud", func(t *testing.T) {
+		utils, err := NewTestUtils(&Config{})
+		assert.NoError(t, err)
+
+		_, err = utils.Setup(utils.DefaultTestPolicy())
+		assert.NoError(t, err)
+		conjur := utils.Client()
+
+		apiKey, err := conjur.Login("alice", "password")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "Login for users is not supported in Conjur Cloud")
+		assert.Empty(t, apiKey)
+	})
+}
+
+func testLoginConjurSelfHosted(t *testing.T) {
+	// Full test of login and authenticate flow
+	t.Run("Login and Authenticate", func(t *testing.T) {
+		utils, err := NewTestUtils(&Config{})
+		require.NoError(t, err)
+
+		keys, err := utils.Setup(`
+- !user cindy
+`)
+		require.NoError(t, err)
+
+		tempDir := t.TempDir()
+		config := &Config{
+			NetRCPath: filepath.Join(tempDir, ".netrc"),
+		}
+		config.mergeEnv()
+		conjur, err := NewClient(*config)
+		require.NoError(t, err)
+
+		cindyApiKey := keys["cindy@data-test"]
+		loginResult, err := conjur.Login("cindy@data-test", cindyApiKey)
+		require.NoError(t, err)
+		assert.Equal(t, cindyApiKey, string(loginResult))
+
+		// Check that api key was cached to the correct location
+		contents, err := os.ReadFile(config.NetRCPath)
+		assert.NoError(t, err)
+		assert.Contains(t, string(contents), config.ApplianceURL+"/authn")
+		assert.Contains(t, string(contents), string(cindyApiKey))
+
+		// Check that we can authenticate with the cached api key
+		authToken, err := conjur.Authenticate(authn.LoginPair{Login: "cindy@data-test", APIKey: string(loginResult)})
+		assert.NoError(t, err)
+		assert.NotEmpty(t, string(authToken))
 	})
 }
 
@@ -677,6 +763,9 @@ func runOIDCInternalAuthenticateTest(t *testing.T, token string, injectErr error
 	return client.InternalAuthenticate()
 }
 
+// Creates a Conjur client that points towards a mock Conjur server.
+// The server will return test values for the login, authenticate, and OIDC provider endpoints.
+// TODO: Use actual Conjur instance instead of mock server?
 func setupTestClient(t *testing.T) (*httptest.Server, *Client) {
 	mockConjurServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Listen for the login, authenticate, and oidc endpoints and return test values
@@ -731,6 +820,20 @@ type changeUserPasswordTestCase struct {
 }
 
 func TestClient_ChangeUserPassword(t *testing.T) {
+	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
+		t.Run("Change User Password not supported in Conjur Cloud", func(t *testing.T) {
+			utils, err := NewTestUtils(&Config{})
+			require.NoError(t, err)
+
+			conjur := utils.Client()
+
+			_, err = conjur.ChangeUserPassword("alice@data-test", "test-api-key", "new-password")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "Change User Password is not supported in Conjur Cloud")
+		})
+		return
+	}
+
 	testCases := []changeUserPasswordTestCase{
 		{
 			name:        "Change the password of a user",
@@ -782,6 +885,21 @@ type changeCurrentUserPasswordTestCase struct {
 }
 
 func TestClient_ChangeCurrentUserPassword(t *testing.T) {
+	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
+		t.Run("Change Current User Password not supported in Conjur Cloud", func(t *testing.T) {
+			utils, err := NewTestUtils(&Config{})
+			require.NoError(t, err)
+
+			conjur := utils.Client()
+			conjur.storage = &mockStorageProvider{}
+
+			_, err = conjur.ChangeCurrentUserPassword("new-password")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "Change User Password is not supported in Conjur Cloud")
+		})
+		return
+	}
+
 	testCases := []changeCurrentUserPasswordTestCase{
 		{
 			name:        "Change the password of a user",
@@ -848,6 +966,20 @@ type publicKeysTestCase struct {
 }
 
 func TestClient_PublicKeys(t *testing.T) {
+	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
+		t.Run("Display public keys not supported in Conjur Cloud", func(t *testing.T) {
+			utils, err := NewTestUtils(&Config{})
+			require.NoError(t, err)
+
+			conjur := utils.Client()
+
+			_, err = conjur.PublicKeys("user", "alice@data-test")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "Public Keys is not supported in Conjur Cloud")
+		})
+		return
+	}
+
 	testCases := []publicKeysTestCase{
 		{
 			name:       "Display public keys",

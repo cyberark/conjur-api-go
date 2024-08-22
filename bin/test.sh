@@ -50,11 +50,6 @@ else
 
   # Tests incompatible with Conjur Cloud which should be passed to the -skip flag
   incompatible_tests=(
-    "TestClient_RotateCurrentUserAPIKey"
-    "TestClient_RotateUserAPIKey"
-    "TestClient_ChangeUserPassword"
-    "TestClient_ChangeCurrentUserPassword"
-    "TestClient_PublicKeys"
     # Temporarily skipping due to recent breaking API change:
     "TestClient_LoadPolicy/A_policy_is_successfully_validated"
     "TestClient_LoadPolicy/A_policy_is_not_successfully_validated"

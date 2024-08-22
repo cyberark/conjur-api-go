@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
@@ -94,6 +95,10 @@ func (c *Client) createAuthRequest(req *http.Request) error {
 }
 
 func (c *Client) ChangeUserPassword(username string, password string, newPassword string) ([]byte, error) {
+	if isConjurCloudURL(c.config.ApplianceURL) {
+		return nil, errors.New("Change User Password is not supported in Conjur Cloud.")
+	}
+
 	req, err := c.ChangeUserPasswordRequest(username, password, newPassword)
 	if err != nil {
 		return nil, err
@@ -118,6 +123,10 @@ func (c *Client) ChangeCurrentUserPassword(newPassword string) ([]byte, error) {
 
 // Login exchanges a user's password for an API key.
 func (c *Client) Login(login string, password string) ([]byte, error) {
+	if isConjurCloudURL(c.config.ApplianceURL) && !strings.HasPrefix(login, "host/") {
+		return nil, errors.New("Login for users is not supported in Conjur Cloud.")
+	}
+
 	req, err := c.LoginRequest(login, password)
 	if err != nil {
 		return nil, err
@@ -272,6 +281,10 @@ func (c *Client) JWTAuthenticate(jwt, hostID string) ([]byte, error) {
 }
 
 func (c *Client) ListOidcProviders() ([]OidcProvider, error) {
+	if isConjurCloudURL(c.config.ApplianceURL) {
+		return nil, errors.New("List OIDC Providers is not supported in Conjur Cloud.")
+	}
+
 	req, err := c.ListOidcProvidersRequest()
 	if err != nil {
 		return nil, err
@@ -317,6 +330,10 @@ func (c *Client) RotateCurrentRoleAPIKey() ([]byte, error) {
 		return nil, err
 	}
 
+	if isConjurCloudURL(c.config.ApplianceURL) && !strings.HasPrefix(roleID, "host/") {
+		return nil, errors.New("Rotate API Key for users is not supported in Conjur Cloud.")
+	}
+
 	resp, err := c.rotateCurrentRoleAPIKey(roleID, password)
 	if err != nil {
 		return nil, err
@@ -333,6 +350,9 @@ func (c *Client) RotateCurrentRoleAPIKey() ([]byte, error) {
 //
 // The authenticated user must have update privilege on the role.
 func (c *Client) RotateUserAPIKey(userID string) ([]byte, error) {
+	if isConjurCloudURL(c.config.ApplianceURL) {
+		return nil, errors.New("Rotate API Key for users is not supported in Conjur Cloud.")
+	}
 	return c.rotateApiKeyAndEnforceKind(userID, "user")
 }
 
@@ -389,6 +409,10 @@ func (c *Client) rotateCurrentRoleAPIKey(roleID string, password string) (*http.
 }
 
 func (c *Client) PublicKeys(kind string, identifier string) ([]byte, error) {
+	if isConjurCloudURL(c.config.ApplianceURL) {
+		return nil, errors.New("Public Keys is not supported in Conjur Cloud.")
+	}
+
 	req, err := c.PublicKeysRequest(kind, identifier)
 	if err != nil {
 		return nil, err
