@@ -26,16 +26,23 @@ if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
 
   announce "Running tests for Go version: $GO_VERSION...";
 
+  # Tests incompatible with Conjur which should be passed to the -skip flag
+  incompatible_tests=(
+    "TestClient_OidcTokenAuthenticate"
+  )
+  export INCOMPATIBLE_TESTS=$(IFS='|'; echo "${incompatible_tests[*]}")
+
   docker compose run \
   --no-deps \
   -e CONJUR_AUTHN_API_KEY \
   -e GO_VERSION \
   -e PUBLIC_KEYS \
   -e JWT \
+  -e INCOMPATIBLE_TESTS \
   "test-$GO_VERSION" bash -c 'set -o pipefail;
            echo "Go version: $(go version)"
            output_dir="./output/$GO_VERSION"
-           go test -coverprofile="$output_dir/c.out" -v ./... | tee "$output_dir/junit.output";
+           go test -coverprofile="$output_dir/c.out" -skip "$INCOMPATIBLE_TESTS" -v ./... | tee "$output_dir/junit.output";
            exit_code=$?;
            echo "Tests finished - aggregating results...";
            cat "$output_dir/junit.output" | go-junit-report > "$output_dir/junit.xml";
@@ -47,6 +54,7 @@ else
   export CONJUR_ACCOUNT=conjur
   export CONJUR_AUTHN_LOGIN=$INFRAPOOL_CONJUR_AUTHN_LOGIN
   export CONJUR_AUTHN_TOKEN=$(echo "$INFRAPOOL_CONJUR_AUTHN_TOKEN" | base64 --decode)
+  export IDENTITY_TOKEN=$INFRAPOOL_IDENTITY_TOKEN
 
   # Tests incompatible with Conjur Cloud which should be passed to the -skip flag
   incompatible_tests=(
@@ -69,6 +77,7 @@ else
     -e CONJUR_AUTHN_TOKEN \
     -e PUBLIC_KEYS \
     -e JWT \
+    -e IDENTITY_TOKEN \
     -e INCOMPATIBLE_TESTS \
     "test-$GO_VERSION" bash -c 'set -o pipefail;
             go test -skip "$INCOMPATIBLE_TESTS" -v ./...'

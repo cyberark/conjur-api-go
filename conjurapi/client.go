@@ -65,6 +65,20 @@ func NewClientFromOidcCode(config Config, code, nonce, code_verifier string) (*C
 	return client, err
 }
 
+func NewClientFromOidcToken(config Config, token string) (*Client, error) {
+	authenticator := &authn.OidcTokenAuthenticator{
+		Token: token,
+	}
+	client, err := newClientWithAuthenticator(
+		config,
+		authenticator,
+	)
+	if err == nil {
+		authenticator.Authenticate = client.OidcTokenAuthenticate
+	}
+	return client, err
+}
+
 // ReadResponseBody fully reads a response and closes it.
 func ReadResponseBody(response io.ReadCloser) ([]byte, error) {
 	defer response.Close()
@@ -269,6 +283,19 @@ func (c *Client) OidcAuthenticateRequest(code, nonce, code_verifier string) (*ht
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+func (c *Client) OidcTokenAuthenticateRequest(token string) (*http.Request, error) {
+	authenticateURL := makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), "authenticate").String()
+
+	token = fmt.Sprintf("id_token=%s", token)
+	req, err := http.NewRequest("POST", authenticateURL, strings.NewReader(token))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	return req, nil
 }

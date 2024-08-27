@@ -159,6 +159,7 @@ pipeline {
                 identity_token: "${id_token}"
                 )
 
+              env.identity_token = id_token
               env.conj_token = conj_token
             }
           }
@@ -168,6 +169,7 @@ pipeline {
             INFRAPOOL_CONJUR_APPLIANCE_URL="${TENANT.conjur_cloud_url}"
             INFRAPOOL_CONJUR_AUTHN_LOGIN="${TENANT.login_name}"
             INFRAPOOL_CONJUR_AUTHN_TOKEN="${env.conj_token}"
+            INFRAPOOL_IDENTITY_TOKEN="${env.identity_token}"
             INFRAPOOL_TEST_CLOUD=true
           }
           steps {
