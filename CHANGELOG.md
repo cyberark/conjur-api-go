@@ -6,10 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.12.5] - 2024-08-08
+## [0.12.5] - 2024-08-27
 
 ### Added
 - Added support for rotating the API key of an authenticated host (CNJR-5699)
+- Return error when trying to call unsupported methods in Conjur Cloud (CNJR-5700)
 
 ## [0.12.4] - 2024-08-01
 
