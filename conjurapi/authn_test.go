@@ -635,7 +635,7 @@ func TestClient_InternalAuthenticate(t *testing.T) {
 		assert.NoError(t, err)
 
 		client.authenticator = &authn.OidcAuthenticator{
-			Authenticate: func(code, noce, code_verifier string) ([]byte, error) {
+			Authenticate: func(code, nonce, code_verifier string) ([]byte, error) {
 				return nil, errors.New("error")
 			},
 		}
@@ -1141,6 +1141,35 @@ func TestClient_JwtAuthenticate(t *testing.T) {
 				require.NoError(t, err)
 				assert.Contains(t, string(resp), fmt.Sprintf(`"username":"%s"`, "host/data/test/jwt-apps/workload@example.com"))
 			})
+		})
+	})
+}
+
+func TestClient_OidcTokenAuthenticate(t *testing.T) {
+	// This test currently only runs against Conjur Cloud, where we have a valid OIDC token
+	// from Identity.
+	if os.Getenv("IDENTITY_TOKEN") == "" {
+		t.Skip("IDENTITY_TOKEN is not set")
+	}
+	t.Run("Successfully creates a client", func(t *testing.T) {
+		authnType := "oidc"
+		serviceID := "cyberark"
+
+		conjur, err := NewClientFromOidcToken(Config{
+			Account:      "conjur",
+			ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL"),
+			AuthnType:    authnType,
+			ServiceID:    serviceID,
+		}, os.Getenv("IDENTITY_TOKEN"))
+		require.NoError(t, err)
+
+		t.Run("Successfully authenticates with the client", func(t *testing.T) {
+			_, err := conjur.authenticator.RefreshToken()
+			require.NoError(t, err)
+
+			resp, err := conjur.WhoAmI()
+			require.NoError(t, err)
+			assert.Contains(t, string(resp), fmt.Sprintf(`"username":"%s"`, os.Getenv("CONJUR_AUTHN_LOGIN")))
 		})
 	})
 }

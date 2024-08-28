@@ -47,6 +47,7 @@ else
   export CONJUR_ACCOUNT=conjur
   export CONJUR_AUTHN_LOGIN=$INFRAPOOL_CONJUR_AUTHN_LOGIN
   export CONJUR_AUTHN_TOKEN=$(echo "$INFRAPOOL_CONJUR_AUTHN_TOKEN" | base64 --decode)
+  export IDENTITY_TOKEN=$INFRAPOOL_IDENTITY_TOKEN
 
   # Tests incompatible with Conjur Cloud which should be passed to the -skip flag
   incompatible_tests=(
@@ -56,6 +57,9 @@ else
     "TestClient_FetchPolicy"
   )
   export INCOMPATIBLE_TESTS=$(IFS='|'; echo "${incompatible_tests[*]}")
+
+  output_dir="../output/cloud"
+  mkdir -p $output_dir
 
   docker build \
     --build-arg FROM_IMAGE="golang:$GO_VERSION" \
@@ -69,7 +73,17 @@ else
     -e CONJUR_AUTHN_TOKEN \
     -e PUBLIC_KEYS \
     -e JWT \
+    -e IDENTITY_TOKEN \
     -e INCOMPATIBLE_TESTS \
-    "test-$GO_VERSION" bash -c 'set -o pipefail;
-            go test -skip "$INCOMPATIBLE_TESTS" -v ./...'
+    -v "$(pwd)/../output:/conjur-api-go/output" \
+    "test-$GO_VERSION" bash -c 'set -xo pipefail;
+            output_dir="./output/cloud"
+            go test -coverprofile="$output_dir/c.out" -skip "$INCOMPATIBLE_TESTS" -v ./... | tee "$output_dir/junit.output";
+            exit_code=$?;
+            echo "Tests finished - aggregating results...";
+            cat "$output_dir/junit.output" | go-junit-report > "$output_dir/junit.xml";
+            gocov convert "$output_dir/c.out" | gocov-xml > "$output_dir/coverage.xml";
+            gocovmerge "./output/1.21/c.out" "$output_dir/c.out" > "$output_dir/merged-coverage.out";
+            gocov convert "$output_dir/merged-coverage.out" | gocov-xml > "$output_dir/merged-coverage.xml";
+            [ "$exit_code" -eq 0 ]' || failed
 fi

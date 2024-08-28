@@ -159,6 +159,7 @@ pipeline {
                 identity_token: "${id_token}"
                 )
 
+              env.identity_token = id_token
               env.conj_token = conj_token
             }
           }
@@ -168,17 +169,35 @@ pipeline {
             INFRAPOOL_CONJUR_APPLIANCE_URL="${TENANT.conjur_cloud_url}"
             INFRAPOOL_CONJUR_AUTHN_LOGIN="${TENANT.login_name}"
             INFRAPOOL_CONJUR_AUTHN_TOKEN="${env.conj_token}"
+            INFRAPOOL_IDENTITY_TOKEN="${env.identity_token}"
             INFRAPOOL_TEST_CLOUD=true
           }
           steps {
             script {
               infrapool.agentSh "./bin/test.sh"
+              infrapool.agentStash name: 'merged-out', includes: 'output/cloud/*.xml'
+              unstash 'merged-out'
+              cobertura autoUpdateHealth: false,
+                        autoUpdateStability: false,
+                        coberturaReportFile: 'output/cloud/merged-coverage.xml',
+                        conditionalCoverageTargets: '30, 0, 0',
+                        failUnhealthy: true,
+                        failUnstable: false,
+                        lineCoverageTargets: '30, 0, 0',
+                        maxNumberOfBuilds: 0,
+                        methodCoverageTargets: '30, 0, 0',
+                        onlyStable: false,
+                        sourceEncoding: 'ASCII',
+                        zoomCoverageChart: false
+              infrapool.agentSh 'cp output/cloud/merged-coverage.out .'
+              codacy action: 'reportCoverage', filePath: "output/cloud/merged-coverage.xml"
             }
           }
         }
       }
       post {
         always {
+          junit 'output/cloud/junit.xml'
           script {
             deleteConjurCloudTenant("${TENANT.id}")
           }
