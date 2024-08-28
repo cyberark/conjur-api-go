@@ -1146,6 +1146,11 @@ func TestClient_JwtAuthenticate(t *testing.T) {
 }
 
 func TestClient_OidcTokenAuthenticate(t *testing.T) {
+	// This test currently only runs against Conjur Cloud, where we have a valid OIDC token
+	// from Identity.
+	if os.Getenv("IDENTITY_TOKEN") == "" {
+		t.Skip("IDENTITY_TOKEN is not set")
+	}
 	t.Run("Successfully creates a client", func(t *testing.T) {
 		authnType := "oidc"
 		serviceID := "cyberark"
