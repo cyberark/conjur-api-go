@@ -731,6 +731,11 @@ func (c *Client) EnableAuthenticatorRequest(authenticatorType string, serviceID 
 	return request, nil
 }
 
+func (c *Client) AuthenticatorStatusRequest(authenticatorType string, serviceID string) (*http.Request, error) {
+	statusURL := makeRouterURL(c.authnURL(authenticatorType, serviceID), "status").String()
+	return http.NewRequest("GET", statusURL, nil)
+}
+
 func (c *Client) createTokenURL() string {
 	return makeRouterURL(c.config.ApplianceURL, "host_factory_tokens").String()
 }

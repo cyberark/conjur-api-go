@@ -100,3 +100,18 @@ func DryRunPolicyJSONResponse(resp *http.Response, obj interface{}) error {
 	}
 	return NewConjurError(resp)
 }
+
+// AuthenticatorStatusJSONResponse checks the HTTP status of the response. If it's less than
+// 300 or equal to 500, it returns the response body as JSON. Otherwise it
+// returns a NewConjurError.
+func AuthenticatorStatusJSONResponse(resp *http.Response, obj interface{}) error {
+	logResponse(resp)
+	if resp.StatusCode < 300 || resp.StatusCode == 500 {
+		body, err := readBody(resp)
+		if err != nil {
+			return err
+		}
+		return json.Unmarshal(body, obj)
+	}
+	return NewConjurError(resp)
+}
