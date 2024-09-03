@@ -1152,6 +1152,8 @@ func TestClient_AuthenticatorStatus(t *testing.T) {
 				conjur.AddSecret("conjur/authn-jwt/test/audience", "conjur")
 				conjur.AddSecret("conjur/authn-jwt/test/token-app-property", "email")
 				conjur.AddSecret("conjur/authn-jwt/test/identity-path", "data/test/jwt-apps")
+				err := conjur.EnableAuthenticator("jwt", "test", false)
+				require.NoError(t, err)
 			},
 			expectErr: false,
 			expectedResponse: &AuthenticatorStatusResponse{
