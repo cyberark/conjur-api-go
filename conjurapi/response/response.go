@@ -75,6 +75,30 @@ func JSONResponse(resp *http.Response, obj interface{}) error {
 	return NewConjurError(resp)
 }
 
+// JSONResponseWithAllowedStatusCodes checks the HTTP status of the response. If it's less than
+// 300 or equal to one of the provided values, it returns the response body as JSON. Otherwise it
+// returns a NewConjurError.
+func JSONResponseWithAllowedStatusCodes(resp *http.Response, obj interface{}, allowedStatusCodes []int) error {
+	logResponse(resp)
+	if resp.StatusCode < 300 || contains(allowedStatusCodes, resp.StatusCode) {
+		body, err := readBody(resp)
+		if err != nil {
+			return err
+		}
+		return json.Unmarshal(body, obj)
+	}
+	return NewConjurError(resp)
+}
+
+func contains(allowedStatusCodes []int, i int) bool {
+	for _, v := range allowedStatusCodes {
+		if v == i {
+			return true
+		}
+	}
+	return false
+}
+
 // EmptyResponse checks the HTTP status of the response. If it's less than
 // 300, it returns without an error. Otherwise it returns
 // a NewConjurError.
@@ -90,13 +114,12 @@ func EmptyResponse(resp *http.Response) error {
 // 300 or equal to 422, it returns the response body as JSON. Otherwise it
 // returns a NewConjurError.
 func DryRunPolicyJSONResponse(resp *http.Response, obj interface{}) error {
-	logResponse(resp)
-	if resp.StatusCode < 300 || resp.StatusCode == 422 {
-		body, err := readBody(resp)
-		if err != nil {
-			return err
-		}
-		return json.Unmarshal(body, obj)
-	}
-	return NewConjurError(resp)
+	return JSONResponseWithAllowedStatusCodes(resp, obj, []int{422})
+}
+
+// AuthenticatorStatusJSONResponse checks the HTTP status of the response. If it's less than
+// 300 or equal to 500, it returns the response body as JSON. Otherwise it
+// returns a NewConjurError.
+func AuthenticatorStatusJSONResponse(resp *http.Response, obj interface{}) error {
+	return JSONResponseWithAllowedStatusCodes(resp, obj, []int{500})
 }

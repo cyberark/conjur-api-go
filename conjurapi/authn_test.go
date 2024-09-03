@@ -1032,6 +1032,7 @@ var jwtAuthenticatorPolicy = `
   - !variable audience
   - !variable token-app-property
   - !variable identity-path
+  - !webservice status
   - !group authenticatable
   - !permit
     role: !group authenticatable
@@ -1094,6 +1095,115 @@ func TestClient_EnableAuthenticator(t *testing.T) {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestClient_AuthenticatorStatus(t *testing.T) {
+	testCases := []struct {
+		name               string
+		authnType          string
+		serviceID          string
+		expectErr          bool
+		expectedResponse   *AuthenticatorStatusResponse
+		authenticatorSetup func(t *testing.T, utils TestUtils)
+	}{
+		{
+			name:      "Returns error if authenticator type doesn't exist",
+			authnType: "non-existent",
+			serviceID: "test",
+			expectErr: true,
+		},
+		{
+			name:      "Returns error status if authenticator service doesn't exist",
+			authnType: "jwt",
+			serviceID: "non-existent",
+			expectErr: false,
+			expectedResponse: &AuthenticatorStatusResponse{
+				Status: "error",
+				Error:  "#<Errors::Authentication::Security::WebserviceNotFound: CONJ00005E Webservice 'authn-jwt/non-existent/status' not found>",
+			},
+		},
+		{
+			name:      "Returns error status if required variables are not set",
+			authnType: "jwt",
+			serviceID: "test",
+			authenticatorSetup: func(t *testing.T, utils TestUtils) {
+				conjur := utils.Client()
+				err := conjur.EnableAuthenticator("jwt", "test", true)
+				require.NoError(t, err)
+			},
+			expectErr: false,
+			expectedResponse: &AuthenticatorStatusResponse{
+				Status: "error",
+				Error:  "#<Errors::Conjur::RequiredSecretMissing: CONJ00037E Missing value for resource: conjur:variable:conjur/authn-jwt/test/public-keys>",
+			},
+		},
+		{
+			name:      "Returns disabled status if authenticator is not enabled",
+			authnType: "jwt",
+			serviceID: "test",
+			authenticatorSetup: func(t *testing.T, utils TestUtils) {
+				jwks := "{\"type\":\"jwks\",\"value\":" + os.Getenv("PUBLIC_KEYS") + "}"
+				conjur := utils.Client()
+				conjur.AddSecret("conjur/authn-jwt/test/public-keys", jwks)
+				conjur.AddSecret("conjur/authn-jwt/test/issuer", "jwt-server")
+				conjur.AddSecret("conjur/authn-jwt/test/audience", "conjur")
+				conjur.AddSecret("conjur/authn-jwt/test/token-app-property", "email")
+				conjur.AddSecret("conjur/authn-jwt/test/identity-path", "data/test/jwt-apps")
+				err := conjur.EnableAuthenticator("jwt", "test", false)
+				require.NoError(t, err)
+			},
+			expectErr: false,
+			expectedResponse: &AuthenticatorStatusResponse{
+				Status: "error",
+				Error:  "#<Errors::Authentication::Security::AuthenticatorNotWhitelisted: CONJ00004E 'authn-jwt/test' is not enabled>",
+			},
+		},
+		{
+			name:      "Returns ok status if authenticator is enabled",
+			authnType: "jwt",
+			serviceID: "test",
+			authenticatorSetup: func(t *testing.T, utils TestUtils) {
+				jwks := "{\"type\":\"jwks\",\"value\":" + os.Getenv("PUBLIC_KEYS") + "}"
+				conjur := utils.Client()
+				conjur.AddSecret("conjur/authn-jwt/test/public-keys", jwks)
+				conjur.AddSecret("conjur/authn-jwt/test/issuer", "jwt-server")
+				conjur.AddSecret("conjur/authn-jwt/test/audience", "conjur")
+				conjur.AddSecret("conjur/authn-jwt/test/token-app-property", "email")
+				conjur.AddSecret("conjur/authn-jwt/test/identity-path", "data/test/jwt-apps")
+				err := conjur.EnableAuthenticator("jwt", "test", true)
+				require.NoError(t, err)
+			},
+			expectErr: false,
+			expectedResponse: &AuthenticatorStatusResponse{
+				Status: "ok",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			utils, err := NewTestUtils(&Config{})
+			require.NoError(t, err)
+
+			err = utils.SetupWithAuthenticator("jwt", jwtAuthenticatorPolicy, jwtRolePolicy)
+			require.NoError(t, err)
+
+			// Run any case-specific setup
+			if tc.authenticatorSetup != nil {
+				tc.authenticatorSetup(t, utils)
+			}
+
+			conjur := utils.Client()
+
+			authnStatus, err := conjur.AuthenticatorStatus(tc.authnType, tc.serviceID)
+			if tc.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.EqualValues(t, tc.expectedResponse, authnStatus)
 			}
 		})
 	}

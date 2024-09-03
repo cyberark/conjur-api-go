@@ -23,6 +23,14 @@ type OidcProvider struct {
 	RedirectURI  string `json:"redirect_uri"`
 }
 
+// AuthenticatorStatusResponse contains information about
+// the status of an authenticator.
+type AuthenticatorStatusResponse struct {
+	// Status of the policy validation.
+	Status string `json:"status"`
+	Error  string `json:"error"`
+}
+
 func (c *Client) RefreshToken() (err error) {
 	// Fetch cached conjur access token if using OIDC
 	if c.GetConfig().AuthnType == "oidc" {
@@ -466,4 +474,19 @@ func (c *Client) EnableAuthenticator(authenticatorType string, serviceID string,
 	}
 
 	return nil
+}
+
+func (c *Client) AuthenticatorStatus(authenticatorType string, serviceID string) (*AuthenticatorStatusResponse, error) {
+	req, err := c.AuthenticatorStatusRequest(authenticatorType, serviceID)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := c.SubmitRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	obj := AuthenticatorStatusResponse{}
+	return &obj, response.AuthenticatorStatusJSONResponse(res, &obj)
 }
