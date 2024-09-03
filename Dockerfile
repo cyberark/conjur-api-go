@@ -2,11 +2,12 @@ ARG FROM_IMAGE="golang:1.22"
 FROM ${FROM_IMAGE}
 LABEL maintainer="CyberArk Software Ltd."
 
-CMD /bin/bash
+CMD ["/bin/bash"]
 EXPOSE 8080
 
 RUN apt-get update -y && \
-    apt-get install -y bash \
+    apt-get install -y --no-install-recommends \
+                       bash \
                        gcc \
                        git \
                        jq \
