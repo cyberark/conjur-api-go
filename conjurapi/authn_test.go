@@ -113,6 +113,7 @@ func TestClient_RotateCurrentUserAPIKey(t *testing.T) {
 		// Login as alice with a mock storage provider to store her API key
 		config := &Config{}
 		config.mergeEnv()
+		// file deepcode ignore NoHardcodedCredentials/test: This is a test file
 		conjur, err := NewClientFromKey(*config, authn.LoginPair{Login: "alice@data-test", APIKey: keys["alice@data-test"]})
 		assert.NoError(t, err)
 		conjur.storage = &mockStorageProvider{}
@@ -712,6 +713,7 @@ func TestClient_RefreshToken(t *testing.T) {
 		assert.NoError(t, err)
 
 		client.storage = &mockStorageProvider{
+			// file deepcode ignore HardcodedPassword/test: This is a test file
 			password: sample_token,
 		}
 		client.authenticator = &authn.OidcAuthenticator{}

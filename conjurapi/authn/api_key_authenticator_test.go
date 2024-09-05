@@ -19,6 +19,7 @@ func TestAPIKeyAuthenticator_RefreshToken(t *testing.T) {
 	}
 
 	t.Run("Given valid credentials returns the token bytes", func(t *testing.T) {
+		// file deepcode ignore NoHardcodedCredentials/test: This is a test file
 		login := "valid-login"
 		authenticator := APIKeyAuthenticator{
 			Authenticate: authenticate,

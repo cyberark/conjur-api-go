@@ -183,6 +183,7 @@ func TestClient_Resources(t *testing.T) {
 	config := Config{}
 	config.mergeEnv()
 
+	// file deepcode ignore NoHardcodedCredentials/test: This is a test file
 	conjur, err := NewClientFromKey(config, authn.LoginPair{Login: "host/data/test/kate", APIKey: keys["kate"]})
 	require.NoError(t, err)
 

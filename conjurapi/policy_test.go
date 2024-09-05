@@ -100,6 +100,7 @@ func TestClient_LoadPolicy(t *testing.T) {
 
 	t.Run("Given invalid login credentials", func(t *testing.T) {
 		t.Run("Returns 401", func(t *testing.T) {
+			// deepcode ignore NoHardcodedCredentials/test: This is a test file
 			conjurClient, err := NewClientFromKey(*config, authn.LoginPair{Login: "invalid-login", APIKey: "invalid-key"})
 			assert.NoError(t, err)
 

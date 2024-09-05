@@ -229,6 +229,7 @@ func TestClient_RetrieveSecret(t *testing.T) {
 	})
 
 	t.Run("Given configuration has invalid login credentials", func(t *testing.T) {
+		// file deepcode ignore NoHardcodedCredentials/test: This is a test file
 		login := "invalid-user"
 		apiKey := "invalid-key"
 
