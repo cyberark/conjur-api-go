@@ -74,7 +74,7 @@ func (c *Client) RoleMembers(roleID string) (members []map[string]interface{}, e
 }
 
 // RoleMemberships fetches memberships of a role, including
-// a list of groups of which a specific host or user is a member
+// only roles for which the given ID is a direct member
 func (c *Client) RoleMemberships(roleID string) (memberships []map[string]interface{}, err error) {
 	req, err := c.RoleMembershipsRequest(roleID)
 	if err != nil {
@@ -92,6 +92,29 @@ func (c *Client) RoleMemberships(roleID string) (memberships []map[string]interf
 	}
 
 	memberships = make([]map[string]interface{}, 0)
+	err = json.Unmarshal(data, &memberships)
+	return
+}
+
+// RoleMembershipsAll fetches all memberships of a role, including
+// inherited memberships, returning a list of member IDs
+func (c *Client) RoleMembershipsAll(roleID string) (memberships []string, err error) {
+	req, err := c.RoleMembershipsRequestWithOptions(roleID, true)
+	if err != nil {
+		return
+	}
+
+	resp, err := c.SubmitRequest(req)
+	if err != nil {
+		return
+	}
+
+	data, err := response.DataResponse(resp)
+	if err != nil {
+		return
+	}
+
+	memberships = make([]string, 0)
 	err = json.Unmarshal(data, &memberships)
 	return
 }

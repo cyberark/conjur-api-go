@@ -10,6 +10,7 @@ import (
 var roleTestPolicy = `
 - !host bob
 - !host jimmy
+- !host dean
 - !layer test-layer
 
 - !variable secret
@@ -24,6 +25,10 @@ var roleTestPolicy = `
   members: 
   - !host jimmy
   - !host bob
+
+- !grant
+  role: !host bob
+  member: !host dean
 `
 
 func TestClient_RoleExists(t *testing.T) {
@@ -103,11 +108,19 @@ func TestClient_RoleMembers(t *testing.T) {
 }
 
 func TestClient_RoleMemberships(t *testing.T) {
-	listMemberships := func(conjur *Client, id string, expected int) func(t *testing.T) {
+	testMemberships := func(conjur *Client, id string, expectedDirect, expectedAll int) func(t *testing.T) {
 		return func(t *testing.T) {
-			memberships, err := conjur.RoleMemberships(id)
-			assert.NoError(t, err)
-			assert.Len(t, memberships, expected)
+			t.Run("Direct memberships only", func(t *testing.T) {
+				memberships, err := conjur.RoleMemberships(id)
+				assert.NoError(t, err)
+				assert.Len(t, memberships, expectedDirect)
+			})
+
+			t.Run("All memberships", func(t *testing.T) {
+				memberships, err := conjur.RoleMembershipsAll(id)
+				assert.NoError(t, err)
+				assert.Len(t, memberships, expectedAll)
+			})
 		}
 	}
 
@@ -119,6 +132,7 @@ func TestClient_RoleMemberships(t *testing.T) {
 
 	conjur := utils.Client()
 
-	t.Run("List role memberships return memberships", listMemberships(conjur, "conjur:host:data/test/bob", 1))
-	t.Run("List role memberships return no memberships", listMemberships(conjur, "conjur:layer:data/test/test-layer", 0))
+	t.Run("Bob's memberships", testMemberships(conjur, "conjur:host:data/test/bob", 1, 2))
+	t.Run("Test layer memberships", testMemberships(conjur, "conjur:layer:data/test/test-layer", 0, 1))
+	t.Run("Dean's memberships", testMemberships(conjur, "conjur:host:data/test/dean", 1, 3))
 }

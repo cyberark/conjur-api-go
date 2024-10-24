@@ -370,11 +370,23 @@ func (c *Client) RoleMembersRequest(roleID string) (*http.Request, error) {
 }
 
 func (c *Client) RoleMembershipsRequest(roleID string) (*http.Request, error) {
+	return c.RoleMembershipsRequestWithOptions(roleID, false)
+}
+
+// RoleMembershipsRequestWithOptions crafts an HTTP request to Conjur's /role endpoint
+// allowing for either direct or all memberships to be returned.
+func (c *Client) RoleMembershipsRequestWithOptions(roleID string, includeAll bool) (*http.Request, error) {
 	account, kind, id, err := c.parseID(roleID)
 	if err != nil {
 		return nil, err
 	}
-	roleMembershipsURL := makeRouterURL(c.rolesURL(account), kind, url.QueryEscape(id)).withFormattedQuery("memberships")
+
+	query := "memberships"
+	if includeAll {
+		query = "all"
+	}
+
+	roleMembershipsURL := makeRouterURL(c.rolesURL(account), kind, url.QueryEscape(id)).withFormattedQuery(query)
 
 	return http.NewRequest(
 		"GET",
