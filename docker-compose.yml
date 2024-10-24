@@ -23,31 +23,6 @@ services:
     depends_on:
       - postgres
 
-  cli5:
-    image: cyberark/conjur-cli:5
-    environment:
-      CONJUR_APPLIANCE_URL: http://conjur
-      CONJUR_ACCOUNT: conjur
-
-  test-1.21:
-    build:
-      context: .
-      args:
-        FROM_IMAGE: "golang:1.21"
-    ports:
-      - 8080
-    depends_on:
-      - conjur
-    volumes:
-      - ./output:/conjur-api-go/output
-    environment:
-      CONJUR_DATA_KEY:
-      CONJUR_APPLIANCE_URL: http://conjur
-      CONJUR_ACCOUNT: conjur
-      CONJUR_AUTHN_LOGIN: admin
-      CONJUR_AUTHN_API_KEY:
-      GO_VERSION:
-
   test-1.22:
     build:
       context: .
@@ -67,11 +42,30 @@ services:
       CONJUR_AUTHN_API_KEY:
       GO_VERSION:
 
+  test-1.23:
+    build:
+      context: .
+      args:
+        FROM_IMAGE: "golang:1.23"
+    ports:
+      - 8080
+    depends_on:
+      - conjur
+    volumes:
+      - ./output:/conjur-api-go/output
+    environment:
+      CONJUR_DATA_KEY:
+      CONJUR_APPLIANCE_URL: http://conjur
+      CONJUR_ACCOUNT: conjur
+      CONJUR_AUTHN_LOGIN: admin
+      CONJUR_AUTHN_API_KEY:
+      GO_VERSION:
+
   dev:
     build:
       context: .
       args:
-        FROM_IMAGE: "golang:1.22"
+        FROM_IMAGE: "golang:1.23"
     ports:
       - 8080
     depends_on:

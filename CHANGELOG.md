@@ -6,9 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.12.5] - 2024-08-29
+## [0.12.5] - 2024-10-23
 
 ### Added
+- Added RoleMembershipsAll to fetch inherited memberships for a role (CNJR-5213)
 - Added support for creating a client using an OIDC token (CNJR-6081)
 - Added support for rotating the API key of an authenticated host (CNJR-5699)
 - Added support for checking authenticator status (CNJR-6371)

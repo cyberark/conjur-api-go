@@ -83,7 +83,7 @@ else
             echo "Tests finished - aggregating results...";
             cat "$output_dir/junit.output" | go-junit-report > "$output_dir/junit.xml";
             gocov convert "$output_dir/c.out" | gocov-xml > "$output_dir/coverage.xml";
-            gocovmerge "./output/1.21/c.out" "$output_dir/c.out" > "$output_dir/merged-coverage.out";
+            gocovmerge "./output/1.22/c.out" "$output_dir/c.out" > "$output_dir/merged-coverage.out";
             gocov convert "$output_dir/merged-coverage.out" | gocov-xml > "$output_dir/merged-coverage.xml";
             [ "$exit_code" -eq 0 ]' || failed
 fi

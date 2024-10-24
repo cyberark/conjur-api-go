@@ -8,7 +8,7 @@ announce "Compose Project Name: $COMPOSE_PROJECT_NAME"
 
 main() {
   announce "Pulling images..."
-  docker compose pull "conjur" "postgres" "cli5"
+  docker compose pull "conjur" "postgres"
   echo "Done!"
 
   announce "Building images..."
