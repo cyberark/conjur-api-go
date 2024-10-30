@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.6] - 2024-10-30
+
+### Security
+- Remove debug logging of "Authorization" header when processing requests (CNJR-7025)
+
 ## [0.12.5] - 2024-10-23
 
 ### Added

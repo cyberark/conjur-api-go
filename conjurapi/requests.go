@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
-	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 )
 
 func makeFullId(account, kind, id string) string {
@@ -91,7 +90,6 @@ func (c *Client) SubmitRequest(req *http.Request) (resp *http.Response, err erro
 }
 
 func (c *Client) submitRequestWithCustomAuth(req *http.Request) (resp *http.Response, err error) {
-	logging.ApiLog.Debugf("req: %+v\n", req)
 	resp, err = c.httpClient.Do(req)
 	if err != nil {
 		return
