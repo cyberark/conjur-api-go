@@ -33,6 +33,10 @@ type PolicyResponse struct {
 	Version uint32 `json:"version"`
 }
 
+// DryRunPolicyResponseItems contains Conjur Resources.
+type DryRunPolicyResponseItems struct {
+	Items []Resource `json:"items"`
+
 // DryRunErrors contains information about any errors that occurred during
 // policy validation.
 type DryRunErrors struct {
@@ -45,8 +49,9 @@ type DryRunErrors struct {
 // whether it was successful.
 type DryRunPolicyResponse struct {
 	// Status of the policy validation.
-	Status string         `json:"status"`
-	Errors []DryRunErrors `json:"errors"`
+	Status  string                   `json:"status"`
+	Created DryRunPolicyResonseItems `json:"created"`
+	Errors  []DryRunErrors           `json:"errors"`
 }
 
 // LoadPolicy submits new policy data or policy changes to the server.
