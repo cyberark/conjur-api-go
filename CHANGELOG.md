@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.7] - 2024-11-18
+
+### Fixed
+
+- Updated `shellescape` package to fix Go error on installation
+  [cyberark/conjur-api-go#182](https://github.com/cyberark/conjur-api-go/issues/182)
+
 ## [0.12.6] - 2024-10-30
 
 ### Security
@@ -231,7 +238,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.12.4...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.12.7...HEAD
+[0.12.7]: https://github.com/cyberark/conjur-api-go/compare/v0.12.6...v0.12.7
+[0.12.6]: https://github.com/cyberark/conjur-api-go/compare/v0.12.5...v0.12.6
+[0.12.5]: https://github.com/cyberark/conjur-api-go/compare/v0.12.4...v0.12.5
 [0.12.4]: https://github.com/cyberark/conjur-api-go/compare/v0.12.3...v0.12.4
 [0.12.3]: https://github.com/cyberark/conjur-api-go/compare/v0.12.2...v0.12.3
 [0.12.2]: https://github.com/cyberark/conjur-api-go/compare/v0.12.1...v0.12.2
