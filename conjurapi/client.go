@@ -84,7 +84,7 @@ func ReadResponseBody(response io.ReadCloser) ([]byte, error) {
 func NewClientFromToken(config Config, token string) (*Client, error) {
 	return newClientWithAuthenticator(
 		config,
-		&authn.TokenAuthenticator{token},
+		&authn.TokenAuthenticator{Token: token},
 	)
 }
 

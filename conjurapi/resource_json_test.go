@@ -2,6 +2,7 @@ package conjurapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,31 +11,17 @@ import (
 const (
 	jsonA = `
 	{
-		"identifier": "cucumber:group:example/alpha/secret-users",
-		"id": "example/alpha/secret-users",
-		"type": "group",
-		"owner": "cucumber:policy:example/alpha",
-		"policy": "cucumber:policy:root",
-		"permissions": {
-			"execute": [
-				"cucumber:variable:example/alpha/secret01",
-				"cucumber:variable:example/alpha/secret02"
-			],
-			"read": [
-				"cucumber:variable:example/alpha/secret01",
-				"cucumber:variable:example/alpha/secret02"
-			]
-		},
-		"annotations": {
-			"key": "value"
-		},
-		"members": [
-			"cucumber:policy:example/alpha",
-			"cucumber:user:annie@example"
-		],
-		"memberships": [],
-		"restricted_to": []
+		"identifier": "demo:user:alice",
+		"id": "alice",
+		"type": "user",
+		"owner": "demo:user:admin",
+		"policy": "demo:user:example",
+		"annotations": {"key": "value"},
+		"permissions": {"execute": ["demo:variable:example/alpha/secret01","demo:variable"]},
+		"members": ["demo:user:admin"],"memberships": ["demo:group:secret-users"],
+		"restricted_to": ["127.0.0.1"]
 	}`
+
 	jsonB = `
 	{
 		"identifier": "cucumber:variable:example/alpha/secret01",
@@ -58,19 +45,21 @@ const (
 
 var (
 	resourceA = Resource{
-		Identifier: "cucumber:group:example/alpha/secret-users",
-		Id:         "example/alpha/secret-users",
-		Type:       "group",
-		Owner:      "cucumber:policy:example/alpha",
-		Policy:     "cucumber:policy:root",
-		Permissions: *map[string][]string{
-			"execute": []string{"cucumber:variable:example/alpha/secret01", "cucumber:variable:example/alpha/secret02"},
-			"read":    []string{"cucumber:variable:example/alpha/secret01", "cucumber:variable:example/alpha/secret02"},
+		Identifier:  "demo:user:alice",
+		Id:          "alice",
+		Type:        "user",
+		Owner:       "demo:user:admin",
+		Policy:      "demo:user:example",
+		Annotations: map[string]string{"key": "value"},
+		Permissions: &map[string][]string{
+			"execute": {
+				"demo:variable:example/alpha/secret01",
+				"demo:variable",
+			},
 		},
-		Annotations:   map[string]string{"key": "value"},
-		Members:       *[]string{"cucumber:policy:example/alpha", "cucumber:user:annie@example"},
-		Memberships:   *[]string{},
-		Restricted_To: *[]string{},
+		Members:      &[]string{"demo:user:admin"},
+		Memberships:  &[]string{"demo:group:secret-users"},
+		RestrictedTo: &[]string{"127.0.0.1"},
 	}
 
 	resourceB = Resource{
@@ -79,7 +68,7 @@ var (
 		Type:       "variable",
 		Owner:      "cucumber:policy:example/alpha",
 		Policy:     "cucumber:policy:root",
-		Permitted: *map[string][]string{
+		Permitted: &map[string][]string{
 			"execute": []string{"cucumber:group:example/alpha/secret-users"},
 			"read":    []string{"cucumber:group:example/alpha/secret-users"},
 		},
@@ -89,7 +78,7 @@ var (
 )
 
 func TestResource_UnmarshalJSON(t *testing.T) {
-	var unmarshalled_resource Resource
+	var unmarshalledResource Resource
 	tests := []struct {
 		name string
 		arg  string
@@ -108,8 +97,9 @@ func TestResource_UnmarshalJSON(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			json.Unmarshal([]byte(tt.arg), &unmarshalled_resource)
-			assert.Equal(t, &tt.want, &unmarshalled_resource)
+			json.Unmarshal([]byte(tt.arg), &unmarshalledResource)
+			assert.Equal(t, &tt.want, &unmarshalledResource)
+			unmarshalledResource = Resource{}
 		})
 	}
 }
@@ -161,7 +151,7 @@ func TestResources_MarshalJSON(t *testing.T) {
 	}
 }
 func TestResources_UnmarshalJSON(t *testing.T) {
-	var unmarshalled_resources Resources
+	var unmarshalledResources Resources
 	tests := []struct {
 		name string
 		arg  string
@@ -175,8 +165,8 @@ func TestResources_UnmarshalJSON(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			json.Unmarshal([]byte(tt.arg), &unmarshalled_resources)
-			assert.Equal(t, &tt.want, &unmarshalled_resources)
+			json.Unmarshal([]byte(tt.arg), &unmarshalledResources)
+			assert.Equal(t, &tt.want, &unmarshalledResources)
 		})
 	}
 }
