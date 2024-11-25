@@ -12,6 +12,7 @@ import (
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var sample_cert = `
@@ -39,7 +40,7 @@ func TestNewClientFromKey(t *testing.T) {
 			authn.LoginPair{Login: "login", APIKey: "api-key"},
 		)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.IsType(t, &authn.APIKeyAuthenticator{}, client.authenticator)
 	})
 }
@@ -65,7 +66,7 @@ func TestNewClientFromTokenFile(t *testing.T) {
 	t.Run("Has authenticator of type TokenFileAuthenticator", func(t *testing.T) {
 		client, err := NewClientFromTokenFile(Config{Account: "account", ApplianceURL: "appliance-url"}, "token-file")
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.IsType(t, &authn.TokenFileAuthenticator{}, client.authenticator)
 	})
 	t.Run("Returns error when using nonexistent SSLCertPath", func(t *testing.T) {
@@ -83,7 +84,7 @@ func TestNewClientFromEnvironment(t *testing.T) {
 		config := Config{Account: "account", ApplianceURL: "appliance-url"}
 		os.Setenv("CONJUR_AUTHN_TOKEN_FILE", "token-file")
 		client, err := NewClientFromEnvironment(config)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.IsType(t, &authn.TokenFileAuthenticator{}, client.authenticator)
 	})
 	t.Run("Calls NewClientFromToken when CONJUR_AUTHN_TOKEN is set", func(t *testing.T) {
@@ -92,7 +93,7 @@ func TestNewClientFromEnvironment(t *testing.T) {
 		config := Config{Account: "account", ApplianceURL: "appliance-url"}
 		os.Setenv("CONJUR_AUTHN_TOKEN", "some-token")
 		client, err := NewClientFromEnvironment(config)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.IsType(t, &authn.TokenAuthenticator{}, client.authenticator)
 	})
 	t.Run("Calls NewClientFromJwt when CONJUR_AUTHN_JWT_SERVICE is set", func(t *testing.T) {
@@ -101,7 +102,7 @@ func TestNewClientFromEnvironment(t *testing.T) {
 		config := Config{Account: "account", ApplianceURL: "appliance-url"}
 		os.Setenv("CONJUR_AUTHN_JWT_SERVICE_ID", "jwt-service")
 		client, err := NewClientFromEnvironment(config)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.IsType(t, &authn.JWTAuthenticator{}, client.authenticator)
 	})
 	t.Run("Calls NewClientFromKey with when LoginPair is retrieved from env variables", func(t *testing.T) {
@@ -111,7 +112,7 @@ func TestNewClientFromEnvironment(t *testing.T) {
 		os.Setenv("CONJUR_AUTHN_LOGIN", "user")
 		os.Setenv("CONJUR_AUTHN_API_KEY", "password")
 		client, err := NewClientFromEnvironment(config)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.IsType(t, &authn.APIKeyAuthenticator{}, client.authenticator)
 	})
 
@@ -159,14 +160,14 @@ func TestNewClientFromJwt(t *testing.T) {
 
 		client, err := NewClientFromJwt(config)
 		assert.NoError(t, err)
-		assert.NotNil(t, client)
+		require.NotNil(t, client)
 
 		// Verify that the client authenticator is of type TokenAuthenticator
 		assert.IsType(t, &authn.JWTAuthenticator{}, client.authenticator)
 
 		// Expect it to fail without a mocked JWT server
 		token, err := client.authenticator.(*authn.JWTAuthenticator).RefreshToken()
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Equal(t, "", string(token))
 	})
 
@@ -188,11 +189,11 @@ func TestNewClientFromJwt(t *testing.T) {
 		assert.NotNil(t, client)
 
 		// Verify that the client authenticator is of type TokenAuthenticator
-		assert.IsType(t, &authn.JWTAuthenticator{}, client.authenticator)
+		require.IsType(t, &authn.JWTAuthenticator{}, client.authenticator)
 
 		// Verify that the JWT authenticator succeeds
 		token, err := client.authenticator.(*authn.JWTAuthenticator).RefreshToken()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "test-access-token", string(token))
 	})
 
@@ -203,7 +204,7 @@ func TestNewClientFromJwt(t *testing.T) {
 
 		tempDir := t.TempDir()
 		err := os.WriteFile(tempDir+"/jwt-token", []byte("jwt-token"), 0644)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		config := Config{
 			Account:      "myaccount",
@@ -215,10 +216,10 @@ func TestNewClientFromJwt(t *testing.T) {
 
 		client, err := NewClientFromJwt(config)
 		assert.NoError(t, err)
-		assert.NotNil(t, client)
+		require.NotNil(t, client)
 
 		// Verify that the client authenticator is of type TokenAuthenticator
-		assert.IsType(t, &authn.JWTAuthenticator{}, client.authenticator)
+		require.IsType(t, &authn.JWTAuthenticator{}, client.authenticator)
 		// Verify that the JWT token is read correctly
 		client.authenticator.(*authn.JWTAuthenticator).RefreshJWT()
 		assert.Equal(t, "jwt-token", client.authenticator.(*authn.JWTAuthenticator).JWT)
@@ -238,7 +239,7 @@ func TestNewClientFromJwt(t *testing.T) {
 		}
 
 		client, err := NewClientFromJwt(config)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Expect it to fail without a mocked JWT server
 		token, err := client.authenticator.RefreshToken()
@@ -262,7 +263,7 @@ func TestNewClientFromJwt(t *testing.T) {
 
 		client, err := NewClientFromJwt(config)
 		assert.NoError(t, err)
-		assert.NotNil(t, client)
+		require.NotNil(t, client)
 
 		// Verify that the JWT authenticator succeeds
 		token, err := client.authenticator.RefreshToken()
@@ -308,7 +309,7 @@ func TestNewClientFromToken(t *testing.T) {
 	t.Run("Has authenticator of type TokenAuthenticator", func(t *testing.T) {
 		client, err := NewClientFromToken(Config{Account: "account", ApplianceURL: "appliance-url"}, "token")
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.IsType(t, &authn.TokenAuthenticator{}, client.authenticator)
 	})
 }
@@ -318,7 +319,7 @@ func TestNewClientFromOidcCode(t *testing.T) {
 		config := Config{ServiceID: "test", AuthnType: "oidc", Account: "account", ApplianceURL: "appliance-url"}
 		client, err := NewClientFromOidcCode(config, "test-code", "test-nonce", "test-code-verifier")
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.IsType(t, &authn.OidcAuthenticator{}, client.authenticator)
 	})
 }
@@ -484,7 +485,7 @@ func TestClient_HttpClientTimeoutValue(t *testing.T) {
 		client, err := createHttpClient(config)
 
 		assert.NoError(t, err)
-		assert.NotNil(t, client)
+		require.NotNil(t, client)
 		assert.Equal(t, time.Second*time.Duration(HttpTimeoutDefaultValue), client.Timeout)
 	})
 	t.Run("Create HTTP client with no timeout", func(t *testing.T) {
@@ -492,7 +493,7 @@ func TestClient_HttpClientTimeoutValue(t *testing.T) {
 		client, err := createHttpClient(config)
 
 		assert.NoError(t, err)
-		assert.NotNil(t, client)
+		require.NotNil(t, client)
 		assert.Equal(t, time.Second*time.Duration(0), client.Timeout)
 	})
 	t.Run("Create HTTP client with specific timeout", func(t *testing.T) {
@@ -500,7 +501,7 @@ func TestClient_HttpClientTimeoutValue(t *testing.T) {
 		client, err := createHttpClient(config)
 
 		assert.NoError(t, err)
-		assert.NotNil(t, client)
+		require.NotNil(t, client)
 		assert.Equal(t, time.Second*time.Duration(5), client.Timeout)
 	})
 }

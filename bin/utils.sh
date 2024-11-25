@@ -18,11 +18,24 @@ exec_on() {
 
 function teardown {
   docker compose down -v
+  docker compose down --remove-orphans
+  unset API_PKGS
+  unset API_TESTS
 }
 
 failed() {
   announce "TESTS FAILED"
+  teardown
   exit 1
+}
+
+# Docker program name rules: must consist only of lowercase alphanumeric characters,
+# hyphens, and underscores as well as start with a letter or number
+function project_nameable() {
+  local split=$(echo "$1" | tr ',.@/' '-')
+  local lower=$(echo "$split" | tr '[:upper:]' '[:lower:]')
+  local shrnk=$(echo "$lower" | tr -d 'aeiou')
+  echo "$shrnk"
 }
 
 # Starts a temporary JWT issuer service and exports the public keys and JWT token

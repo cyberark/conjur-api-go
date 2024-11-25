@@ -8,6 +8,45 @@ import (
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
+// Resource contains information about the Conjur Resource
+type Resource struct {
+	/*
+		There are two types of resources in conjur:
+		Roles, which can be given given permissions on other resources and granted other roles, and
+		Non-Role Resources, which cannot be given given permissions or granted roles.
+
+		Types of Roles:
+		   * Group
+		   * Host
+		   * Layer
+		   * Policy
+		   * User
+		Types of Non-Role Resources:
+		   * Variable
+		   * Webservice
+	*/
+
+	//* Fields for all resources
+	Identifier  string            `json:"identifier"`
+	Id          string            `json:"id"`
+	Type        string            `json:"type"`
+	Owner       string            `json:"owner"`
+	Policy      string            `json:"policy"`
+	Annotations map[string]string `json:"annotations"`
+
+	//* Field exlusively for roles
+	Permitted *map[string][]string `json:"permitted,omitempty"`
+
+	//* Fields that we do not put into json for Roles
+	Permissions  *map[string][]string `json:"permissions,omitempty"`
+	Members      *[]string            `json:"members,omitempty"`
+	Memberships  *[]string            `json:"memberships,omitempty"`
+	RestrictedTo *[]string            `json:"restricted_to,omitempty"`
+}
+
+// Resources contains Resource Structs
+type Resources []Resource
+
 type ResourceFilter struct {
 	Kind   string
 	Search string
