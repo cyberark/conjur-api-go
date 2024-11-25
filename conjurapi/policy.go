@@ -46,12 +46,20 @@ type DryRunError struct {
 	Message string `json:"message"`
 }
 
+// DryRunPolicyUpdates defines the specific policy dry run response details on
+// which policy updates are modified by a policy load.
+type DryRunPolicyUpdates struct {
+	Before DryRunPolicyResponseItems `json:"before"`
+	After  DryRunPolicyResponseItems `json:"after"`
+}
+
 // DryRunPolicyResponse contains information about the policy validation and
 // whether it was successful.
 type DryRunPolicyResponse struct {
 	// Status of the policy validation.
 	Status  string                    `json:"status"`
 	Created DryRunPolicyResponseItems `json:"created"`
+	Updated DryRunPolicyUpdates       `json:"updated"`
 	Errors  []DryRunError             `json:"errors"`
 }
 

@@ -53,10 +53,11 @@ func TestPolicy_LoadPolicyModes(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			hostname := "bob"
+			hostname := randomName(12)
 			policy := fmt.Sprintf(
 				`- !host %s`,
-				hostname)
+				hostname,
+			)
 
 			resp, err := conjur.LoadPolicy(
 				tc.policyMode,
@@ -88,16 +89,8 @@ func TestPolicy_LoadPolicy(t *testing.T) {
 
 	conjur := utils.Client()
 
-	randomizer := rand.New(rand.NewSource(time.Now().UnixNano()))
-
 	t.Run("A new role is reported in the policy load response", func(t *testing.T) {
-		const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
-		result := make([]byte, 12)
-		for i := range result {
-			result[i] = chars[randomizer.Intn(len(chars))]
-		}
-
-		hostname := string(result)
+		hostname := randomName(12)
 		policy := fmt.Sprintf(`
 - !host
   id: %s
@@ -146,18 +139,12 @@ func TestPolicy_DryRunPolicy(t *testing.T) {
 
 	conjur := utils.Client()
 
-	randomizer := rand.New(rand.NewSource(time.Now().UnixNano()))
-
 	t.Run("A policy is successfully validated", func(t *testing.T) {
-		const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
-		result := make([]byte, 12)
-		for i := range result {
-			result[i] = chars[randomizer.Intn(len(chars))]
-		}
-
-		hostname := string(result)
-		policy := fmt.Sprintf(`
-- !host %s`, hostname)
+		hostname := randomName(12)
+		policy := fmt.Sprintf(
+			`- !host %s`,
+			hostname,
+		)
 
 		resp, err := conjur.DryRunPolicy(
 			PolicyModePut,
@@ -170,33 +157,11 @@ func TestPolicy_DryRunPolicy(t *testing.T) {
 		assert.Empty(t, resp.Errors)
 	})
 
-	t.Run("A policy is not successfully validated", func(t *testing.T) {
-		const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
-		result := make([]byte, 12)
-		for i := range result {
-			result[i] = chars[randomizer.Intn(len(chars))]
-		}
-
-		hostname := string(result)
-		policy := fmt.Sprintf(`
-- host %s
-`, hostname)
-
-		resp, err := conjur.DryRunPolicy(
-			PolicyModePut,
-			utils.PolicyBranch(),
-			strings.NewReader(policy),
+	t.Run("A policy dryrun returns the created resources", func(t *testing.T) {
+		// difference from this
+		originalPolicy := fmt.Sprintf(
+			`# `,
 		)
-
-		assert.Nil(t, err)
-		assert.Equal(t, "Invalid YAML", resp.Status)
-		require.Equal(t, 1, len(resp.Errors))
-		assert.Equal(t, 0, resp.Errors[0].Line)
-		assert.Equal(t, 0, resp.Errors[0].Column)
-		assert.Equal(t, fmt.Sprintf("undefined method `referenced_records' for \"host %s\":String\n", hostname), resp.Errors[0].Message)
-	})
-
-	t.Run("A policy dryrun successfully returns a Created section", func(t *testing.T) {
 		// from Policy Dry Run SD, "Simple Examples: Raw Diff, Mapper, DTOs":
 		policy := fmt.Sprintf(`
       - !policy
@@ -218,19 +183,106 @@ func TestPolicy_DryRunPolicy(t *testing.T) {
               - !variable secret01
         `)
 
+		_, err := conjur.LoadPolicy(
+			PolicyModePut,
+			utils.PolicyBranch(),
+			strings.NewReader(originalPolicy),
+		)
+		require.NoError(t, err)
+
 		resp, err := conjur.DryRunPolicy(
 			PolicyModePut,
 			utils.PolicyBranch(),
 			strings.NewReader(policy),
 		)
 
+		// General assertions that the request was successful
 		assert.NoError(t, err)
+		assert.Empty(t, resp.Errors)
 		assert.Equal(t, "Valid YAML", resp.Status)
+
+		// Verify the shape and spot check the content
 		require.NotNil(t, resp.Created)
-		assert.NotNil(t, resp.Created.Items)
-		// TODO: when the primitives.go are updated this assert can be changed to Equal
-		//       and "show me" can be changed to reflect the expected result
-		assert.NotEqual(t, "show me", resp.Created.Items)
+		assert.Len(t, resp.Created.Items, 3)
+		iUser := 0
+		iPol := 1
+		iVar := 2
+		resourceUser := resp.Created.Items[iUser]
+		assert.Equal(t, "conjur:policy:data/test", resourceUser.Owner)
+		resourcePolicy := resp.Created.Items[iPol]
+		assert.NotNil(t, resourcePolicy.Members)
+		resourceVariable := resp.Created.Items[iVar]
+		assert.Equal(t, "data/test/example/secret01", resourceVariable.Id)
+	})
+
+	t.Run("A policy dry run returns the updated resources", func(t *testing.T) {
+		hostname := randomName(12)
+		originalPolicy := fmt.Sprintf(
+			`- !host %s`,
+			hostname,
+		)
+
+		conjur.LoadPolicy(
+			PolicyModePut,
+			utils.PolicyBranch(),
+			strings.NewReader(originalPolicy),
+		)
+
+		// Update the host to add an annotation
+		updatedPolicy := fmt.Sprintf(
+			`
+- !host
+  id: %s
+  annotations:
+    name: "test name"
+`,
+			hostname,
+		)
+
+		resp, err := conjur.DryRunPolicy(
+			PolicyModePut,
+			utils.PolicyBranch(),
+			strings.NewReader(updatedPolicy),
+		)
+
+		// General assertions that the request was successful
+		assert.NoError(t, err)
+		assert.Empty(t, resp.Errors)
+		assert.Equal(t, "Valid YAML", resp.Status)
+
+		expectedHostID := fmt.Sprintf("data/test/%s", hostname)
+
+		// Verify the specific content of the updated policy resources
+		assert.Len(t, resp.Updated.Before.Items, 1)
+		before := resp.Updated.Before.Items[0]
+		assert.Equal(t, before.Id, expectedHostID)
+		assert.Empty(t, before.Annotations)
+
+		assert.Len(t, resp.Updated.After.Items, 1)
+		after := resp.Updated.After.Items[0]
+		assert.Equal(t, after.Id, expectedHostID)
+		assert.Equal(t, after.Annotations["name"], "test name")
+	})
+
+	t.Run("A policy is not successfully validated", func(t *testing.T) {
+		hostname := randomName(12)
+		policy := fmt.Sprintf(
+			`- host %s`,
+			hostname,
+		)
+
+		resp, err := conjur.DryRunPolicy(
+			PolicyModePut,
+			utils.PolicyBranch(),
+			strings.NewReader(policy),
+		)
+
+		assert.Nil(t, err)
+		assert.Equal(t, "Invalid YAML", resp.Status)
+		require.Equal(t, 1, len(resp.Errors))
+		assert.Equal(t, 0, resp.Errors[0].Line)
+		assert.Equal(t, 0, resp.Errors[0].Column)
+		assert.Equal(t, fmt.Sprintf("undefined method `referenced_records' for \"host %s\":String\n", hostname), resp.Errors[0].Message)
 	})
 }
 
@@ -242,12 +294,16 @@ func TestPolicy_FetchPolicy(t *testing.T) {
 	utils, err := NewTestUtils(config)
 	require.NoError(t, err)
 
+	_, err = utils.Setup("#")
+	assert.NoError(t, err)
+
 	conjur := utils.Client()
 
 	hostname := "bob"
-	policy := fmt.Sprintf(`
-- !host %s
-`, hostname)
+	policy := fmt.Sprintf(
+		`- !host %s`,
+		hostname,
+	)
 
 	_, err = conjur.LoadPolicy(
 		PolicyModePut,
@@ -291,4 +347,17 @@ func TestPolicy_FetchPolicy(t *testing.T) {
 			assert.Equal(t, 404, conjurError.Code)
 		})
 	})
+}
+
+func randomName(length int) string {
+	const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+
+	randomizer := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	result := make([]byte, length)
+	for i := range result {
+		result[i] = chars[randomizer.Intn(len(chars))]
+	}
+
+	return string(result)
 }
