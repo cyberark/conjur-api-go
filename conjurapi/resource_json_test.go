@@ -74,7 +74,7 @@ var (
 		},
 		Annotations: map[string]string{"key": "value"},
 	}
-	resourceList = Resources{resourceA, resourceB}
+	resourceList = []Resource{resourceA, resourceB}
 )
 
 func TestResource_UnmarshalJSON(t *testing.T) {
@@ -133,7 +133,7 @@ func TestResource_MarshalJSON(t *testing.T) {
 func TestResources_MarshalJSON(t *testing.T) {
 	tests := []struct {
 		name string
-		arg  Resources
+		arg  []Resource
 		want string
 	}{
 		{
@@ -151,11 +151,11 @@ func TestResources_MarshalJSON(t *testing.T) {
 	}
 }
 func TestResources_UnmarshalJSON(t *testing.T) {
-	var unmarshalledResources Resources
+	var unmarshalledResources []Resource
 	tests := []struct {
 		name string
 		arg  string
-		want Resources
+		want []Resource
 	}{
 		{
 			name: "Unmarshal List",

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [0.12.8] - 2024-11-19
 
 ### Added
+- Policy dry-run now returns deleted policy resources. (CNJR-6369)
 - Policy dry-run now returns updated policy resources. (CNJR-6111)
 - Policy dry-run now returns create policy resources. (CNJR-6110)
 

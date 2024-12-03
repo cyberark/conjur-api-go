@@ -44,9 +44,6 @@ type Resource struct {
 	RestrictedTo *[]string            `json:"restricted_to,omitempty"`
 }
 
-// Resources contains Resource Structs
-type Resources []Resource
-
 type ResourceFilter struct {
 	Kind   string
 	Search string

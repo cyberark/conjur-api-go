@@ -60,6 +60,7 @@ type DryRunPolicyResponse struct {
 	Status  string                    `json:"status"`
 	Created DryRunPolicyResponseItems `json:"created"`
 	Updated DryRunPolicyUpdates       `json:"updated"`
+	Deleted DryRunPolicyResponseItems `json:"deleted"`
 	Errors  []DryRunError             `json:"errors"`
 }
 

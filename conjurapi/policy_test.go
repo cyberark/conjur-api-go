@@ -1,6 +1,7 @@
 package conjurapi
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -262,6 +263,191 @@ func TestPolicy_DryRunPolicy(t *testing.T) {
 		after := resp.Updated.After.Items[0]
 		assert.Equal(t, after.Id, expectedHostID)
 		assert.Equal(t, after.Annotations["name"], "test name")
+	})
+
+	t.Run("A policy dry run PATCH returns the deleted resources", func(t *testing.T) {
+		originalPolicy := `
+- !user alice
+- !user bob
+- !user carol
+- !user dan
+- !user eve
+`
+		deletingPolicy := `
+- !delete
+  record: !user bob
+- !delete
+  record: !user carol
+`
+		beforeUpdate := `
+[{
+	"identifier":"conjur:policy:data/test",
+	"id":"data/test",
+	"type":"policy",
+	"owner":"conjur:policy:data",
+	"policy":"conjur:policy:root",
+	"annotations":{},"permissions":{},
+	"members":["conjur:policy:data"],
+	"memberships":[
+		"conjur:user:alice@data-test",
+		"conjur:user:bob@data-test",
+		"conjur:user:carol@data-test",
+		"conjur:user:dan@data-test",
+		"conjur:user:eve@data-test"
+	],
+	"restricted_to":[]
+}]
+`
+		afterUpdate := `
+[{
+	"identifier":"conjur:policy:data/test",
+	"id":"data/test",
+	"type":"policy",
+	"owner":"conjur:policy:data",
+	"policy":"conjur:policy:root",
+	"annotations":{},"permissions":{},
+	"members":["conjur:policy:data"],
+	"memberships":[
+		"conjur:user:alice@data-test",
+		"conjur:user:dan@data-test",
+		"conjur:user:eve@data-test"
+	],
+	"restricted_to":[]
+}]
+`
+		// Load the originalPolicy
+		origResp, origErr := conjur.LoadPolicy(
+			PolicyModePut,
+			utils.PolicyBranch(),
+			strings.NewReader(originalPolicy),
+		)
+
+		// Then load the deletingPolicy
+		dryRunResp, dryRunErr := conjur.DryRunPolicy(
+			PolicyModePatch,
+			utils.PolicyBranch(),
+			strings.NewReader(deletingPolicy),
+		)
+
+		// General assertions that the requests were successful
+		assert.NoError(t, origErr)
+		assert.NoError(t, dryRunErr)
+		assert.Len(t, origResp.CreatedRoles, 5)
+		assert.Equal(t, dryRunResp.Status, "Valid YAML")
+		assert.Len(t, dryRunResp.Created.Items, 0)
+
+		// Verify the specific content of the deleted policy resources
+		assert.Len(t, dryRunResp.Deleted.Items, 2)
+		deletedItem1 := dryRunResp.Deleted.Items[0]
+		deletedItem2 := dryRunResp.Deleted.Items[1]
+		assert.Equal(t, deletedItem1.Id, "bob@data-test")
+		assert.Equal(t, deletedItem2.Id, "carol@data-test")
+
+		// Check that memberships have been updated appropriately
+		before, bErr := json.Marshal(dryRunResp.Updated.Before.Items)
+		assert.JSONEq(t, beforeUpdate, string(before))
+		assert.NoError(t, bErr)
+		after, aErr := json.Marshal(dryRunResp.Updated.After.Items)
+		assert.JSONEq(t, afterUpdate, string(after))
+		assert.NoError(t, aErr)
+	})
+
+	t.Run("A policy dry run PUT returns the deleted resources", func(t *testing.T) {
+		originalPolicy := `
+- !user fran
+- !user gary
+- !user hans
+- !user ian
+- !user jill
+`
+		newPolicy := `
+- !user gary
+- !user hans
+- !user kay
+`
+		beforeUpdate := `
+[{
+	"identifier":"conjur:policy:data/test",
+	"id":"data/test",
+	"type":"policy",
+	"owner":"conjur:policy:data",
+	"policy":"conjur:policy:root",
+	"annotations":{},"permissions":{},
+	"members":["conjur:policy:data"],
+	"memberships":[
+		"conjur:user:fran@data-test",
+		"conjur:user:gary@data-test",
+		"conjur:user:hans@data-test",
+		"conjur:user:ian@data-test",
+		"conjur:user:jill@data-test"
+	],
+	"restricted_to":[]
+}]
+`
+		afterUpdate := `
+[{
+	"identifier":"conjur:policy:data/test",
+	"id":"data/test",
+	"type":"policy",
+	"owner":"conjur:policy:data",
+	"policy":"conjur:policy:root",
+	"annotations":{},"permissions":{},
+	"members":["conjur:policy:data"],
+	"memberships":[
+		"conjur:user:gary@data-test",
+		"conjur:user:hans@data-test",
+		"conjur:user:kay@data-test"
+	],
+	"restricted_to":[]
+}]
+`
+		conjur.LoadPolicy(
+			PolicyModePut,
+			utils.PolicyBranch(),
+			strings.NewReader(``),
+		)
+
+		// Load the originalPolicy
+		origResp, origErr := conjur.LoadPolicy(
+			PolicyModePut,
+			utils.PolicyBranch(),
+			strings.NewReader(originalPolicy),
+		)
+
+		// Then load the deletingPolicy
+		dryRunResp, dryRunErr := conjur.DryRunPolicy(
+			PolicyModePut,
+			utils.PolicyBranch(),
+			strings.NewReader(newPolicy),
+		)
+
+		// General assertions that the requests were successful
+		assert.NoError(t, origErr)
+		assert.NoError(t, dryRunErr)
+		assert.Len(t, origResp.CreatedRoles, 5)
+		assert.Equal(t, dryRunResp.Status, "Valid YAML")
+
+		// Verify the specific content of the deleted policy resources
+		assert.Len(t, dryRunResp.Deleted.Items, 3)
+		deletedItem1 := dryRunResp.Deleted.Items[0]
+		deletedItem2 := dryRunResp.Deleted.Items[1]
+		deletedItem3 := dryRunResp.Deleted.Items[2]
+		assert.Equal(t, deletedItem1.Id, "fran@data-test")
+		assert.Equal(t, deletedItem2.Id, "ian@data-test")
+		assert.Equal(t, deletedItem3.Id, "jill@data-test")
+
+		// Check that memberships have been updated appropriately
+		before, bErr := json.Marshal(dryRunResp.Updated.Before.Items)
+		assert.JSONEq(t, beforeUpdate, string(before))
+		assert.NoError(t, bErr)
+		after, aErr := json.Marshal(dryRunResp.Updated.After.Items)
+		assert.JSONEq(t, afterUpdate, string(after))
+		assert.NoError(t, aErr)
+
+		// Check that new user was created successfully
+		assert.Len(t, dryRunResp.Created.Items, 1)
+		createdItem := dryRunResp.Created.Items[0]
+		assert.Equal(t, createdItem.Id, "kay@data-test")
 	})
 
 	t.Run("A policy is not successfully validated", func(t *testing.T) {
