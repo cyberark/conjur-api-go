@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -14,7 +15,10 @@ import (
 )
 
 const (
-	HttpTimeoutDefaultValue = 10
+	// HTTPTimeoutDefaultValue is the default value for the HTTP client timeout
+	HTTPTimeoutDefaultValue = 60
+	// HTTPTimeoutMaxValue is the maximum value allowed for the HTTP client timeout
+	HTTPTimeoutMaxValue = 600
 )
 
 var supportedAuthnTypes = []string{"authn", "ldap", "oidc", "jwt"}
@@ -31,7 +35,7 @@ type Config struct {
 	JWTHostID         string `yaml:"jwt_host_id,omitempty"`
 	JWTContent        string `yaml:"-"`
 	JWTFilePath       string `yaml:"jwt_file,omitempty"`
-	HttpTimeout       int    `yaml:"-"`
+	HTTPTimeout       int    `yaml:"http_timeout,omitempty"`
 }
 
 func (c *Config) IsHttps() bool {
@@ -59,6 +63,10 @@ func (c *Config) Validate() error {
 
 	if c.AuthnType == "jwt" && (c.JWTContent == "" && c.JWTFilePath == "") {
 		errors = append(errors, "Must specify a JWT token when using JWT authentication")
+	}
+
+	if c.HTTPTimeout < 0 || c.HTTPTimeout > HTTPTimeoutMaxValue {
+		errors = append(errors, fmt.Sprintf("HTTPTimeout must be between 1 and %d seconds", HTTPTimeoutMaxValue))
 	}
 
 	if len(errors) == 0 {
@@ -89,23 +97,31 @@ func (c *Config) BaseURL() string {
 }
 
 // The GetHttpTimeout function retrieves the Timeout value from the config struc.
-// If config.HttpTimeout is
-// - less than 0, GetHttpTimeout returns 0 (no timeout)
-// - equal to 0, GetHttpTimeout returns the default value (constant HttpTimeoutDefaultValue)
-// Otherwise, GetHttpTimeout returns the value of config.HttpTimeout
+// If config.HTTPTimeout is
+// - less than 0, GetHttpTimeout returns the default value (constant HTTPTimeoutDefaultValue)
+// - equal to 0, GetHttpTimeout assumes no value passed and returns the default value (constant HTTPTimeoutDefaultValue)
+// - grater than HTTPTimeoutMaxValue, GetHttpTimeout returns the default value (constant HTTPTimeoutDefaultValue)
+// Otherwise, GetHttpTimeout returns the value of config.HTTPTimeout
 func (c *Config) GetHttpTimeout() int {
 	switch {
-	case c.HttpTimeout < 0:
-		return 0
-	case c.HttpTimeout == 0:
-		return HttpTimeoutDefaultValue
+	case c.HTTPTimeout <= 0:
+		return HTTPTimeoutDefaultValue
+	case c.HTTPTimeout > HTTPTimeoutMaxValue:
+		return HTTPTimeoutDefaultValue
 	default:
-		return c.HttpTimeout
+		return c.HTTPTimeout
 	}
 }
 
 func mergeValue(a, b string) string {
 	if len(b) != 0 {
+		return b
+	}
+	return a
+}
+
+func mergeInt(a, b int) int {
+	if b != 0 {
 		return b
 	}
 	return a
@@ -123,6 +139,7 @@ func (c *Config) merge(o *Config) {
 	c.JWTHostID = mergeValue(c.JWTHostID, o.JWTHostID)
 	c.JWTContent = mergeValue(c.JWTContent, o.JWTContent)
 	c.JWTFilePath = mergeValue(c.JWTFilePath, o.JWTFilePath)
+	c.HTTPTimeout = mergeInt(c.HTTPTimeout, o.HTTPTimeout)
 }
 
 func (c *Config) mergeYAML(filename string) error {
@@ -184,6 +201,7 @@ func (c *Config) mergeEnv() {
 		JWTContent:        os.Getenv("CONJUR_AUTHN_JWT_TOKEN"),
 		JWTFilePath:       os.Getenv("JWT_TOKEN_PATH"),
 		JWTHostID:         os.Getenv("CONJUR_AUTHN_JWT_HOST_ID"),
+		HTTPTimeout:       httpTimoutFromEnv(),
 	}
 
 	if os.Getenv("CONJUR_AUTHN_JWT_SERVICE_ID") != "" {
@@ -195,6 +213,22 @@ func (c *Config) mergeEnv() {
 
 	logging.ApiLog.Debugf("Config from environment: %+v\n", env)
 	c.merge(&env)
+}
+
+func httpTimoutFromEnv() int {
+	timeoutStr, ok := os.LookupEnv("CONJUR_HTTP_TIMEOUT")
+	if !ok || len(timeoutStr) == 0 {
+		return 0
+	}
+	timeout, err := strconv.Atoi(timeoutStr)
+	if err != nil {
+		logging.ApiLog.Infof(
+			"Could not parse CONJUR_HTTP_TIMEOUT, using default value (%ds): %s",
+			HTTPTimeoutDefaultValue,
+			err)
+		timeout = HTTPTimeoutDefaultValue
+	}
+	return timeout
 }
 
 func (c *Config) applyDefaults() {
@@ -246,8 +280,8 @@ func LoadConfig() (Config, error) {
 
 func getSystemPath() string {
 	if runtime.GOOS == "windows" {
-		//No way to use SHGetKnownFolderPath()
-		//Hardcoding should be fine for now since CONJURRC is available
+		// No way to use SHGetKnownFolderPath()
+		// Hardcoding should be fine for now since CONJURRC is available
 		return "C:\\windows"
 	} else {
 		return "/etc"
