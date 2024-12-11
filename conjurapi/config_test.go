@@ -124,6 +124,46 @@ func TestConfig_Validate(t *testing.T) {
 		assert.Contains(t, errString, "Must specify an ApplianceURL")
 		assert.Contains(t, errString, "config: &{Account:account ApplianceURL: ")
 	})
+
+	t.Run("Validates HTTP timeout", func(t *testing.T) {
+		t.Run("Return error for HTTPTimeout less than 0", func(t *testing.T) {
+			config := Config{
+				Account:      "account",
+				ApplianceURL: "appliance-url",
+				HTTPTimeout:  -1,
+			}
+
+			err := config.Validate()
+			assert.Error(t, err)
+
+			errString := err.Error()
+			assert.Contains(t, errString, "HTTPTimeout must be between 1 and 600 seconds")
+		})
+
+		t.Run("Return error for HTTPTimeout greater than 600", func(t *testing.T) {
+			config := Config{
+				Account:      "account",
+				ApplianceURL: "appliance-url",
+				HTTPTimeout:  601,
+			}
+
+			err := config.Validate()
+			assert.Error(t, err)
+
+			errString := err.Error()
+			assert.Contains(t, errString, "HTTPTimeout must be between 1 and 600 seconds")
+		})
+
+		t.Run("Return error for HTTPTimeout not set", func(t *testing.T) {
+			config := Config{
+				Account:      "account",
+				ApplianceURL: "appliance-url",
+			}
+
+			err := config.Validate()
+			assert.NoError(t, err)
+		})
+	})
 }
 
 func TestConfig_IsHttps(t *testing.T) {
@@ -164,6 +204,7 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 		os.Setenv("CONJUR_AUTHN_TYPE", "ldap")
 		os.Setenv("CONJUR_SERVICE_ID", "service-id")
 		os.Setenv("CONJUR_CREDENTIAL_STORAGE", "keyring")
+		os.Setenv("CONJUR_HTTP_TIMEOUT", "99")
 
 		t.Run("Returns Config loaded with values from env", func(t *testing.T) {
 			config := &Config{}
@@ -175,6 +216,7 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 				AuthnType:         "ldap",
 				ServiceID:         "service-id",
 				CredentialStorage: "keyring",
+				HTTPTimeout:       99,
 			})
 		})
 	})
@@ -377,6 +419,7 @@ appliance_url: test-appliance-url
 			NetRCPath:         "test-netrc-path",
 			SSLCert:           "test-cert",
 			CredentialStorage: "keyring",
+			HTTPTimeout:       100,
 		},
 		expected: `account: test-account
 appliance_url: test-appliance-url
@@ -385,6 +428,7 @@ cert_file: test-cert-path
 authn_type: oidc
 service_id: test-service-id
 credential_storage: keyring
+http_timeout: 100
 `,
 	},
 }
@@ -492,24 +536,29 @@ func TestConfig_GetHttpTimeout(t *testing.T) {
 		{
 			name:                "smaller than zero",
 			configHttpTimeout:   -1,
-			expectedHttpTimeout: 0,
+			expectedHttpTimeout: HTTPTimeoutDefaultValue,
 		},
 		{
 			name:                "equal to zero",
 			configHttpTimeout:   0,
-			expectedHttpTimeout: HttpTimeoutDefaultValue,
+			expectedHttpTimeout: HTTPTimeoutDefaultValue,
 		},
 		{
 			name:                "greater then zero",
 			configHttpTimeout:   5,
 			expectedHttpTimeout: 5,
 		},
+		{
+			name:                "greater than max",
+			configHttpTimeout:   HTTPTimeoutMaxValue + 1,
+			expectedHttpTimeout: HTTPTimeoutDefaultValue,
+		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			config := Config{
-				HttpTimeout: testCase.configHttpTimeout,
+				HTTPTimeout: testCase.configHttpTimeout,
 			}
 
 			assert.Equal(t, testCase.expectedHttpTimeout, config.GetHttpTimeout())

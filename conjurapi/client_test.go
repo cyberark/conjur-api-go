@@ -486,18 +486,18 @@ func TestClient_HttpClientTimeoutValue(t *testing.T) {
 
 		assert.NoError(t, err)
 		require.NotNil(t, client)
-		assert.Equal(t, time.Second*time.Duration(HttpTimeoutDefaultValue), client.Timeout)
+		assert.Equal(t, time.Second*time.Duration(HTTPTimeoutDefaultValue), client.Timeout)
 	})
-	t.Run("Create HTTP client with no timeout", func(t *testing.T) {
-		config := Config{Account: "account", ApplianceURL: "http://appliance-url", HttpTimeout: -1}
+	t.Run("Create HTTP client with negative timeout", func(t *testing.T) {
+		config := Config{Account: "account", ApplianceURL: "http://appliance-url", HTTPTimeout: -1}
 		client, err := createHttpClient(config)
 
 		assert.NoError(t, err)
 		require.NotNil(t, client)
-		assert.Equal(t, time.Second*time.Duration(0), client.Timeout)
+		assert.Equal(t, time.Second*time.Duration(HTTPTimeoutDefaultValue), client.Timeout)
 	})
 	t.Run("Create HTTP client with specific timeout", func(t *testing.T) {
-		config := Config{Account: "account", ApplianceURL: "http://appliance-url", HttpTimeout: 5}
+		config := Config{Account: "account", ApplianceURL: "http://appliance-url", HTTPTimeout: 5}
 		client, err := createHttpClient(config)
 
 		assert.NoError(t, err)
