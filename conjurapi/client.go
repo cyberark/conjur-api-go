@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -241,7 +242,10 @@ func createHttpClient(config Config) (*http.Client, error) {
 			return nil, err
 		}
 	} else {
-		httpClient = &http.Client{Timeout: time.Second * time.Duration(config.GetHttpTimeout())}
+		httpClient = &http.Client{
+			Transport: newHTTPTransport(),
+			Timeout:   time.Second * time.Duration(config.GetHttpTimeout()),
+		}
 	}
 	return httpClient, nil
 }
@@ -264,8 +268,15 @@ func newHTTPSClient(cert []byte, config Config) (*http.Client, error) {
 	}
 	//TODO: Test what happens if this cert is expired
 	//TODO: What if server cert is rotated
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{RootCAs: pool},
-	}
+	tr := newHTTPTransport()
+	tr.TLSClientConfig = &tls.Config{RootCAs: pool}
 	return &http.Client{Transport: tr, Timeout: time.Second * time.Duration(config.GetHttpTimeout())}, nil
+}
+
+func newHTTPTransport() *http.Transport {
+	return &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout: time.Second * time.Duration(HTTPDailTimeout),
+		}).DialContext,
+	}
 }

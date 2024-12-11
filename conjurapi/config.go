@@ -19,6 +19,8 @@ const (
 	HTTPTimeoutDefaultValue = 60
 	// HTTPTimeoutMaxValue is the maximum value allowed for the HTTP client timeout
 	HTTPTimeoutMaxValue = 600
+	// HTTPDailTimeout is the default value for the DialTimeout in the HTTP client
+	HTTPDailTimeout = 10
 )
 
 var supportedAuthnTypes = []string{"authn", "ldap", "oidc", "jwt"}
