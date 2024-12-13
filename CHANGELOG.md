@@ -6,13 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.9] - 2024-12-13
+
+### Added
+- HTTP timeout is now configurable. [cyberark/conjur-api-go#150](https://github.com/cyberark/conjur-cli-go/issues/150)
+
 ## [0.12.8] - 2024-11-19
 
 ### Added
 - Policy dry-run now returns deleted policy resources. (CNJR-6369)
 - Policy dry-run now returns updated policy resources. (CNJR-6111)
 - Policy dry-run now returns create policy resources. (CNJR-6110)
-- HTTP timeout is now configurable. [cyberark/conjur-api-go#150](https://github.com/cyberark/conjur-cli-go/issues/150)
 
 ## [0.12.7] - 2024-11-18
 
