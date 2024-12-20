@@ -3,12 +3,9 @@ package conjurapi
 import (
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
@@ -371,7 +368,7 @@ func TestClient_ListOidcProviders(t *testing.T) {
 	} else {
 		t.Run("List OIDC Providers", func(t *testing.T) {
 			// Mock server to return OIDC providers
-			ts, client := setupTestClient(t)
+			ts, client := createMockConjurClient(t)
 			defer ts.Close()
 
 			providers, err := client.ListOidcProviders()
@@ -392,7 +389,7 @@ func TestClient_Login(t *testing.T) {
 
 	t.Run("OIDC authentication", func(t *testing.T) {
 		// Mock server to return OIDC token
-		ts, client := setupTestClient(t)
+		ts, client := createMockConjurClient(t)
 		defer ts.Close()
 
 		client.config.AuthnType = "oidc"
@@ -415,7 +412,7 @@ func TestClient_Login(t *testing.T) {
 
 	t.Run("JWT authentication", func(t *testing.T) {
 		// Mock server to return JWT token
-		ts, client := setupTestClient(t)
+		ts, client := createMockConjurClient(t)
 		defer ts.Close()
 
 		client.config.AuthnType = "jwt"
@@ -430,7 +427,7 @@ func TestClient_Login(t *testing.T) {
 func TestClient_AuthenticateReader(t *testing.T) {
 	t.Run("Retrieves access token reader", func(t *testing.T) {
 		// Mock server to return access token
-		ts, client := setupTestClient(t)
+		ts, client := createMockConjurClient(t)
 		defer ts.Close()
 
 		reader, err := client.AuthenticateReader(authn.LoginPair{Login: "alice", APIKey: "test-api-key"})
@@ -763,55 +760,6 @@ func runOIDCInternalAuthenticateTest(t *testing.T, token string, injectErr error
 	}
 	client.authenticator = &authn.OidcAuthenticator{}
 	return client.InternalAuthenticate()
-}
-
-// Creates a Conjur client that points towards a mock Conjur server.
-// The server will return test values for the login, authenticate, and OIDC provider endpoints.
-// TODO: Use actual Conjur instance instead of mock server?
-func setupTestClient(t *testing.T) (*httptest.Server, *Client) {
-	mockConjurServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Listen for the login, authenticate, and oidc endpoints and return test values
-		if strings.HasSuffix(r.URL.Path, "/authn/conjur/login") {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("test-api-key"))
-		} else if strings.HasSuffix(r.URL.Path, "/authn/conjur/alice/authenticate") {
-			// Ensure that the api key we returned in /login is being used
-			body, _ := io.ReadAll(r.Body)
-			if string(body) == "test-api-key" {
-				w.WriteHeader(http.StatusOK)
-				w.Write([]byte("test-token"))
-			} else {
-				w.WriteHeader(http.StatusUnauthorized)
-			}
-		} else if strings.HasSuffix(r.URL.Path, "/authn-oidc/test-service-id/conjur/authenticate") {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("test-token-oidc"))
-		} else if strings.HasSuffix(r.URL.Path, "/authn-jwt/test-service-id/conjur/authenticate") {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("test-token-jwt"))
-		} else if strings.HasSuffix(r.URL.Path, "/authn-oidc/conjur/providers") {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`[{"service_id": "test-service-id"}]`))
-		} else {
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-
-	tempDir := t.TempDir()
-	config := Config{
-		Account:           "conjur",
-		ApplianceURL:      mockConjurServer.URL,
-		NetRCPath:         filepath.Join(tempDir, ".netrc"),
-		CredentialStorage: "file",
-	}
-	storage, _ := createStorageProvider(config)
-	client := &Client{
-		config:     config,
-		httpClient: &http.Client{},
-		storage:    storage,
-	}
-
-	return mockConjurServer, client
 }
 
 type changeUserPasswordTestCase struct {

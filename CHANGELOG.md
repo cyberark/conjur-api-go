@@ -6,10 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.12.9] - 2024-12-13
+## [0.12.9] - 2024-12-26
 
 ### Added
 - HTTP timeout is now configurable. [cyberark/conjur-api-go#150](https://github.com/cyberark/conjur-cli-go/issues/150)
+- Add functions to retrieve server version (CNJR-7207)
+
 
 ## [0.12.8] - 2024-11-19
 
