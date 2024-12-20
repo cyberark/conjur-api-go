@@ -79,9 +79,8 @@ else
   # Tests incompatible with Conjur Cloud which should be passed to the -skip flag
   incompatible_tests=(
     # Temporarily skipping due to recent breaking API change:
-    "TestClient_LoadPolicy/A_policy_is_successfully_validated"
-    "TestClient_LoadPolicy/A_policy_is_not_successfully_validated"
-    "TestClient_FetchPolicy"
+    "TestPolicy_DryRunPolicy"
+    "TestPolicy_FetchPolicy"
   )
   export INCOMPATIBLE_TESTS=$(IFS='|'; echo "${incompatible_tests[*]}")
 
