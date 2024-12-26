@@ -33,6 +33,9 @@ type EnterpriseInfoService struct {
 	Arch        string `json:"arch"`
 }
 
+// ServerVersion retrieves the Conjur server version, either from the '/info' endpoint in Conjur Enterprise,
+// or from the root endpoint in Conjur OSS. The version returned corresponds to the Conjur OSS version,
+// which in Conjur Enterprise is the version of the 'possum' service.
 func (c *Client) ServerVersion() (string, error) {
 	info, err := c.EnterpriseServerInfo()
 	if err == nil {
@@ -107,7 +110,7 @@ func parseVersionFromRoot(rootResponse *http.Response, body []byte) (string, err
 		return parseVersionFromJSON(body)
 	}
 
-	return parseVersionFromHtml(string(body))
+	return parseVersionFromHTML(string(body))
 }
 
 func parseVersionFromJSON(jsonContent []byte) (string, error) {
@@ -124,7 +127,7 @@ func parseVersionFromJSON(jsonContent []byte) (string, error) {
 	return "", fmt.Errorf("version field not found")
 }
 
-func parseVersionFromHtml(htmlContent string) (string, error) {
+func parseVersionFromHTML(htmlContent string) (string, error) {
 	// Parse the body as HTML and look for the version field
 	// It should look like this:
 	// <dd>Version 1.21.0.1-25</dd>

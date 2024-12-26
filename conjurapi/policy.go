@@ -1,6 +1,7 @@
 package conjurapi
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
@@ -83,6 +84,11 @@ func (c *Client) LoadPolicy(mode PolicyMode, policyID string, policy io.Reader) 
 }
 
 func (c *Client) DryRunPolicy(mode PolicyMode, policyID string, policy io.Reader) (*DryRunPolicyResponse, error) {
+	err := c.VerifyMinServerVersion("1.21.1")
+	if err != nil {
+		return nil, fmt.Errorf("Dry run policy is not supported in Conjur versions older than 1.21.1")
+	}
+
 	req, err := c.LoadPolicyRequest(mode, policyID, policy, true)
 	if err != nil {
 		return nil, err

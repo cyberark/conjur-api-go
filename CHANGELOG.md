@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - HTTP timeout is now configurable. [cyberark/conjur-api-go#150](https://github.com/cyberark/conjur-cli-go/issues/150)
 - Add functions to retrieve server version (CNJR-7207)
 
+### Fixed
+- Checks Conjur server version before using polcy dry-run (CNJR-7207)
 
 ## [0.12.8] - 2024-11-19
 
@@ -252,8 +254,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.12.7...HEAD
-[0.12.7]: https://github.com/cyberark/conjur-api-go/compare/v0.12.6...v0.12.7
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.12.9...HEAD
+[0.12.9]: https://github.com/cyberark/conjur-api-go/compare/v0.12.8...v0.12.9
+[0.12.8]: https://github.com/cyberark/conjur-api-go/compare/v0.12.7...v0.12.8
 [0.12.6]: https://github.com/cyberark/conjur-api-go/compare/v0.12.5...v0.12.6
 [0.12.5]: https://github.com/cyberark/conjur-api-go/compare/v0.12.4...v0.12.5
 [0.12.4]: https://github.com/cyberark/conjur-api-go/compare/v0.12.3...v0.12.4

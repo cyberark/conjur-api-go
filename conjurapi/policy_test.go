@@ -470,6 +470,35 @@ func TestPolicy_DryRunPolicy(t *testing.T) {
 		assert.Equal(t, 0, resp.Errors[0].Column)
 		assert.Equal(t, fmt.Sprintf("undefined method `referenced_records' for \"host %s\":String\n", hostname), resp.Errors[0].Message)
 	})
+
+	t.Run("Returns error on older Conjur versions", func(t *testing.T) {
+		// Mock the Conjur version to be older than the minimum required version
+
+		// Store the original values
+		originalMockEnterpriseInfo := mockEnterpriseInfo
+		originalMockRootResponse := mockRootResponse
+		originalMockRootResponseContentType := mockRootResponseContentType
+
+		// Set the mock values
+		mockEnterpriseInfo = ""
+		mockRootResponse = `{"version": "1.21.0-11"}`
+		mockRootResponseContentType = "application/json"
+
+		// Restore the original values after the test
+		defer func() {
+			mockEnterpriseInfo = originalMockEnterpriseInfo
+			mockRootResponse = originalMockRootResponse
+			mockRootResponseContentType = originalMockRootResponseContentType
+		}()
+
+		mockServer, mockClient := createMockConjurClient(t)
+		defer mockServer.Close()
+
+		resp, err := mockClient.DryRunPolicy(PolicyModePut, "test", strings.NewReader(""))
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+		assert.Contains(t, err.Error(), "Dry run policy is not supported in Conjur versions older than 1.21.1")
+	})
 }
 
 func TestPolicy_FetchPolicy(t *testing.T) {

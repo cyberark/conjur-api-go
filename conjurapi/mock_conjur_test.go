@@ -70,7 +70,7 @@ func createMockConjurClient(t *testing.T) (*httptest.Server, *Client) {
 	return mockConjurServer, client
 }
 
-var mockEnterpriseInfo string = `{
+var mockEnterpriseInfo = `{
   "release": "13.5.0",
   "version": "5.19.0-9",
   "services": {
@@ -138,7 +138,7 @@ var mockEnterpriseInfo string = `{
   }
 }`
 
-var mockRootResponseHTML string = `
+var mockRootResponseHTML = `
 <!DOCTYPE html>
 <html>
   <head>
@@ -227,7 +227,7 @@ var mockRootResponseHTML string = `
   </body>
 </html>`
 
-var mockRootResponseJSON string = `{"version": "0.0.dev"}`
+var mockRootResponseJSON = `{"version": "0.0.dev"}`
 
-var mockRootResponse string = mockRootResponseHTML
-var mockRootResponseContentType string = "text/html"
+var mockRootResponse = mockRootResponseHTML
+var mockRootResponseContentType = "text/html"
