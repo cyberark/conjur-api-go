@@ -149,6 +149,28 @@ func (c *Client) ListOidcProvidersRequest() (*http.Request, error) {
 	return http.NewRequest("GET", c.oidcProvidersUrl(), nil)
 }
 
+// ServerInfoRequest crafts an HTTP request to Conjur's /info endpoint to retrieve
+// This is only available in Conjur Enterprise and will fail with a 404 error in Conjur OSS.
+func (c *Client) ServerInfoRequest() (*http.Request, error) {
+	return http.NewRequest("GET", makeRouterURL(c.config.ApplianceURL, "info").String(), nil)
+}
+
+// RootRequest crafts an HTTP request to Conjur's root endpoint.
+// In older versions of Conjur this will return an HTML page which will include
+// some information about the server.
+// In newer versions of Conjur this will return a JSON object with information about the server.
+func (c *Client) RootRequest() (*http.Request, error) {
+	req, err := http.NewRequest("GET", makeRouterURL(c.config.ApplianceURL).String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	// Add the Accept header to the request to ensure that the server returns JSON, if available,
+	// while still allowing for HTML responses in older versions of Conjur that do not support the
+	// JSON response for the root endpoint.
+	req.Header.Add("Accept", "application/json, text/html")
+	return req, nil
+}
+
 func (c *Client) OidcAuthenticateRequest(code, nonce, code_verifier string) (*http.Request, error) {
 	authenticateURL := makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), "authenticate").withFormattedQuery("code=%s&nonce=%s&code_verifier=%s", code, nonce, code_verifier).String()
 

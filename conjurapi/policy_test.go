@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -139,6 +140,26 @@ func TestPolicy_DryRunPolicy(t *testing.T) {
 	assert.NoError(t, err)
 
 	conjur := utils.Client()
+
+	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
+		t.Run("Dry run not supported on Conjur Cloud", func(t *testing.T) {
+			utils, err := NewTestUtils(&Config{})
+			assert.NoError(t, err)
+			conjur := utils.Client()
+
+			resp, err := conjur.DryRunPolicy(
+				PolicyModePut,
+				utils.PolicyBranch(),
+				strings.NewReader(""),
+			)
+
+			require.Error(t, err)
+			assert.EqualError(t, err, "Policy Dry Run is not supported in Conjur Cloud")
+			assert.Nil(t, resp)
+		})
+		// Skip the rest of the tests when running against Conjur Cloud
+		return
+	}
 
 	t.Run("A policy is successfully validated", func(t *testing.T) {
 		hostname := randomName(12)
@@ -470,6 +491,40 @@ func TestPolicy_DryRunPolicy(t *testing.T) {
 		assert.Equal(t, 0, resp.Errors[0].Column)
 		assert.Equal(t, fmt.Sprintf("undefined method `referenced_records' for \"host %s\":String\n", hostname), resp.Errors[0].Message)
 	})
+
+	t.Run("Returns error on older Conjur versions", func(t *testing.T) {
+		// Mock the Conjur version to be older than the minimum required version
+
+		// Store the original values
+		originalMockEnterpriseInfo := mockEnterpriseInfo
+		originalMockRootResponse := mockRootResponse
+		originalMockRootResponseContentType := mockRootResponseContentType
+
+		// Set the mock values
+		mockEnterpriseInfo = ""
+		mockRootResponse = `{"version": "1.21.0-11"}`
+		mockRootResponseContentType = "application/json"
+
+		// Restore the original values after the test
+		defer func() {
+			mockEnterpriseInfo = originalMockEnterpriseInfo
+			mockRootResponse = originalMockRootResponse
+			mockRootResponseContentType = originalMockRootResponseContentType
+		}()
+
+		mockServer, mockClient := createMockConjurClient(t)
+		defer mockServer.Close()
+
+		resp, err := mockClient.DryRunPolicy(PolicyModePut, "test", strings.NewReader(""))
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+		assert.Contains(t, err.Error(), "Policy Dry Run is not supported in Conjur versions older than 1.21.1")
+
+		fetchResp, err := mockClient.FetchPolicy(utils.PolicyBranch(), false, 64, 100000)
+		assert.Error(t, err)
+		assert.Nil(t, fetchResp)
+		assert.Contains(t, err.Error(), "Policy Fetch is not supported in Conjur versions older than 1.21.1")
+	})
 }
 
 func TestPolicy_FetchPolicy(t *testing.T) {
@@ -497,6 +552,22 @@ func TestPolicy_FetchPolicy(t *testing.T) {
 		strings.NewReader(policy),
 	)
 	assert.NoError(t, err)
+
+	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
+		t.Run("Fetch policy not supported on Conjur Cloud", func(t *testing.T) {
+			utils, err := NewTestUtils(&Config{})
+			assert.NoError(t, err)
+			conjur := utils.Client()
+
+			resp, err := conjur.FetchPolicy(utils.PolicyBranch(), false, 64, 100000)
+
+			require.Error(t, err)
+			assert.EqualError(t, err, "Policy Fetch is not supported in Conjur Cloud")
+			assert.Nil(t, resp)
+		})
+		// Skip the rest of the tests when running against Conjur Cloud
+		return
+	}
 
 	t.Run("Policy response is formatted as YAML", func(t *testing.T) {
 

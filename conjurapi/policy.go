@@ -1,6 +1,8 @@
 package conjurapi
 
 import (
+	"errors"
+	"fmt"
 	"io"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
@@ -83,6 +85,14 @@ func (c *Client) LoadPolicy(mode PolicyMode, policyID string, policy io.Reader) 
 }
 
 func (c *Client) DryRunPolicy(mode PolicyMode, policyID string, policy io.Reader) (*DryRunPolicyResponse, error) {
+	if isConjurCloudURL(c.config.ApplianceURL) {
+		return nil, errors.New("Policy Dry Run is not supported in Conjur Cloud")
+	}
+	err := c.VerifyMinServerVersion("1.21.1")
+	if err != nil {
+		return nil, fmt.Errorf("Policy Dry Run is not supported in Conjur versions older than 1.21.1")
+	}
+
 	req, err := c.LoadPolicyRequest(mode, policyID, policy, true)
 	if err != nil {
 		return nil, err
@@ -99,6 +109,14 @@ func (c *Client) DryRunPolicy(mode PolicyMode, policyID string, policy io.Reader
 
 // FetchPolicy creates a request to fetch policy from the system
 func (c *Client) FetchPolicy(policyID string, returnJSON bool, policyTreeDepth uint, sizeLimit uint) ([]byte, error) {
+	if isConjurCloudURL(c.config.ApplianceURL) {
+		return nil, errors.New("Policy Fetch is not supported in Conjur Cloud")
+	}
+	err := c.VerifyMinServerVersion("1.21.1")
+	if err != nil {
+		return nil, fmt.Errorf("Policy Fetch is not supported in Conjur versions older than 1.21.1")
+	}
+
 	req, err := c.fetchPolicyRequest(policyID, returnJSON, policyTreeDepth, sizeLimit)
 	if err != nil {
 		return nil, err
