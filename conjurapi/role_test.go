@@ -11,6 +11,7 @@ var roleTestPolicy = `
 - !host bob
 - !host jimmy
 - !host dean
+- !group test-users
 - !layer test-layer
 
 - !variable secret
@@ -25,9 +26,10 @@ var roleTestPolicy = `
   members: 
   - !host jimmy
   - !host bob
+  - !group test-users
 
 - !grant
-  role: !host bob
+  role: !group test-users
   member: !host dean
 `
 
@@ -104,7 +106,7 @@ func TestClient_RoleMembers(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("List admin role members return 1 member", listMembers(conjur, fmt.Sprintf("conjur:user:%s", utils.AdminUser()), 1))
-	t.Run("List role members return members", listMembers(conjur, "conjur:layer:data/test/test-layer", 3))
+	t.Run("List role members return members", listMembers(conjur, "conjur:layer:data/test/test-layer", 4))
 }
 
 func TestClient_RoleMemberships(t *testing.T) {
