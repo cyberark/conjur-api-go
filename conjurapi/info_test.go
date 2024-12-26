@@ -1,6 +1,7 @@
 package conjurapi
 
 import (
+	"os"
 	"regexp"
 	"testing"
 
@@ -13,6 +14,20 @@ import (
 var versionRegex = regexp.MustCompile(`^[\d.-]+`)
 
 func TestServerVersion(t *testing.T) {
+	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
+		t.Run("Server version not supported on Conjur Cloud", func(t *testing.T) {
+			utils, err := NewTestUtils(&Config{})
+			assert.NoError(t, err)
+			conjur := utils.Client()
+
+			version, err := conjur.ServerVersion()
+			require.Error(t, err)
+			assert.ErrorContains(t, err, "not supported in Conjur Cloud")
+			assert.Empty(t, version)
+		})
+		return
+	}
+
 	t.Run("Gets server version", func(t *testing.T) {
 		utils, err := NewTestUtils(&Config{})
 		assert.NoError(t, err)
@@ -60,6 +75,20 @@ func TestServerVersion(t *testing.T) {
 }
 
 func TestEnterpriseServerInfo(t *testing.T) {
+	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
+		t.Run("Server version not supported on Conjur Cloud", func(t *testing.T) {
+			utils, err := NewTestUtils(&Config{})
+			assert.NoError(t, err)
+			conjur := utils.Client()
+
+			info, err := conjur.EnterpriseServerInfo()
+			require.Error(t, err)
+			assert.ErrorContains(t, err, "not supported in Conjur Cloud")
+			assert.Nil(t, info)
+		})
+		return
+	}
+
 	t.Run("Enterprise (Mocked): Gets server info from the '/info' endpoint", func(t *testing.T) {
 		mockServer, mockClient := createMockConjurClient(t)
 		defer mockServer.Close()
@@ -90,6 +119,21 @@ func TestEnterpriseServerInfo(t *testing.T) {
 }
 
 func TestServerVersionFromRoot(t *testing.T) {
+	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
+		t.Run("Server version not supported on Conjur Cloud", func(t *testing.T) {
+			utils, err := NewTestUtils(&Config{})
+			assert.NoError(t, err)
+			conjur := utils.Client()
+
+			version, err := conjur.ServerVersionFromRoot()
+			require.Error(t, err)
+			assert.ErrorContains(t, err, "not supported in Conjur Cloud")
+			assert.Empty(t, version)
+		})
+		// Skip the rest of the tests when running against Conjur Cloud
+		return
+	}
+
 	t.Run("Gets server version from the root endpoint", func(t *testing.T) {
 		utils, err := NewTestUtils(&Config{})
 		assert.NoError(t, err)

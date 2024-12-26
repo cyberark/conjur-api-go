@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Add functions to retrieve server version (CNJR-7207)
 
 ### Fixed
-- Checks Conjur server version before using polcy dry-run (CNJR-7207)
+- Checks Conjur server version before using policy dry-run and fetch (CNJR-7207)
 
 ## [0.12.8] - 2024-11-19
 

@@ -76,14 +76,6 @@ else
   export CONJUR_AUTHN_TOKEN=$(echo "$INFRAPOOL_CONJUR_AUTHN_TOKEN" | base64 --decode)
   export IDENTITY_TOKEN=$INFRAPOOL_IDENTITY_TOKEN
 
-  # Tests incompatible with Conjur Cloud which should be passed to the -skip flag
-  incompatible_tests=(
-    # Temporarily skipping due to recent breaking API change:
-    "TestPolicy_DryRunPolicy"
-    "TestPolicy_FetchPolicy"
-  )
-  export INCOMPATIBLE_TESTS=$(IFS='|'; echo "${incompatible_tests[*]}")
-
   output_dir="../output/cloud"
   mkdir -p $output_dir
 
@@ -100,11 +92,10 @@ else
     -e PUBLIC_KEYS \
     -e JWT \
     -e IDENTITY_TOKEN \
-    -e INCOMPATIBLE_TESTS \
     -v "$(pwd)/../output:/conjur-api-go/output" \
     "test-$GO_VERSION" bash -c 'set -xo pipefail;
             output_dir="./output/cloud"
-            go test -coverprofile="$output_dir/c.out" -skip "$INCOMPATIBLE_TESTS" -v ./... | tee "$output_dir/junit.output";
+            go test -coverprofile="$output_dir/c.out" -v ./... | tee "$output_dir/junit.output";
             exit_code=$?;
             echo "Tests finished - aggregating results...";
             cat "$output_dir/junit.output" | go-junit-report > "$output_dir/junit.xml";

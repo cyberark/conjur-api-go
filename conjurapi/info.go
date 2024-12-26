@@ -2,12 +2,12 @@ package conjurapi
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
 
-	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
@@ -37,6 +37,10 @@ type EnterpriseInfoService struct {
 // or from the root endpoint in Conjur OSS. The version returned corresponds to the Conjur OSS version,
 // which in Conjur Enterprise is the version of the 'possum' service.
 func (c *Client) ServerVersion() (string, error) {
+	if isConjurCloudURL(c.config.ApplianceURL) {
+		return "", errors.New("Unable to retrieve server version: not supported in Conjur Cloud")
+	}
+
 	info, err := c.EnterpriseServerInfo()
 	if err == nil {
 		// Return the version of the 'possum' service, which corresponds to the Conjur OSS version
@@ -54,6 +58,10 @@ func (c *Client) ServerVersion() (string, error) {
 // EnterpriseServerInfo retrieves the server information from the '/info' endpoint.
 // This is only available in Conjur Enterprise and will fail with a 404 error in Conjur OSS.
 func (c *Client) EnterpriseServerInfo() (*EnterpriseInfoResponse, error) {
+	if isConjurCloudURL(c.config.ApplianceURL) {
+		return nil, errors.New("Unable to retrieve server info: not supported in Conjur Cloud")
+	}
+
 	req, err := c.ServerInfoRequest()
 	if err != nil {
 		return nil, err
@@ -80,12 +88,14 @@ func (c *Client) EnterpriseServerInfo() (*EnterpriseInfoResponse, error) {
 // this method will parse it from there.
 // In newer Conjur versions, the version is available in a JSON response.
 func (c *Client) ServerVersionFromRoot() (string, error) {
+	if isConjurCloudURL(c.config.ApplianceURL) {
+		return "", errors.New("Unable to retrieve server version: not supported in Conjur Cloud")
+	}
+
 	req, err := c.RootRequest()
 	if err != nil {
 		return "", err
 	}
-
-	logging.ApiLog.Warn("Accept: " + req.Header.Get("accept"))
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
