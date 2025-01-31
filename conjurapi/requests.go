@@ -11,13 +11,24 @@ import (
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 )
 
-func makeFullId(account, kind, id string) string {
+func makeFullID(account, kind, id string) string {
 	tokens := strings.SplitN(id, ":", 3)
 	switch len(tokens) {
 	case 1:
 		tokens = []string{account, kind, tokens[0]}
 	case 2:
 		tokens = []string{account, tokens[0], tokens[1]}
+	}
+	// In the case where the ID has 3 tokens, we assume it's already fully-qualified.
+	// However, we need to check if the first and second parts of the ID match the provided account and kind.
+	// If not, we can assume they are actually part of the identifier, and we need to prepend the account and kind.
+	// For example, a variable ID might be "foo:bar:baz". The fully-qualified ID is "account:variable:foo:bar:baz".
+	// The one case we can't handle is if the variable ID matches what a fully-qualified ID would look like, such
+	// as "account:variable:name", which could be either a fully-qualified ID or a partially-qualified ID.
+	// In this case we assume it's a fully-qualified ID, and if the user wants to use a partially-qualified ID
+	// they need to provide it as such ("account:variable:account:variable:name").
+	if account != "" && account != tokens[0] || kind != "" && kind != tokens[1] {
+		tokens = []string{account, kind, id}
 	}
 	return strings.Join(tokens, ":")
 }
@@ -33,7 +44,7 @@ func makeFullId(account, kind, id string) string {
 // c.parseID("prod:user:alice") => "prod", "user", "alice", nil
 // c.parseID("malformed")       =>     "",     "",      "". error
 func (c *Client) parseID(id string) (account, kind, identifier string, err error) {
-	account, kind, identifier = c.unopinionatedParseID(id)
+	account, kind, identifier = unopinionatedParseID(id)
 	if identifier == "" || kind == "" {
 		return "", "", "", fmt.Errorf("Malformed ID '%s': must be fully- or partially-qualified, of form [<account>:]<kind>:<identifier>", id)
 	}
@@ -56,7 +67,7 @@ func (c *Client) parseID(id string) (account, kind, identifier string, err error
 // c.parseID("prod:user:alice", "user") => "prod", "user", "alice", nil
 // c.parseID("host:alice", "user")      =>     "",     "",      "", error
 func (c *Client) parseIDandEnforceKind(id, enforcedKind string) (account, kind, identifier string, err error) {
-	account, kind, identifier = c.unopinionatedParseID(id)
+	account, kind, identifier = unopinionatedParseID(id)
 	if (identifier == "") || (kind != "" && kind != enforcedKind) {
 		return "", "", "", fmt.Errorf("Malformed ID '%s', must represent a %s, of form [[<account>:]%s:]<identifier>", id, enforcedKind, enforcedKind)
 	}
@@ -72,7 +83,7 @@ func (c *Client) parseIDandEnforceKind(id, enforcedKind string) (account, kind, 
 // unopinionatedParseID returns the components of the provided ID - account,
 // resource kind, and identifier - without expectation on resource kind or
 // account inclusion.
-func (c *Client) unopinionatedParseID(id string) (account, kind, identifier string) {
+func unopinionatedParseID(id string) (account, kind, identifier string) {
 	tokens := strings.SplitN(id, ":", 3)
 	for len(tokens) < 3 {
 		tokens = append([]string{""}, tokens...)
@@ -416,7 +427,7 @@ func (c *Client) RoleMembershipsRequestWithOptions(roleID string, includeAll boo
 }
 
 func (c *Client) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.Reader, validate bool) (*http.Request, error) {
-	fullPolicyID := makeFullId(c.config.Account, "policy", policyID)
+	fullPolicyID := makeFullID(c.config.Account, "policy", policyID)
 
 	account, kind, id, err := c.parseID(fullPolicyID)
 	if err != nil {
@@ -455,7 +466,7 @@ func (c *Client) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.R
 }
 
 func (c *Client) fetchPolicyRequest(policyID string, returnJSON bool, policyTreeDepth uint, sizeLimit uint) (*http.Request, error) {
-	fullPolicyID := makeFullId(c.config.Account, "policy", policyID)
+	fullPolicyID := makeFullID(c.config.Account, "policy", policyID)
 
 	account, kind, id, err := c.parseID(fullPolicyID)
 	if err != nil {
@@ -497,7 +508,7 @@ func (c *Client) fetchPolicyRequest(policyID string, returnJSON bool, policyTree
 func (c *Client) RetrieveBatchSecretsRequest(variableIDs []string, base64Flag bool) (*http.Request, error) {
 	fullVariableIDs := []string{}
 	for _, variableID := range variableIDs {
-		fullVariableID := makeFullId(c.config.Account, "variable", variableID)
+		fullVariableID := makeFullID(c.config.Account, "variable", variableID)
 		fullVariableIDs = append(fullVariableIDs, fullVariableID)
 	}
 
@@ -519,7 +530,7 @@ func (c *Client) RetrieveBatchSecretsRequest(variableIDs []string, base64Flag bo
 }
 
 func (c *Client) RetrieveSecretRequest(variableID string) (*http.Request, error) {
-	fullVariableID := makeFullId(c.config.Account, "variable", variableID)
+	fullVariableID := makeFullID(c.config.Account, "variable", variableID)
 
 	variableURL, err := c.variableURL(fullVariableID)
 	if err != nil {
@@ -534,7 +545,7 @@ func (c *Client) RetrieveSecretRequest(variableID string) (*http.Request, error)
 }
 
 func (c *Client) RetrieveSecretWithVersionRequest(variableID string, version int) (*http.Request, error) {
-	fullVariableID := makeFullId(c.config.Account, "variable", variableID)
+	fullVariableID := makeFullID(c.config.Account, "variable", variableID)
 
 	variableURL, err := c.variableWithVersionURL(fullVariableID, version)
 	if err != nil {
@@ -549,7 +560,7 @@ func (c *Client) RetrieveSecretWithVersionRequest(variableID string, version int
 }
 
 func (c *Client) AddSecretRequest(variableID, secretValue string) (*http.Request, error) {
-	fullVariableID := makeFullId(c.config.Account, "variable", variableID)
+	fullVariableID := makeFullID(c.config.Account, "variable", variableID)
 
 	variableURL, err := c.variableURL(fullVariableID)
 	if err != nil {

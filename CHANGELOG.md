@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.11] - 2025-01-28
+
+### Fixed
+- Fix retrieval failure when variable identifier includes colon
+  (CNJR-7752, [cyberark/conjur-api-go#82](https://github.com/cyberark/conjur-api-go/issues/82))
+
 ## [0.12.10] - 2024-12-27
 
 ### Added
@@ -17,7 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [0.12.9] - 2024-12-13
 
 ### Added
-- HTTP timeout is now configurable. [cyberark/conjur-api-go#150](https://github.com/cyberark/conjur-cli-go/issues/150)
+- HTTP timeout is now configurable. [cyberark/conjur-cli-go#150](https://github.com/cyberark/conjur-cli-go/issues/150)
 
 ## [0.12.8] - 2024-11-19
 
