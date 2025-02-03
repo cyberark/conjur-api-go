@@ -28,7 +28,11 @@ func validateMinVersion(actualVersion string, minVersion string) error {
 		return fmt.Errorf("failed to parse minimum version: %s", err)
 	}
 
-	if conjurVersion.LessThan(minConjurVersion) {
+	// Ignore version suffixes (eg. 1.21.1-359) as we use them differently in the Conjur versioning scheme.
+	// In SemVer, the suffix is considered a pre-release version, but in Conjur, it is used as a build version.
+	simplifiedVersion, _ := conjurVersion.SetPrerelease("")
+
+	if simplifiedVersion.LessThan(minConjurVersion) {
 		return fmt.Errorf("Conjur version %s is less than the minimum required version %s", conjurVersion, minConjurVersion)
 	}
 
