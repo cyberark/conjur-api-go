@@ -120,7 +120,7 @@ func TestConjurError_Error(t *testing.T) {
 				Code:    403,
 				Message: "Forbidden",
 			},
-			expected: "Forbidden. ",
+			expected: "Forbidden",
 		},
 		{
 			name: "with details only",

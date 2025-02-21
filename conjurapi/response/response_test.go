@@ -133,7 +133,7 @@ func TestDataResponse(t *testing.T) {
 			name:          "Test failed response",
 			response:      badResponse(),
 			expectedBody:  nil,
-			expectedError: "error message. ", // ". " is added by ConjurError.Error()
+			expectedError: "error message",
 		},
 		{
 			name: "Error reading response body",
@@ -178,7 +178,7 @@ func TestSecretDataResponse(t *testing.T) {
 			name:          "Test failed response",
 			response:      badResponse(),
 			expectedBody:  nil,
-			expectedError: "error message. ", // ". " is added by ConjurError.Error()
+			expectedError: "error message",
 		},
 	}
 
@@ -217,7 +217,7 @@ func TestEmptyResponse(t *testing.T) {
 			name:          "Test failed response",
 			response:      badResponse(),
 			expectedBody:  nil,
-			expectedError: "error message. ", // ". " is added by ConjurError.Error()
+			expectedError: "error message",
 		},
 	}
 
@@ -271,13 +271,13 @@ func TestJSONResponse(t *testing.T) {
 			name:           "Test failed response",
 			response:       badResponse(),
 			expectedResult: testJSONStruct{},
-			expectedError:  "error message. ", // ". " is added by ConjurError.Error()
+			expectedError:  "error message",
 		},
 		{
 			name:               "Test failed response with DryRunPolicyJSONResponse",
 			response:           badResponse(),
 			expectedResult:     testJSONStruct{},
-			expectedError:      "error message. ", // ". " is added by ConjurError.Error()
+			expectedError:      "error message",
 			isDryRunPolicyLoad: true,
 		},
 		{
@@ -288,7 +288,7 @@ func TestJSONResponse(t *testing.T) {
 				Request:    goodRequest(),
 			},
 			expectedResult: testJSONStruct{},
-			expectedError:  "error message. ", // ". " is added by ConjurError.Error()
+			expectedError:  "error message",
 		},
 		{
 			name: "Test 422 response code with DryRunPolicyJSONResponse",
