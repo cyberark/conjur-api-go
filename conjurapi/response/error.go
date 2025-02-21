@@ -49,11 +49,19 @@ func (cerr *ConjurError) Error() string {
 
 	var b strings.Builder
 
-	if cerr.Message != "" {
-		b.WriteString(cerr.Message + ". ")
+	hasMessage := cerr.Message != ""
+	hasDetails := cerr.Details != nil && cerr.Details.Message != ""
+
+	if hasMessage {
+		b.WriteString(cerr.Message)
+
+		// If there's both a message and details, separate them with a period and space
+		if hasDetails {
+			b.WriteString(". ")
+		}
 	}
 
-	if cerr.Details != nil && cerr.Details.Message != "" {
+	if hasDetails {
 		b.WriteString(cerr.Details.Message + ".")
 	}
 

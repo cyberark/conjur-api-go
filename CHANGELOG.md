@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.13] - 2025-02-21
+
+### Fixed
+- Don't append periods to error messages
+  [cyberark/conjur-api-go#105](https://github.com/cyberark/conjur-api-go/issues/105)
+
 ## [0.12.12] - 2025-02-03
 
 ### Fixed
