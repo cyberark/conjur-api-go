@@ -49,7 +49,7 @@ func (u *CloudTestUtils) Setup(policy string) (map[string]string, error) {
   owner: !user /%s`, u.AdminUser())
 
 	_, err := u.client.LoadPolicy(
-		PolicyModePut,
+		PolicyModePatch, // Conjur Cloud doesn't allow 'replace' on 'data' branch
 		"data",
 		strings.NewReader(emptyTestBranch),
 	)
