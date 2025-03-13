@@ -280,3 +280,7 @@ func newHTTPTransport() *http.Transport {
 		}).DialContext,
 	}
 }
+
+func (c *Client) GetTelemetryHeader() string {
+	return c.config.SetFinalTelemetryHeader()
+}

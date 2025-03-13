@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Don't append periods to error messages
   [cyberark/conjur-api-go#105](https://github.com/cyberark/conjur-api-go/issues/105)
 
+### Added
+- Expose ability to call resources list endpoint with a count parameter
+  to get only the amount of resources after applying filters without 
+  actually listing the resources.
+  CNJR-8654
+
+### Changed
+- Use go 1.23 and 1.24
+
 ## [0.12.12] - 2025-02-03
 
 ### Fixed

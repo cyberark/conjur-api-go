@@ -91,25 +91,25 @@ pipeline {
         REGISTRY_URL = "registry.tld"
       }
       parallel {
+        stage('Golang 1.24') {
+          steps {
+            script {
+              infrapool.agentSh "./bin/test.sh 1.24 $REGISTRY_URL"
+              infrapool.agentStash name: '1.24-out', includes: 'output/1.24/*.xml'
+              unstash '1.24-out'
+            }
+          }
+        }
+
         stage('Golang 1.23') {
           steps {
             script {
               infrapool.agentSh "./bin/test.sh 1.23 $REGISTRY_URL"
               infrapool.agentStash name: '1.23-out', includes: 'output/1.23/*.xml'
               unstash '1.23-out'
-            }
-          }
-        }
-
-        stage('Golang 1.22') {
-          steps {
-            script {
-              infrapool.agentSh "./bin/test.sh 1.22 $REGISTRY_URL"
-              infrapool.agentStash name: '1.22-out', includes: 'output/1.22/*.xml'
-              unstash '1.22-out'
               cobertura autoUpdateHealth: false,
                         autoUpdateStability: false,
-                        coberturaReportFile: 'output/1.22/coverage.xml',
+                        coberturaReportFile: 'output/1.23/coverage.xml',
                         conditionalCoverageTargets: '30, 0, 0',
                         failUnhealthy: true,
                         failUnstable: false,
@@ -119,15 +119,15 @@ pipeline {
                         onlyStable: false,
                         sourceEncoding: 'ASCII',
                         zoomCoverageChart: false
-              infrapool.agentSh 'cp output/1.22/c.out .'
-              codacy action: 'reportCoverage', filePath: "output/1.22/coverage.xml"
+              infrapool.agentSh 'cp output/1.23/c.out .'
+              codacy action: 'reportCoverage', filePath: "output/1.23/coverage.xml"
             }
           }
         }
       }
       post {
         always {
-          junit 'output/1.23/junit.xml, output/1.22/junit.xml'
+          junit 'output/1.24/junit.xml, output/1.23/junit.xml'
         }
       }
     }

@@ -1,6 +1,7 @@
 package conjurapi
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path"
@@ -563,5 +564,73 @@ func TestConfig_GetHttpTimeout(t *testing.T) {
 
 			assert.Equal(t, testCase.expectedHttpTimeout, config.GetHttpTimeout())
 		})
+	}
+}
+
+func TestSetIntegrationName(t *testing.T) {
+	config := Config{}
+	config.SetIntegrationName("")
+	if config.IntegrationName != "SecretsManagerGo SDK" {
+		t.Errorf("Expected 'SecretsManagerGo SDK', got %s", config.IntegrationName)
+	}
+
+	config.SetIntegrationName("TestName")
+	if config.IntegrationName != "TestName" {
+		t.Errorf("Expected 'TestName', got %s", config.IntegrationName)
+	}
+}
+
+func TestSetIntegrationType(t *testing.T) {
+	config := Config{}
+	config.SetIntegrationType("")
+	if config.IntegrationType != "cybr-secretsmanager" {
+		t.Errorf("Expected 'cybr-secretsmanager', got %s", config.IntegrationType)
+	}
+
+	config.SetIntegrationType("CustomType")
+	if config.IntegrationType != "CustomType" {
+		t.Errorf("Expected 'CustomType', got %s", config.IntegrationType)
+	}
+}
+
+func TestSetVendorName(t *testing.T) {
+	config := Config{}
+	config.SetVendorName("")
+	if config.VendorName != "CyberArk" {
+		t.Errorf("Expected 'CyberArk', got %s", config.VendorName)
+	}
+
+	config.SetVendorName("CustomVendor")
+	if config.VendorName != "CustomVendor" {
+		t.Errorf("Expected 'CustomVendor', got %s", config.VendorName)
+	}
+}
+
+func TestSetVendorVersion(t *testing.T) {
+	config := Config{}
+	config.SetVendorVersion("")
+	if config.VendorVersion != "" {
+		t.Errorf("Expected '', got %s", config.VendorVersion)
+	}
+
+	config.SetVendorVersion("1.2.3")
+	if config.VendorVersion != "1.2.3" {
+		t.Errorf("Expected '1.2.3', got %s", config.VendorVersion)
+	}
+}
+
+func TestSetFinalTelemetryHeader(t *testing.T) {
+	config := Config{}
+	config.SetIntegrationName("TestName")
+	config.SetIntegrationVersion("1.0")
+	config.SetIntegrationType("TestType")
+	config.SetVendorName("TestVendor")
+	config.SetVendorVersion("2.0")
+
+	expected := "in=TestName&iv=1.0&it=TestType&vn=TestVendor&vv=2.0"
+	encodedExpected := base64.RawURLEncoding.EncodeToString([]byte(expected))
+
+	if result := config.SetFinalTelemetryHeader(); result != encodedExpected {
+		t.Errorf("Expected '%s', got '%s'", encodedExpected, result)
 	}
 }

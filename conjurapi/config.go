@@ -11,7 +11,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
+	"encoding/base64"
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
+	"path/filepath"
 )
 
 const (
@@ -21,23 +23,30 @@ const (
 	HTTPTimeoutMaxValue = 600
 	// HTTPDailTimeout is the default value for the DialTimeout in the HTTP client
 	HTTPDailTimeout = 10
+
+	ConjurSourceHeader = "x-cybr-telemetry"
 )
 
 var supportedAuthnTypes = []string{"authn", "ldap", "oidc", "jwt"}
 
 type Config struct {
-	Account           string `yaml:"account,omitempty"`
-	ApplianceURL      string `yaml:"appliance_url,omitempty"`
-	NetRCPath         string `yaml:"netrc_path,omitempty"`
-	SSLCert           string `yaml:"-"`
-	SSLCertPath       string `yaml:"cert_file,omitempty"`
-	AuthnType         string `yaml:"authn_type,omitempty"`
-	ServiceID         string `yaml:"service_id,omitempty"`
-	CredentialStorage string `yaml:"credential_storage,omitempty"`
-	JWTHostID         string `yaml:"jwt_host_id,omitempty"`
-	JWTContent        string `yaml:"-"`
-	JWTFilePath       string `yaml:"jwt_file,omitempty"`
-	HTTPTimeout       int    `yaml:"http_timeout,omitempty"`
+	Account            string `yaml:"account,omitempty"`
+	ApplianceURL       string `yaml:"appliance_url,omitempty"`
+	NetRCPath          string `yaml:"netrc_path,omitempty"`
+	SSLCert            string `yaml:"-"`
+	SSLCertPath        string `yaml:"cert_file,omitempty"`
+	AuthnType          string `yaml:"authn_type,omitempty"`
+	ServiceID          string `yaml:"service_id,omitempty"`
+	CredentialStorage  string `yaml:"credential_storage,omitempty"`
+	JWTHostID          string `yaml:"jwt_host_id,omitempty"`
+	JWTContent         string `yaml:"-"`
+	JWTFilePath        string `yaml:"jwt_file,omitempty"`
+	HTTPTimeout        int    `yaml:"http_timeout,omitempty"`
+	IntegrationName    string `yaml:"-"`
+	IntegrationType    string `yaml:"-"`
+	IntegrationVersion string `yaml:"-"`
+	VendorVersion      string `yaml:"-"`
+	VendorName         string `yaml:"-"`
 }
 
 func (c *Config) IsHttps() bool {
@@ -298,4 +307,83 @@ func contains(s []string, str string) bool {
 	}
 
 	return false
+}
+
+func (c *Config) SetIntegrationName(inname string) {
+	if inname == "" {
+		c.IntegrationName = "SecretsManagerGo SDK"
+	} else {
+		c.IntegrationName = inname
+	}
+}
+
+func (c *Config) SetIntegrationType(intype string) {
+	if intype == "" {
+		c.IntegrationType = "cybr-secretsmanager"
+	} else {
+		c.IntegrationType = intype
+	}
+}
+
+func (c *Config) SetIntegrationVersion(inversion string) {
+	if inversion == "" {
+		currentDir, err := filepath.Abs(".")
+		if err != nil {
+			fmt.Errorf("Error getting current directory: %v", err)
+		}
+		vserionPath := filepath.Join(currentDir, "..", "VERSION")
+
+		latestVersion, err := GetReleaseVersion(vserionPath)
+		if err != nil {
+			fmt.Errorf("Error: %v", err)
+		}
+		c.IntegrationVersion = latestVersion
+	} else {
+		c.IntegrationVersion = inversion
+	}
+}
+
+func (c *Config) SetVendorName(vname string) {
+	if vname == "" {
+		c.VendorName = "CyberArk"
+	} else {
+		c.VendorName = vname
+	}
+}
+
+func (c *Config) SetVendorVersion(vversion string) {
+	if vversion == "" {
+		c.VendorVersion = ""
+	} else {
+		c.VendorVersion = vversion
+	}
+}
+
+func GetReleaseVersion(versionPath string) (string, error) {
+	data, err := os.ReadFile(versionPath)
+	if err != nil {
+		return "", fmt.Errorf("error reading VERSION file: %v", err)
+	}
+	return string(data), nil
+}
+
+func (c *Config) SetFinalTelemetryHeader() string {
+	finalSource := ""
+	if c.IntegrationName != "" {
+		finalSource += "in=" + c.IntegrationName
+		if c.IntegrationVersion != "" {
+			finalSource += "&iv=" + c.IntegrationVersion
+		}
+		if c.IntegrationType != "" {
+			finalSource += "&it=" + c.IntegrationType
+		}
+	}
+	if c.VendorName != "" {
+		finalSource += "&vn=" + c.VendorName
+		if c.VendorVersion != "" {
+			finalSource += "&vv=" + c.VendorVersion
+		}
+	}
+
+	return base64.RawURLEncoding.EncodeToString([]byte(finalSource))
 }

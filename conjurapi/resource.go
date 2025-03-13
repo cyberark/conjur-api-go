@@ -26,7 +26,7 @@ type Resource struct {
 		   * Webservice
 	*/
 
-	//* Fields for all resources
+	// * Fields for all resources
 	Identifier  string            `json:"identifier"`
 	Id          string            `json:"id"`
 	Type        string            `json:"type"`
@@ -34,10 +34,10 @@ type Resource struct {
 	Policy      string            `json:"policy"`
 	Annotations map[string]string `json:"annotations"`
 
-	//* Field exlusively for roles
+	// * Field exlusively for roles
 	Permitted *map[string][]string `json:"permitted,omitempty"`
 
-	//* Fields that we do not put into json for Roles
+	// * Fields that we do not put into json for Roles
 	Permissions  *map[string][]string `json:"permissions,omitempty"`
 	Members      *[]string            `json:"members,omitempty"`
 	Memberships  *[]string            `json:"memberships,omitempty"`
@@ -50,6 +50,10 @@ type ResourceFilter struct {
 	Limit  int
 	Offset int
 	Role   string
+}
+
+type ResourcesCount struct {
+	Count int `json:"count"`
 }
 
 // CheckPermission determines whether the authenticated user has a specified privilege
@@ -154,6 +158,30 @@ func (c *Client) Resources(filter *ResourceFilter) (resources []map[string]inter
 	resources = make([]map[string]interface{}, 1)
 	err = json.Unmarshal(data, &resources)
 	return
+}
+
+// ResourcesCount counts user-visible resources. The set of resources can
+// be limited by the given ResourceFilter. If filter is non-nil, only
+// non-zero-valued members of the filter will be applied.
+func (c *Client) ResourcesCount(filter *ResourceFilter) (*ResourcesCount, error) {
+	req, err := c.ResourcesCountRequest(filter)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.SubmitRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := response.DataResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	resourcesCount := &ResourcesCount{}
+	err = json.Unmarshal(data, resourcesCount)
+	return resourcesCount, nil
 }
 
 func (c *Client) ResourceIDs(filter *ResourceFilter) ([]string, error) {

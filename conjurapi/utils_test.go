@@ -56,7 +56,14 @@ func (u *CloudTestUtils) Setup(policy string) (map[string]string, error) {
 	if err != nil {
 		fmt.Println("Policy load error: ", err)
 	}
-
+	// Clear the database
+	if _, err := u.client.LoadPolicy(
+		PolicyModePut,
+		"data/test",
+		strings.NewReader(`--- []`),
+	); err != nil {
+		fmt.Println("Policy load error: ", err)
+	}
 	roles, err := u.client.LoadPolicy(
 		PolicyModePut,
 		u.PolicyBranch(),
@@ -141,6 +148,14 @@ type DefaultTestUtils struct {
 // Setup handles loading a test policy into the correct sub-branch (via replace)
 // It returns the created roles and their API keys as a map.
 func (u *DefaultTestUtils) Setup(policy string) (map[string]string, error) {
+	// Clear the database
+	if _, err := u.client.LoadPolicy(
+		PolicyModePut,
+		"root",
+		strings.NewReader(`--- []`),
+	); err != nil {
+		fmt.Println("Policy load error: ", err)
+	}
 	// Ensure we have a 'data/test' policy branch.
 	emptyTestBranch := `
 - !policy
