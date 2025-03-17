@@ -196,6 +196,37 @@ func TestClient_Resources(t *testing.T) {
 	t.Run("Lists resources that prod/db-host can see", listResources(conjur, &ResourceFilter{Role: "conjur:host:data/test/database-policy/prod/db-host"}, 2))
 }
 
+func TestClient_ResourcesCount(t *testing.T) {
+	listResourcesCount := func(conjur *Client, filter *ResourceFilter, expected int) func(t *testing.T) {
+		return func(t *testing.T) {
+			resourcesCount, err := conjur.ResourcesCount(filter)
+			require.NoError(t, err)
+			assert.Equal(t, resourcesCount.Count, expected)
+		}
+	}
+
+	utils, err := NewTestUtils(&Config{})
+	require.NoError(t, err)
+
+	keys, err := utils.Setup(resourceTestPolicy)
+	require.NoError(t, err)
+
+	config := Config{}
+	config.mergeEnv()
+
+	// file deepcode ignore NoHardcodedCredentials/test: This is a test file
+	conjur, err := NewClientFromKey(config, authn.LoginPair{Login: "host/data/test/kate", APIKey: keys["kate"]})
+	require.NoError(t, err)
+
+	t.Run("Counts all resources", listResourcesCount(conjur, nil, 11))
+	t.Run("Counts resources filtered by kind", listResourcesCount(conjur, &ResourceFilter{Kind: "variable"}, 8))
+	t.Run("Counts resources that start with db", listResourcesCount(conjur, &ResourceFilter{Search: "db"}, 4))
+	t.Run("Counts variables that start with prod/database", listResourcesCount(conjur, &ResourceFilter{Search: "prod/db", Kind: "variable"}, 2))
+	t.Run("Counts resources and limit result to 1", listResourcesCount(conjur, &ResourceFilter{Limit: 1}, 1))
+	t.Run("Counts resources when offset is used", listResourcesCount(conjur, &ResourceFilter{Offset: 1, Limit: 50}, 10))
+	t.Run("Counts resources for role with limited access to resources", listResourcesCount(conjur, &ResourceFilter{Role: "conjur:host:data/test/database-policy/prod/db-host"}, 2))
+}
+
 func TestClient_Resource(t *testing.T) {
 	showResource := func(conjur *Client, id string) func(t *testing.T) {
 		return func(t *testing.T) {

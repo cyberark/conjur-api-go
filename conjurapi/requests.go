@@ -325,14 +325,17 @@ func (c *Client) ResourceRequest(resourceID string) (*http.Request, error) {
 	)
 }
 
-func (c *Client) ResourcesRequest(filter *ResourceFilter) (*http.Request, error) {
+func (c *Client) resourcesRequest(filter *ResourceFilter, count bool) (*http.Request, error) {
 	query := url.Values{}
+	if count {
+		query.Add("count", "true")
+	}
 
 	if filter != nil {
-		if filter.Kind != "" {
+		if len(filter.Kind) > 0 {
 			query.Add("kind", filter.Kind)
 		}
-		if filter.Search != "" {
+		if len(filter.Search) > 0 {
 			query.Add("search", filter.Search)
 		}
 
@@ -344,11 +347,10 @@ func (c *Client) ResourcesRequest(filter *ResourceFilter) (*http.Request, error)
 			query.Add("offset", strconv.Itoa(filter.Offset))
 		}
 
-		if filter.Role != "" {
+		if len(filter.Role) > 0 {
 			query.Add("acting_as", filter.Role)
 		}
 	}
-
 	requestURL := makeRouterURL(c.resourcesURL(c.config.Account)).withQuery(query.Encode())
 
 	return http.NewRequest(
@@ -356,6 +358,14 @@ func (c *Client) ResourcesRequest(filter *ResourceFilter) (*http.Request, error)
 		requestURL.String(),
 		nil,
 	)
+}
+
+func (c *Client) ResourcesRequest(filter *ResourceFilter) (*http.Request, error) {
+	return c.resourcesRequest(filter, false)
+}
+
+func (c *Client) ResourcesCountRequest(filter *ResourceFilter) (*http.Request, error) {
+	return c.resourcesRequest(filter, true)
 }
 
 func (c *Client) PermittedRolesRequest(resourceID string, privilege string) (*http.Request, error) {

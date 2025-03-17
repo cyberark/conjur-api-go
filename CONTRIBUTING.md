@@ -38,10 +38,10 @@ To run the tests against a specific version of Golang, you can run the following
 ```
 
 This will spin up a containerized Conjur environment and build the test containers,
-and will run the tests in a `golang:1.21` container
+and will run the tests in a `golang:1.23` container
 
-Supported arguments are `1.21` and `1.22`, with the
-default being `1.22` if no argument is given.
+Supported arguments are `1.23` and `1.24`, with the
+default being `1.23` if no argument is given.
 
 ### Setting up a development environment
 To start a container with terminal access, and the necessary
