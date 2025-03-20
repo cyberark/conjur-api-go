@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.14] - 2025-03-20
+
+### Fixed
+- Fix URL for rotating API keys when using authn-ldap
+  (CNJR-9014, [cyberark/conjur-cli-go#153](https://github.com/cyberark/conjur-cli-go/issues/153))
+
 ## [0.12.13] - 2025-02-21
 
 ### Fixed
@@ -285,7 +291,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.12.10...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.12.14...HEAD
+[0.12.14]: https://github.com/cyberark/conjur-api-go/compare/v0.12.13...v0.12.14
+[0.12.13]: https://github.com/cyberark/conjur-api-go/compare/v0.12.12...v0.12.13
+[0.12.12]: https://github.com/cyberark/conjur-api-go/compare/v0.12.11...v0.12.12
+[0.12.11]: https://github.com/cyberark/conjur-api-go/compare/v0.12.10...v0.12.11
 [0.12.10]: https://github.com/cyberark/conjur-api-go/compare/v0.12.9...v0.12.10
 [0.12.9]: https://github.com/cyberark/conjur-api-go/compare/v0.12.8...v0.12.9
 [0.12.8]: https://github.com/cyberark/conjur-api-go/compare/v0.12.7...v0.12.8
