@@ -222,7 +222,8 @@ func (c *Client) RotateAPIKeyRequest(roleID string) (*http.Request, error) {
 	}
 	roleID = fmt.Sprintf("%s:%s:%s", account, kind, identifier)
 
-	rotateURL := makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), "api_key").withFormattedQuery("role=%s", roleID).String()
+	// Always use the default authenticator for API key rotation
+	rotateURL := makeRouterURL(c.authnURL("authn", ""), "api_key").withFormattedQuery("role=%s", roleID).String()
 
 	return http.NewRequest(
 		"PUT",
@@ -236,7 +237,8 @@ func (c *Client) RotateCurrentUserAPIKeyRequest(login string, password string) (
 }
 
 func (c *Client) RotateCurrentRoleAPIKeyRequest(login string, password string) (*http.Request, error) {
-	rotateUrl := makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), "api_key")
+	// Always use the default authenticator for API key rotation
+	rotateUrl := makeRouterURL(c.authnURL("authn", ""), "api_key")
 
 	req, err := http.NewRequest(
 		"PUT",
