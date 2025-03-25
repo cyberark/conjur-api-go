@@ -281,6 +281,14 @@ func newHTTPTransport() *http.Transport {
 	}
 }
 
+// GetTelemetryHeader returns the base64-encoded telemetry header by calling the
+// SetFinalTelemetryHeader method from the Config object associated with the Client.
+//
+// This method delegates the responsibility of constructing and caching the telemetry
+// header to the Config's SetFinalTelemetryHeader method and simply returns the result.
+//
+// Returns:
+//   - string: The base64-encoded telemetry header.
 func (c *Client) GetTelemetryHeader() string {
 	return c.config.SetFinalTelemetryHeader()
 }

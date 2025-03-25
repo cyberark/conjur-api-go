@@ -47,6 +47,7 @@ type Config struct {
 	IntegrationVersion string `yaml:"-"`
 	VendorVersion      string `yaml:"-"`
 	VendorName         string `yaml:"-"`
+	finalTelemetryHeader string `yaml:"-"`
 }
 
 func (c *Config) IsHttps() bool {
@@ -309,6 +310,11 @@ func contains(s []string, str string) bool {
 	return false
 }
 
+// SetIntegrationName sets the name of the integration. If the provided name is
+// an empty string, it defaults to "SecretsManagerGo SDK".
+//
+// Parameters:
+//   - inname (string): The name of the integration. If empty, the default value is used.
 func (c *Config) SetIntegrationName(inname string) {
 	if inname == "" {
 		c.IntegrationName = "SecretsManagerGo SDK"
@@ -317,6 +323,11 @@ func (c *Config) SetIntegrationName(inname string) {
 	}
 }
 
+// SetIntegrationType sets the type of the integration. If the provided type is
+// an empty string, it defaults to "cybr-secretsmanager".
+//
+// Parameters:
+//   - intype (string): The type of the integration. If empty, the default value is used.
 func (c *Config) SetIntegrationType(intype string) {
 	if intype == "" {
 		c.IntegrationType = "cybr-secretsmanager"
@@ -325,6 +336,12 @@ func (c *Config) SetIntegrationType(intype string) {
 	}
 }
 
+// SetIntegrationVersion sets the version of the integration. If the provided version is
+// an empty string, it tries to fetch the version from the "VERSION" file located in the parent
+// directory of the current working directory.
+//
+// Parameters:
+//   - inversion (string): The version of the integration. If empty, the version is fetched from the VERSION file.
 func (c *Config) SetIntegrationVersion(inversion string) {
 	if inversion == "" {
 		currentDir, err := filepath.Abs(".")
@@ -343,6 +360,11 @@ func (c *Config) SetIntegrationVersion(inversion string) {
 	}
 }
 
+// SetVendorName sets the name of the vendor. If the provided name is an empty string, 
+// it defaults to "CyberArk".
+//
+// Parameters:
+//   - vname (string): The name of the vendor. If empty, the default value is used.
 func (c *Config) SetVendorName(vname string) {
 	if vname == "" {
 		c.VendorName = "CyberArk"
@@ -351,6 +373,11 @@ func (c *Config) SetVendorName(vname string) {
 	}
 }
 
+// SetVendorVersion sets the version of the vendor. If the provided version is an empty string,
+// it sets the vendor version to an empty string.
+//
+// Parameters:
+//   - vversion (string): The version of the vendor. If empty, the vendor version is set to an empty string.
 func (c *Config) SetVendorVersion(vversion string) {
 	if vversion == "" {
 		c.VendorVersion = ""
@@ -359,6 +386,15 @@ func (c *Config) SetVendorVersion(vversion string) {
 	}
 }
 
+// GetReleaseVersion reads the version from a specified file located at versionPath.
+// It returns the version as a string or an error if the file cannot be read.
+//
+// Parameters:
+//   - versionPath (string): The path to the VERSION file that contains the release version.
+//
+// Returns:
+//   - string: The version read from the file.
+//   - error: Any error that occurred while reading the file.
 func GetReleaseVersion(versionPath string) (string, error) {
 	data, err := os.ReadFile(versionPath)
 	if err != nil {
@@ -367,23 +403,32 @@ func GetReleaseVersion(versionPath string) (string, error) {
 	return string(data), nil
 }
 
+// SetFinalTelemetryHeader constructs and returns a base64-encoded telemetry header
+// based on the values of the integration and vendor properties. If the header has already been constructed, it returns the cached value.
+//
+// Returns:
+//   - string: The base64-encoded telemetry header.
 func (c *Config) SetFinalTelemetryHeader() string {
-	finalSource := ""
+	if c.finalTelemetryHeader != "" {
+		return c.finalTelemetryHeader
+	}
+	finalTelemetryHeader := ""
 	if c.IntegrationName != "" {
-		finalSource += "in=" + c.IntegrationName
+		finalTelemetryHeader += "in=" + c.IntegrationName
 		if c.IntegrationVersion != "" {
-			finalSource += "&iv=" + c.IntegrationVersion
+			finalTelemetryHeader += "&iv=" + c.IntegrationVersion
 		}
 		if c.IntegrationType != "" {
-			finalSource += "&it=" + c.IntegrationType
+			finalTelemetryHeader += "&it=" + c.IntegrationType
 		}
 	}
 	if c.VendorName != "" {
-		finalSource += "&vn=" + c.VendorName
+		finalTelemetryHeader += "&vn=" + c.VendorName
 		if c.VendorVersion != "" {
-			finalSource += "&vv=" + c.VendorVersion
+			finalTelemetryHeader += "&vv=" + c.VendorVersion
 		}
 	}
-
-	return base64.RawURLEncoding.EncodeToString([]byte(finalSource))
+	encodedHeader := base64.RawURLEncoding.EncodeToString([]byte(finalTelemetryHeader))
+	c.finalTelemetryHeader = encodedHeader
+	return c.finalTelemetryHeader
 }
