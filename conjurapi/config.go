@@ -321,6 +321,7 @@ func (c *Config) SetIntegrationName(inname string) {
 	} else {
 		c.IntegrationName = inname
 	}
+	c.finalTelemetryHeader = ""
 }
 
 // SetIntegrationType sets the type of the integration. If the provided type is
@@ -334,6 +335,7 @@ func (c *Config) SetIntegrationType(intype string) {
 	} else {
 		c.IntegrationType = intype
 	}
+	c.finalTelemetryHeader = ""
 }
 
 // SetIntegrationVersion sets the version of the integration. If the provided version is
@@ -358,6 +360,7 @@ func (c *Config) SetIntegrationVersion(inversion string) {
 	} else {
 		c.IntegrationVersion = inversion
 	}
+	c.finalTelemetryHeader = ""
 }
 
 // SetVendorName sets the name of the vendor. If the provided name is an empty string, 
@@ -371,6 +374,7 @@ func (c *Config) SetVendorName(vname string) {
 	} else {
 		c.VendorName = vname
 	}
+	c.finalTelemetryHeader = ""
 }
 
 // SetVendorVersion sets the version of the vendor. If the provided version is an empty string,
@@ -384,6 +388,7 @@ func (c *Config) SetVendorVersion(vversion string) {
 	} else {
 		c.VendorVersion = vversion
 	}
+	c.finalTelemetryHeader = ""
 }
 
 // GetReleaseVersion reads the version from a specified file located at versionPath.
