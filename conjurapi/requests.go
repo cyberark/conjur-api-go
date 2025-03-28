@@ -96,7 +96,7 @@ func (c *Client) SubmitRequest(req *http.Request) (resp *http.Response, err erro
 	if err != nil {
 		return
 	}
-
+	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
 	return c.submitRequestWithCustomAuth(req)
 }
 
@@ -121,6 +121,7 @@ func (c *Client) LoginRequest(login string, password string) (*http.Request, err
 		return nil, err
 	}
 	req.SetBasicAuth(login, password)
+	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
 	req.Header.Set("Content-Type", "text/plain")
 
 	return req, nil
@@ -133,6 +134,7 @@ func (c *Client) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, 
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
 	req.Header.Set("Content-Type", "text/plain")
 
 	return req, nil
@@ -152,6 +154,7 @@ func (c *Client) JWTAuthenticateRequest(token, hostID string) (*http.Request, er
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
 
 	return req, nil
 }
@@ -178,6 +181,7 @@ func (c *Client) RootRequest() (*http.Request, error) {
 	// Add the Accept header to the request to ensure that the server returns JSON, if available,
 	// while still allowing for HTML responses in older versions of Conjur that do not support the
 	// JSON response for the root endpoint.
+	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
 	req.Header.Add("Accept", "application/json, text/html")
 	return req, nil
 }
@@ -186,6 +190,8 @@ func (c *Client) OidcAuthenticateRequest(code, nonce, code_verifier string) (*ht
 	authenticateURL := makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), "authenticate").withFormattedQuery("code=%s&nonce=%s&code_verifier=%s", code, nonce, code_verifier).String()
 
 	req, err := http.NewRequest("GET", authenticateURL, nil)
+	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
+	
 	if err != nil {
 		return nil, err
 	}
@@ -202,6 +208,7 @@ func (c *Client) OidcTokenAuthenticateRequest(token string) (*http.Request, erro
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
 
 	return req, nil
 }
@@ -245,6 +252,7 @@ func (c *Client) RotateCurrentRoleAPIKeyRequest(login string, password string) (
 
 	// API key can only be rotated via basic auth, NOT using bearer token
 	req.SetBasicAuth(login, password)
+	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
 
 	return req, nil
 }
@@ -257,6 +265,7 @@ func (c *Client) ChangeUserPasswordRequest(username string, password string, new
 		passwordURL.String(),
 		strings.NewReader(newPassword),
 	)
+	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
 
 	if err != nil {
 		return nil, err
@@ -513,6 +522,7 @@ func (c *Client) fetchPolicyRequest(policyID string, returnJSON bool, policyTree
 	}
 
 	req.Header.Add("Content-Type", contentType)
+	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
 
 	return req, err
 }
@@ -589,6 +599,8 @@ func (c *Client) AddSecretRequest(variableID, secretValue string) (*http.Request
 	}
 
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
+
 	return request, nil
 }
 
@@ -604,6 +616,7 @@ func (c *Client) CreateTokenRequest(body string) (*http.Request, error) {
 		return nil, err
 	}
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
 	return request, nil
 
 }
@@ -620,6 +633,7 @@ func (c *Client) DeleteTokenRequest(token string) (*http.Request, error) {
 		return nil, err
 	}
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
 	return request, nil
 }
 
@@ -635,6 +649,7 @@ func (c *Client) CreateHostRequest(body string, token string) (*http.Request, er
 	}
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Add("Authorization", fmt.Sprintf("Token token=\"%s\"", token))
+	request.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
 
 	return request, nil
 }
