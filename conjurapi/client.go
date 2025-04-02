@@ -275,6 +275,7 @@ func newHTTPSClient(cert []byte, config Config) (*http.Client, error) {
 
 func newHTTPTransport() *http.Transport {
 	return &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
 			Timeout: time.Second * time.Duration(HTTPDailTimeout),
 		}).DialContext,
