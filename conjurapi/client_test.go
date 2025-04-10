@@ -502,6 +502,13 @@ func TestClient_newHTTPSClient(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
+
+		t.Run("Maintains default proxy", func(t *testing.T) {
+			transport, ok := client.Transport.(*http.Transport)
+			require.True(t, ok, "Transport is not of type *http.Transport")
+			require.NotNil(t, transport)
+			assert.ObjectsAreEqual(http.ProxyFromEnvironment, transport.Proxy)
+		})
 	})
 }
 

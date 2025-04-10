@@ -324,12 +324,12 @@ func newHTTPSClient(cert []byte, config Config) (*http.Client, error) {
 }
 
 func newHTTPTransport() *http.Transport {
-	return &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout: time.Second * time.Duration(HTTPDailTimeout),
-		}).DialContext,
-	}
+	// Clone the default transport to preserve its settings (e.g., Proxy)
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.DialContext = (&net.Dialer{
+		Timeout: time.Second * time.Duration(HTTPDialTimeout),
+	}).DialContext
+	return tr
 }
 
 // GetTelemetryHeader returns the base64-encoded telemetry header by calling the

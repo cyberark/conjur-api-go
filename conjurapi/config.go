@@ -22,8 +22,8 @@ const (
 	HTTPTimeoutDefaultValue = 60
 	// HTTPTimeoutMaxValue is the maximum value allowed for the HTTP client timeout
 	HTTPTimeoutMaxValue = 600
-	// HTTPDailTimeout is the default value for the DialTimeout in the HTTP client
-	HTTPDailTimeout = 10
+	// HTTPDialTimeout is the default value for the DialTimeout in the HTTP client
+	HTTPDialTimeout = 10
 
 	ConjurSourceHeader = "x-cybr-telemetry"
 )
