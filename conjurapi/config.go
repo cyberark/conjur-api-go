@@ -27,7 +27,7 @@ const (
 	ConjurSourceHeader = "x-cybr-telemetry"
 )
 
-var supportedAuthnTypes = []string{"authn", "ldap", "oidc", "jwt"}
+var supportedAuthnTypes = []string{"authn", "ldap", "oidc", "jwt", "iam", "azure", "gcp"}
 
 type Config struct {
 	Account            string `yaml:"account,omitempty"`
@@ -69,12 +69,16 @@ func (c *Config) Validate() error {
 		errors = append(errors, fmt.Sprintf("AuthnType must be one of %v", supportedAuthnTypes))
 	}
 
-	if (c.AuthnType == "ldap" || c.AuthnType == "oidc" || c.AuthnType == "jwt") && c.ServiceID == "" {
+	if (c.AuthnType == "ldap" || c.AuthnType == "oidc" || c.AuthnType == "jwt" || c.AuthnType == "iam" || c.AuthnType == "azure") && c.ServiceID == "" {
 		errors = append(errors, fmt.Sprintf("Must specify a ServiceID when using %s", c.AuthnType))
 	}
 
-	if c.AuthnType == "jwt" && (c.JWTContent == "" && c.JWTFilePath == "") {
-		errors = append(errors, "Must specify a JWT token when using JWT authentication")
+	if (c.AuthnType == "jwt" || c.AuthnType == "iam" || c.AuthnType == "azure" || c.AuthnType == "gcp") && (c.JWTContent == "" && c.JWTFilePath == "") {
+		errors = append(errors, fmt.Sprintf("Must specify a JWT token when using %s authentication", c.AuthnType))
+	}
+
+	if (c.AuthnType == "iam" || c.AuthnType == "azure") && c.JWTHostID == "" {
+		errors = append(errors, fmt.Sprintf("Must specify a HostID when using %s authentication", c.AuthnType))
 	}
 
 	if c.HTTPTimeout < 0 || c.HTTPTimeout > HTTPTimeoutMaxValue {

@@ -106,7 +106,7 @@ func TestConfig_Validate(t *testing.T) {
 		assert.Error(t, err)
 
 		errString := err.Error()
-		assert.Contains(t, errString, "Must specify a JWT token when using JWT authentication")
+		assert.Contains(t, errString, "Must specify a JWT token when using jwt authentication")
 	})
 
 	t.Run("Includes config when debug logging is enabled", func(t *testing.T) {
@@ -164,6 +164,64 @@ func TestConfig_Validate(t *testing.T) {
 			err := config.Validate()
 			assert.NoError(t, err)
 		})
+	})
+
+	t.Run("Return error for iam authentication missing HostID", func(t *testing.T) {
+		config := Config{
+			Account:      "account",
+			ApplianceURL: "appliance-url",
+			AuthnType:    "iam",
+			ServiceID:    "service-id",
+			JWTContent:   "valid-jwt-token",
+		}
+	
+		err := config.Validate()
+		assert.Error(t, err)
+	
+		errString := err.Error()
+		assert.Contains(t, errString, "Must specify a HostID when using iam authentication")
+	})
+
+	t.Run("Return error for azure authentication missing HostID", func(t *testing.T) {
+		config := Config{
+			Account:      "account",
+			ApplianceURL: "appliance-url",
+			AuthnType:    "azure",
+			ServiceID:    "service-id",
+			JWTContent:   "valid-jwt-token",
+		}
+	
+		err := config.Validate()
+		assert.Error(t, err)
+	
+		errString := err.Error()
+		assert.Contains(t, errString, "Must specify a HostID when using azure authentication")
+	})
+
+	t.Run("Return error for gcp authentication missing ServiceID", func(t *testing.T) {
+		config := Config{
+			Account:      "account",
+			ApplianceURL: "appliance-url",
+			AuthnType:    "gcp",
+		}
+	
+		err := config.Validate()
+		assert.Error(t, err)
+	
+		errString := err.Error()
+		assert.Contains(t, errString, "Must specify a JWT token when using gcp authentication")
+	})
+
+	t.Run("Return no error for valid gcp configuration with JWT token", func(t *testing.T) {
+		config := Config{
+			Account:      "account",
+			ApplianceURL: "appliance-url",
+			AuthnType:    "gcp",
+			JWTContent:   "valid-jwt-token",
+		}
+	
+		err := config.Validate()
+		assert.NoError(t, err)
 	})
 }
 
