@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Add support for Go HTTP proxy - see
   [Go docs](https://pkg.go.dev/golang.org/x/net/http/httpproxy#FromEnvironment) for usage
   (CNJR-3068, [cyberark/conjur-cli-go#181](https://github.com/cyberark/conjur-api-go/pull/181))
+- Add support for iam, azure and gcp authentication
 
 ## [0.12.14] - 2025-03-20
 
