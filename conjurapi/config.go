@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -28,27 +29,37 @@ const (
 	ConjurSourceHeader = "x-cybr-telemetry"
 )
 
+type EnvironmentType string
+
+const (
+	EnvironmentCC  EnvironmentType = "cloud"
+	EnvironmentCE  EnvironmentType = "enterprise"
+	EnvironmentOSS EnvironmentType = "oss"
+)
+
 var supportedAuthnTypes = []string{"authn", "ldap", "oidc", "jwt", "iam", "azure", "gcp"}
+var supportedEnvironments = []string{string(EnvironmentCC), string(EnvironmentCE), string(EnvironmentOSS)}
 
 type Config struct {
-	Account              string `yaml:"account,omitempty"`
-	ApplianceURL         string `yaml:"appliance_url,omitempty"`
-	NetRCPath            string `yaml:"netrc_path,omitempty"`
-	SSLCert              string `yaml:"-"`
-	SSLCertPath          string `yaml:"cert_file,omitempty"`
-	AuthnType            string `yaml:"authn_type,omitempty"`
-	ServiceID            string `yaml:"service_id,omitempty"`
-	CredentialStorage    string `yaml:"credential_storage,omitempty"`
-	JWTHostID            string `yaml:"jwt_host_id,omitempty"`
-	JWTContent           string `yaml:"-"`
-	JWTFilePath          string `yaml:"jwt_file,omitempty"`
-	HTTPTimeout          int    `yaml:"http_timeout,omitempty"`
-	IntegrationName      string `yaml:"-"`
-	IntegrationType      string `yaml:"-"`
-	IntegrationVersion   string `yaml:"-"`
-	VendorVersion        string `yaml:"-"`
-	VendorName           string `yaml:"-"`
-	finalTelemetryHeader string `yaml:"-"`
+	Account              string          `yaml:"account,omitempty"`
+	ApplianceURL         string          `yaml:"appliance_url,omitempty"`
+	NetRCPath            string          `yaml:"netrc_path,omitempty"`
+	SSLCert              string          `yaml:"-"`
+	SSLCertPath          string          `yaml:"cert_file,omitempty"`
+	AuthnType            string          `yaml:"authn_type,omitempty"`
+	ServiceID            string          `yaml:"service_id,omitempty"`
+	CredentialStorage    string          `yaml:"credential_storage,omitempty"`
+	JWTHostID            string          `yaml:"jwt_host_id,omitempty"`
+	JWTContent           string          `yaml:"-"`
+	JWTFilePath          string          `yaml:"jwt_file,omitempty"`
+	HTTPTimeout          int             `yaml:"http_timeout,omitempty"`
+	IntegrationName      string          `yaml:"-"`
+	IntegrationType      string          `yaml:"-"`
+	IntegrationVersion   string          `yaml:"-"`
+	VendorVersion        string          `yaml:"-"`
+	VendorName           string          `yaml:"-"`
+	finalTelemetryHeader string          `yaml:"-"`
+	Environment          EnvironmentType `yaml:"environment,omitempty"`
 }
 
 func (c *Config) IsHttps() bool {
@@ -56,6 +67,8 @@ func (c *Config) IsHttps() bool {
 }
 
 func (c *Config) Validate() error {
+	c.applyDefaults()
+
 	errors := []string{}
 
 	if c.ApplianceURL == "" {
@@ -64,6 +77,10 @@ func (c *Config) Validate() error {
 
 	if c.Account == "" {
 		errors = append(errors, "Must specify an Account")
+	}
+
+	if c.Environment == "" {
+		errors = append(errors, "Must specify an Environment")
 	}
 
 	if c.AuthnType != "" && !contains(supportedAuthnTypes, c.AuthnType) {
@@ -86,12 +103,20 @@ func (c *Config) Validate() error {
 		errors = append(errors, fmt.Sprintf("HTTPTimeout must be between 1 and %d seconds", HTTPTimeoutMaxValue))
 	}
 
+	if c.Environment != "" && !environmentIsSupported(string(c.Environment)) {
+		errors = append(errors, fmt.Sprintf("Environment must be one of %v, got '%s'", supportedEnvironments, strings.ToLower(string(c.Environment))))
+	}
+
 	if len(errors) == 0 {
 		return nil
 	} else if logging.ApiLog.Level == logrus.DebugLevel {
 		errors = append(errors, fmt.Sprintf("config: %+v", c))
 	}
 	return fmt.Errorf("%s", strings.Join(errors, " -- "))
+}
+
+func environmentIsSupported(environment string) bool {
+	return slices.Contains(supportedEnvironments, strings.ToLower(environment))
 }
 
 func (c *Config) ReadSSLCert() ([]byte, error) {
@@ -157,6 +182,7 @@ func (c *Config) merge(o *Config) {
 	c.JWTContent = mergeValue(c.JWTContent, o.JWTContent)
 	c.JWTFilePath = mergeValue(c.JWTFilePath, o.JWTFilePath)
 	c.HTTPTimeout = mergeInt(c.HTTPTimeout, o.HTTPTimeout)
+	c.Environment = EnvironmentType(mergeValue(string(c.Environment), string(o.Environment)))
 }
 
 func (c *Config) mergeYAML(filename string) error {
@@ -219,6 +245,7 @@ func (c *Config) mergeEnv() {
 		JWTFilePath:       os.Getenv("JWT_TOKEN_PATH"),
 		JWTHostID:         os.Getenv("CONJUR_AUTHN_JWT_HOST_ID"),
 		HTTPTimeout:       httpTimoutFromEnv(),
+		Environment:       EnvironmentType(os.Getenv("CONJUR_ENVIRONMENT")),
 	}
 
 	if os.Getenv("CONJUR_AUTHN_JWT_SERVICE_ID") != "" {
@@ -250,8 +277,17 @@ func httpTimoutFromEnv() int {
 
 func (c *Config) applyDefaults() {
 	if isConjurCloudURL(c.ApplianceURL) && c.Account == "" {
-		logging.ApiLog.Info("Detected Conjur Cloud URL, setting 'Account' to 'conjur")
+		logging.ApiLog.Info("Detected Conjur Cloud URL, setting 'Account' to 'conjur'")
 		c.Account = "conjur"
+	}
+	if c.Environment == "" {
+		if isConjurCloudURL(c.ApplianceURL) {
+			logging.ApiLog.Info("Detected Conjur Cloud URL, setting 'Environment' to 'cloud'")
+			c.Environment = EnvironmentCC
+		} else {
+			logging.ApiLog.Info("'Environment' not specified, setting to 'enterprise'")
+			c.Environment = EnvironmentCE
+		}
 	}
 }
 
@@ -437,4 +473,16 @@ func (c *Config) SetFinalTelemetryHeader() string {
 	encodedHeader := base64.RawURLEncoding.EncodeToString([]byte(finalTelemetryHeader))
 	c.finalTelemetryHeader = encodedHeader
 	return c.finalTelemetryHeader
+}
+
+func (c *Config) IsConjurCloud() bool {
+	return c.Environment == EnvironmentCC
+}
+
+func (c *Config) IsConjurCE() bool {
+	return c.Environment == EnvironmentCE
+}
+
+func (c *Config) IsConjurOSS() bool {
+	return c.Environment == EnvironmentOSS
 }
