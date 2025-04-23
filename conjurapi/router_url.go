@@ -10,8 +10,11 @@ import (
 
 var ConjurCloudSuffixes = []string{
 	".secretsmgr.cyberark.cloud",
+	".cyberark.cloud",
 	".secretsmgr.integration-cyberark.cloud",
+	".integration-cyberark.cloud",
 	".cyberark-everest-integdev.cloud",
+	".cyberark-everest-pre-prod.cloud",
 }
 
 type routerURL string

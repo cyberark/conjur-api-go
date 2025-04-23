@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -359,7 +360,7 @@ func createHttpClient(config Config) (*http.Client, error) {
 		}
 	} else {
 		httpClient = &http.Client{
-			Transport: newHTTPTransport(),
+			Transport: newHTTPTransport(config.ProxyURL()),
 			Timeout:   time.Second * time.Duration(config.GetHttpTimeout()),
 		}
 	}
@@ -384,17 +385,20 @@ func newHTTPSClient(cert []byte, config Config) (*http.Client, error) {
 	}
 	//TODO: Test what happens if this cert is expired
 	//TODO: What if server cert is rotated
-	tr := newHTTPTransport()
+	tr := newHTTPTransport(config.ProxyURL())
 	tr.TLSClientConfig = &tls.Config{RootCAs: pool}
 	return &http.Client{Transport: tr, Timeout: time.Second * time.Duration(config.GetHttpTimeout())}, nil
 }
 
-func newHTTPTransport() *http.Transport {
+func newHTTPTransport(proxy *url.URL) *http.Transport {
 	// Clone the default transport to preserve its settings (e.g., Proxy)
 	tr := http.DefaultTransport.(*http.Transport).Clone()
 	tr.DialContext = (&net.Dialer{
 		Timeout: time.Second * time.Duration(HTTPDialTimeout),
 	}).DialContext
+	if proxy != nil {
+		tr.Proxy = http.ProxyURL(proxy)
+	}
 	return tr
 }
 

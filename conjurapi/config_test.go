@@ -176,7 +176,7 @@ func TestConfig_Validate(t *testing.T) {
 			AuthnType:    "iam",
 			ServiceID:    "service-id",
 			JWTContent:   "valid-jwt-token",
-            Environment:  EnvironmentCE,
+			Environment:  EnvironmentCE,
 		}
 
 		err := config.Validate()
@@ -193,7 +193,7 @@ func TestConfig_Validate(t *testing.T) {
 			AuthnType:    "azure",
 			ServiceID:    "service-id",
 			JWTContent:   "valid-jwt-token",
-            Environment:  EnvironmentCE,
+			Environment:  EnvironmentCE,
 		}
 
 		err := config.Validate()
@@ -208,7 +208,7 @@ func TestConfig_Validate(t *testing.T) {
 			Account:      "account",
 			ApplianceURL: "appliance-url",
 			AuthnType:    "gcp",
-            Environment:  EnvironmentCE,
+			Environment:  EnvironmentCE,
 		}
 
 		err := config.Validate()

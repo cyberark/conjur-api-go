@@ -2,10 +2,10 @@ package conjurapi
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path"
 	"runtime"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -29,16 +29,7 @@ const (
 	ConjurSourceHeader = "x-cybr-telemetry"
 )
 
-type EnvironmentType string
-
-const (
-	EnvironmentCC  EnvironmentType = "cloud"
-	EnvironmentCE  EnvironmentType = "enterprise"
-	EnvironmentOSS EnvironmentType = "oss"
-)
-
-var supportedAuthnTypes = []string{"authn", "ldap", "oidc", "jwt", "iam", "azure", "gcp"}
-var supportedEnvironments = []string{string(EnvironmentCC), string(EnvironmentCE), string(EnvironmentOSS)}
+var supportedAuthnTypes = []string{"authn", "ldap", "oidc", "jwt", "iam", "azure", "gcp", "cloud"}
 
 type Config struct {
 	Account              string          `yaml:"account,omitempty"`
@@ -60,6 +51,7 @@ type Config struct {
 	VendorName           string          `yaml:"-"`
 	finalTelemetryHeader string          `yaml:"-"`
 	Environment          EnvironmentType `yaml:"environment,omitempty"`
+	Proxy                string          `yaml:"proxy,omitempty"`
 }
 
 func (c *Config) IsHttps() bool {
@@ -104,7 +96,7 @@ func (c *Config) Validate() error {
 	}
 
 	if c.Environment != "" && !environmentIsSupported(string(c.Environment)) {
-		errors = append(errors, fmt.Sprintf("Environment must be one of %v, got '%s'", supportedEnvironments, strings.ToLower(string(c.Environment))))
+		errors = append(errors, fmt.Sprintf("Environment must be one of %v, got '%s'", SupportedEnvironments, strings.ToLower(string(c.Environment))))
 	}
 
 	if len(errors) == 0 {
@@ -113,10 +105,6 @@ func (c *Config) Validate() error {
 		errors = append(errors, fmt.Sprintf("config: %+v", c))
 	}
 	return fmt.Errorf("%s", strings.Join(errors, " -- "))
-}
-
-func environmentIsSupported(environment string) bool {
-	return slices.Contains(supportedEnvironments, strings.ToLower(environment))
 }
 
 func (c *Config) ReadSSLCert() ([]byte, error) {
@@ -155,15 +143,8 @@ func (c *Config) GetHttpTimeout() int {
 	}
 }
 
-func mergeValue(a, b string) string {
-	if len(b) != 0 {
-		return b
-	}
-	return a
-}
-
-func mergeInt(a, b int) int {
-	if b != 0 {
+func mergeValue[T comparable](a, b T) T {
+	if b != *new(T) { // Check if `b` is not the zero value for its type
 		return b
 	}
 	return a
@@ -181,8 +162,9 @@ func (c *Config) merge(o *Config) {
 	c.JWTHostID = mergeValue(c.JWTHostID, o.JWTHostID)
 	c.JWTContent = mergeValue(c.JWTContent, o.JWTContent)
 	c.JWTFilePath = mergeValue(c.JWTFilePath, o.JWTFilePath)
-	c.HTTPTimeout = mergeInt(c.HTTPTimeout, o.HTTPTimeout)
+	c.HTTPTimeout = mergeValue(c.HTTPTimeout, o.HTTPTimeout)
 	c.Environment = EnvironmentType(mergeValue(string(c.Environment), string(o.Environment)))
+	c.Proxy = mergeValue(c.Proxy, o.Proxy)
 }
 
 func (c *Config) mergeYAML(filename string) error {
@@ -246,6 +228,7 @@ func (c *Config) mergeEnv() {
 		JWTHostID:         os.Getenv("CONJUR_AUTHN_JWT_HOST_ID"),
 		HTTPTimeout:       httpTimoutFromEnv(),
 		Environment:       EnvironmentType(os.Getenv("CONJUR_ENVIRONMENT")),
+		Proxy:             os.Getenv("HTTPS_PROXY"),
 	}
 
 	if os.Getenv("CONJUR_AUTHN_JWT_SERVICE_ID") != "" {
@@ -276,18 +259,12 @@ func httpTimoutFromEnv() int {
 }
 
 func (c *Config) applyDefaults() {
-	if isConjurCloudURL(c.ApplianceURL) && c.Account == "" {
+	if isConjurCloudURL(c.ApplianceURL) && len(c.Account) == 0 {
 		logging.ApiLog.Info("Detected Conjur Cloud URL, setting 'Account' to 'conjur'")
 		c.Account = "conjur"
 	}
-	if c.Environment == "" {
-		if isConjurCloudURL(c.ApplianceURL) {
-			logging.ApiLog.Info("Detected Conjur Cloud URL, setting 'Environment' to 'cloud'")
-			c.Environment = EnvironmentCC
-		} else {
-			logging.ApiLog.Info("'Environment' not specified, setting to 'enterprise'")
-			c.Environment = EnvironmentCE
-		}
+	if len(c.Environment) == 0 {
+		c.Environment = defaultEnvironment(c.ApplianceURL)
 	}
 }
 
@@ -485,4 +462,16 @@ func (c *Config) IsConjurCE() bool {
 
 func (c *Config) IsConjurOSS() bool {
 	return c.Environment == EnvironmentOSS
+}
+
+func (c *Config) ProxyURL() *url.URL {
+	if len(c.Proxy) == 0 {
+		return nil
+	}
+	proxyURL, err := url.Parse(c.Proxy)
+	if err != nil {
+		logging.ApiLog.Errorf("Failed to parse proxy URL: %v", err)
+		return nil
+	}
+	return proxyURL
 }
