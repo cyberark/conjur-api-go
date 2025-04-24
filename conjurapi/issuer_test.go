@@ -1,6 +1,7 @@
 package conjurapi
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -93,6 +94,142 @@ func TestClient_CreateIssuer(t *testing.T) {
 			}
 
 			tc.assertIssuer(t, createdIssuer)
+
+			// Clean up the Issuer, if it was created
+			err = conjur.DeleteIssuer(tc.id, false)
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestClient_DeleteIssuer(t *testing.T) {
+	config := &Config{}
+	config.mergeEnv()
+
+	utils, err := NewTestUtils(config)
+	assert.NoError(t, err)
+
+	_, err = utils.Setup("#")
+	assert.NoError(t, err)
+
+	conjur := utils.Client()
+
+	testCases := []struct {
+		name        string
+		id          string
+		keepSecrets bool
+		setup       func(*testing.T)
+		assert      func(*testing.T, error)
+	}{
+		{
+			name:        "Delete an Issuer (Don't keep secrets)",
+			id:          "test-issuer",
+			keepSecrets: false,
+			setup: func(t *testing.T) {
+				_, err := conjur.CreateIssuer(
+					Issuer{
+						ID:     "test-issuer",
+						Type:   "aws",
+						MaxTTL: 900,
+						Data: map[string]interface{}{
+							"access_key_id":     TestAccessKeyID,
+							"secret_access_key": TestSecretAccessKey,
+						},
+					},
+				)
+				assert.NoError(t, err)
+
+				secretPolicy := `
+- !variable
+  id: dynamic/test-issuer-secret
+  annotations:
+    dynamic/issuer: test-issuer
+    dynamic/method: federation-token
+`
+
+				_, err = conjur.LoadPolicy(
+					PolicyModePost,
+					"data",
+					strings.NewReader(secretPolicy),
+				)
+				assert.NoError(t, err)
+			},
+			assert: func(t *testing.T, err error) {
+				assert.NoError(t, err)
+
+				exists, err := conjur.ResourceExists(
+					"variable:data/dynamic/test-issuer-secret",
+				)
+				assert.NoError(t, err)
+				assert.False(t, exists)
+			},
+		},
+				{
+					name:        "Delete an Issuer (Keep secrets)",
+					id:          "test-issuer",
+					keepSecrets: true,
+					setup: func(t *testing.T) {
+						_, err := conjur.CreateIssuer(
+							Issuer{
+								ID:     "test-issuer",
+								Type:   "aws",
+								MaxTTL: 900,
+								Data: map[string]interface{}{
+									"access_key_id":     TestAccessKeyID,
+									"secret_access_key": TestSecretAccessKey,
+								},
+							},
+						)
+						assert.NoError(t, err)
+
+						secretPolicy := `
+- !variable
+  id: dynamic/test-issuer-secret
+  annotations:
+    dynamic/issuer: test-issuer
+    dynamic/method: federation-token
+`
+
+						_, err = conjur.LoadPolicy(
+							PolicyModePost,
+							"data",
+							strings.NewReader(secretPolicy),
+						)
+						assert.NoError(t, err)
+					},
+					assert: func(t *testing.T, err error) {
+						assert.NoError(t, err)
+
+						exists, err := conjur.ResourceExists(
+							"variable:data/dynamic/test-issuer-secret",
+						)
+						assert.NoError(t, err)
+						assert.True(t, exists)
+					},
+				},
+				{
+					name:       "Delete non-existent issuer",
+					id:         "test-issuer",
+					keepSecrets: true,
+					setup: func(t *testing.T) {},
+					assert: func(t *testing.T, err error) {
+						assert.Error(t, err)
+						assert.Regexp(
+							t,
+							"404 Not Found. Issuer not found.",
+							err.Error(),
+						)
+					},
+				},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup(t)
+
+			err := conjur.DeleteIssuer(tc.id, tc.keepSecrets)
+
+			tc.assert(t, err)
 		})
 	}
 }
