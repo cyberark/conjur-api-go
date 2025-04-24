@@ -20,6 +20,8 @@ services:
       DATABASE_URL: postgres://postgres@postgres/postgres
       CONJUR_DATA_KEY:
       RAILS_ENV: development
+      # Enable dynamic secrets for the Issuers API
+      CONJUR_FEATURE_DYNAMIC_SECRETS_ENABLED: true
     depends_on:
       - postgres
 
@@ -80,7 +82,7 @@ services:
       CONJUR_AUTHN_API_KEY:
     entrypoint: sleep
     command: infinity
-  
+
   jwt-server:
     image: "ghcr.io/stackitcloud/fake-jwt-server:v0.1.1"
     ports:

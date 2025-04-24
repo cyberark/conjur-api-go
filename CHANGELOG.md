@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.13.0] - 2025-04-24
+
+### Added
+- Add Issuer create client method. CNJR-9162
+
 ## [0.12.15] - 2025-04-02
 
 ### Added
@@ -28,7 +33,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 - Expose ability to call resources list endpoint with a count parameter
-  to get only the amount of resources after applying filters without 
+  to get only the amount of resources after applying filters without
   actually listing the resources.
   CNJR-8654
 
