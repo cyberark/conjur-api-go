@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"net/url"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
@@ -39,6 +40,22 @@ func (c *Client) CreateIssuer(issuer Issuer) (created Issuer, err error) {
 	return
 }
 
+// DeleteIssuer deletes an existing Issuer in Conjur
+func (c *Client) DeleteIssuer(issuerID string, keepSecrets bool) (err error) {
+	req, err := c.deleteIssuerRequest(issuerID, keepSecrets)
+	if err != nil {
+		return
+	}
+
+	resp, err := c.SubmitRequest(req)
+	if err != nil {
+		return
+	}
+
+	err = response.EmptyResponse(resp)
+	return
+}
+
 func (c *Client) createIssuerRequest(issuer Issuer) (*http.Request, error) {
 	issuersURL := makeRouterURL(c.issuersURL(c.config.Account))
 
@@ -57,6 +74,21 @@ func (c *Client) createIssuerRequest(issuer Issuer) (*http.Request, error) {
 	}
 	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
 	req.Header.Set("Content-Type", "application/json")
+
+	return req, nil
+}
+
+func (c *Client) deleteIssuerRequest(issuerID string, keepSecrets bool) (*http.Request, error) {
+	issuerURL := makeRouterURL(
+		c.issuersURL(c.config.Account),
+		url.QueryEscape(issuerID),
+	).withFormattedQuery("keep_secrets=%t", keepSecrets)
+
+	req, err := http.NewRequest("DELETE", issuerURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
 
 	return req, nil
 }
