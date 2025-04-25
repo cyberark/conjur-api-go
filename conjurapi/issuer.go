@@ -56,6 +56,27 @@ func (c *Client) DeleteIssuer(issuerID string, keepSecrets bool) (err error) {
 	return
 }
 
+// Issuer retrieves an existing Issuer with the given ID
+func (c *Client) Issuer(issuerID string) (issuer Issuer, err error) {
+	req, err := c.issuerRequest(issuerID)
+	if err != nil {
+		return
+	}
+
+	resp, err := c.SubmitRequest(req)
+	if err != nil {
+		return
+	}
+
+	data, err := response.DataResponse(resp)
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(data, &issuer)
+	return
+}
+
 func (c *Client) createIssuerRequest(issuer Issuer) (*http.Request, error) {
 	issuersURL := makeRouterURL(c.issuersURL(c.config.Account))
 
@@ -85,6 +106,21 @@ func (c *Client) deleteIssuerRequest(issuerID string, keepSecrets bool) (*http.R
 	).withFormattedQuery("keep_secrets=%t", keepSecrets)
 
 	req, err := http.NewRequest("DELETE", issuerURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
+
+	return req, nil
+}
+
+func (c *Client) issuerRequest(issuerID string) (*http.Request, error) {
+	issuerURL := makeRouterURL(
+		c.issuersURL(c.config.Account),
+		url.QueryEscape(issuerID),
+	)
+
+	req, err := http.NewRequest("GET", issuerURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
