@@ -243,7 +243,7 @@ func TestNewClientFromJwt(t *testing.T) {
 
 		// Expect it to fail without a mocked JWT server
 		token, err := client.authenticator.RefreshToken()
-		assert.ErrorContains(t, err, "401 Unauthorized")
+		assert.ErrorContains(t, err, "Unauthorized: received 401 status code")
 		assert.Equal(t, "", string(token))
 	})
 

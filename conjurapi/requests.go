@@ -7,8 +7,9 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"bytes"
 
-	"github.com/cyberark/conjur-api-go/conjurapi/authn"
+ 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 )
 
 func makeFullID(account, kind, id string) string {
@@ -142,18 +143,28 @@ func (c *Client) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, 
 
 func (c *Client) JWTAuthenticateRequest(token, hostID string) (*http.Request, error) {
 	var authenticateURL string
+	var req *http.Request
+	var err error
 	if hostID != "" {
 		authenticateURL = makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), url.PathEscape(hostID), "authenticate").String()
 	} else {
 		authenticateURL = makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), "authenticate").String()
 	}
-
-	token = fmt.Sprintf("jwt=%s", token)
-	req, err := http.NewRequest("POST", authenticateURL, strings.NewReader(token))
-	if err != nil {
-		return nil, err
+    if c.config.AuthnType == "iam" {
+	   body := []byte(token)
+	   req, err = http.NewRequest("POST", authenticateURL, bytes.NewReader(body))
+	   if err != nil {
+                 return nil, err
+           }
+	   req.Header.Set("Content-Type", "application/json")
+	}else{
+	   token = fmt.Sprintf("jwt=%s", token)
+	   req, err = http.NewRequest("POST", authenticateURL, strings.NewReader(token))
+	   if err != nil {
+		 return nil, err
+	   }
+	   req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
 
 	return req, nil
