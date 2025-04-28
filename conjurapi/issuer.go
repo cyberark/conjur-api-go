@@ -15,8 +15,17 @@ type Issuer struct {
 	Type string `json:"type"`
 	MaxTTL int `json:"max_ttl"`
 	Data map[string]interface{} `json:"data"`
+
+	// Metadata fields returned by the Conjur API
 	CreatedAt string `json:"created_at,omitempty"`
 	ModifiedAt string `json:"modified_at,omitempty"`
+}
+
+// IssuerUpdate defines the specific fields allowed in an Issuer update
+// request.
+type IssuerUpdate struct {
+	MaxTTL *int `json:"max_ttl,omitempty"`
+	Data map[string]interface{} `json:"data,omitempty"`
 }
 
 // IssuerList defines the JSON structure returned by the issuer list endpoint
@@ -110,6 +119,27 @@ func (c *Client) Issuers() (issuers []Issuer, err error) {
 	return
 }
 
+// UpdateIssuer modifies the TTL and/or data on an existing Issuer
+func (c *Client) UpdateIssuer(issuerID string, issuerUpdate IssuerUpdate) (updated Issuer, err error) {
+	req, err := c.updateIssuerRequest(issuerID, issuerUpdate)
+	if err != nil {
+		return
+	}
+
+	resp, err := c.SubmitRequest(req)
+	if err != nil {
+		return
+	}
+
+	data, err := response.DataResponse(resp)
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(data, &updated)
+	return
+}
+
 func (c *Client) createIssuerRequest(issuer Issuer) (*http.Request, error) {
 	issuersURL := makeRouterURL(c.issuersURL(c.config.Account))
 
@@ -170,6 +200,31 @@ func (c *Client) issuersRequest() (*http.Request, error) {
 		return nil, err
 	}
 	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
+
+	return req, nil
+}
+
+func (c *Client) updateIssuerRequest(issuerID string, issuerUpdate IssuerUpdate) (*http.Request, error) {
+	issuerURL := makeRouterURL(
+		c.issuersURL(c.config.Account),
+		url.QueryEscape(issuerID),
+	)
+
+	issuerUpdateJSON, err := json.Marshal(issuerUpdate)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(
+		"PATCH",
+		issuerURL.String(),
+		bytes.NewReader(issuerUpdateJSON),
+	)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
+	req.Header.Set("Content-Type", "application/json")
 
 	return req, nil
 }
