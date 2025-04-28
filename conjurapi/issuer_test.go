@@ -1,6 +1,8 @@
 package conjurapi
 
 import (
+	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -320,6 +322,160 @@ func TestClient_Issuer(t *testing.T) {
 			}
 
 			tc.assertIssuer(t, issuer)
+		})
+	}
+}
+
+func TestClient_Issuers(t *testing.T) {
+	config := &Config{}
+	config.mergeEnv()
+
+	utils, err := NewTestUtils(config)
+	assert.NoError(t, err)
+
+	_, err = utils.Setup("#")
+	assert.NoError(t, err)
+
+	conjur := utils.Client()
+
+	testCases := []struct {
+		name         string
+		id           string
+		setup        func(*testing.T)
+		cleanup      func(*testing.T)
+		assertError  func(*testing.T, error)
+		assertIssuers func(*testing.T, []Issuer)
+	}{
+		{
+			name: "No issuers ever created",
+			setup: func(t *testing.T) {
+			},
+			assertError: func(t *testing.T, err error) {
+				if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
+					// In Conjur Cloud, the issuer branch is pre-created
+					assert.NoError(t, err)
+				} else {
+					// In this case, the Issuer policy doesn't yet exist
+					// so we expect a 403 Forbidden error
+					assert.Error(t, err, "403 Forbidden")
+				}
+			},
+			assertIssuers: func(t *testing.T, issuers []Issuer) {
+				if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
+					assert.Empty(t, issuers)
+				}
+			},
+			cleanup: func(t *testing.T) {
+			},
+		},
+		{
+			name: "No current issuers",
+			setup: func(t *testing.T) {
+				// Create and delete an issuer to ensure that the
+				// issuer policy exists, but there are no current issuers
+				// in the system.
+				issuer := Issuer{
+					ID:     "no-current-issuer",
+					Type:   "aws",
+					MaxTTL: 900,
+					Data: map[string]interface{}{
+						"access_key_id":     TestAccessKeyID,
+						"secret_access_key": TestSecretAccessKey,
+					},
+				}
+
+				issuer, err := conjur.CreateIssuer(issuer)
+				assert.NoError(t, err)
+
+				err = conjur.DeleteIssuer(issuer.ID, false)
+				assert.NoError(t, err)
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.NoError(t, err)
+			},
+			assertIssuers: func(t *testing.T, issuers []Issuer) {
+				assert.Empty(t, issuers)
+			},
+			cleanup: func(t *testing.T) {
+			},
+		},
+		{
+			name: "Single issuer",
+			setup: func(t *testing.T) {
+				// Create and delete an issuer to ensure that the
+				// issuer policy exists, but there are no current issuers
+				// in the system.
+				issuer := Issuer{
+					ID:     "single-issuer",
+					Type:   "aws",
+					MaxTTL: 900,
+					Data: map[string]interface{}{
+						"access_key_id":     TestAccessKeyID,
+						"secret_access_key": TestSecretAccessKey,
+					},
+				}
+
+				_, err := conjur.CreateIssuer(issuer)
+				assert.NoError(t, err)
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.NoError(t, err)
+			},
+			assertIssuers: func(t *testing.T, issuers []Issuer) {
+				assert.Len(t, issuers, 1)
+			},
+			cleanup: func(t *testing.T) {
+				err = conjur.DeleteIssuer("single-issuer", false)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name: "100 issuers",
+			setup: func(t *testing.T) {
+				for i := 0; i < 100; i++ {
+					issuer := Issuer{
+						ID:     fmt.Sprintf("issuer-%d", i),
+						Type:   "aws",
+						MaxTTL: 900,
+						Data: map[string]interface{}{
+							"access_key_id":     TestAccessKeyID,
+							"secret_access_key": TestSecretAccessKey,
+						},
+					}
+
+					_, err := conjur.CreateIssuer(issuer)
+					assert.NoError(t, err)
+				}
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.NoError(t, err)
+			},
+			assertIssuers: func(t *testing.T, issuers []Issuer) {
+				assert.Len(t, issuers, 100)
+			},
+			cleanup: func(t *testing.T) {
+				for i := 0; i < 100; i++ {
+					err = conjur.DeleteIssuer(fmt.Sprintf("issuer-%d", i), false)
+					assert.NoError(t, err)
+				}
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+
+			tc.setup(t)
+			defer tc.cleanup(t)
+
+			issuers, err := conjur.Issuers()
+			tc.assertError(t, err)
+
+			if err != nil {
+				return
+			}
+
+			tc.assertIssuers(t, issuers)
 		})
 	}
 }
