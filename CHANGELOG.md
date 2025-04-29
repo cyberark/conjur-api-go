@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Add Issuer delete client method. CNJR-9163
 - Add Issuer get client method. CNJR-9164
 - Add Issuer list client method. CNJR-9165
+- Add Issuer update client method. CNJR-9166
 
 ## [0.12.15] - 2025-04-02
 

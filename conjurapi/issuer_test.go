@@ -339,11 +339,11 @@ func TestClient_Issuers(t *testing.T) {
 	conjur := utils.Client()
 
 	testCases := []struct {
-		name         string
-		id           string
-		setup        func(*testing.T)
-		cleanup      func(*testing.T)
-		assertError  func(*testing.T, error)
+		name          string
+		id            string
+		setup         func(*testing.T)
+		cleanup       func(*testing.T)
+		assertError   func(*testing.T, error)
 		assertIssuers func(*testing.T, []Issuer)
 	}{
 		{
@@ -476,6 +476,246 @@ func TestClient_Issuers(t *testing.T) {
 			}
 
 			tc.assertIssuers(t, issuers)
+		})
+	}
+}
+
+func TestClient_UpdateIssuer(t *testing.T) {
+	config := &Config{}
+	config.mergeEnv()
+
+	utils, err := NewTestUtils(config)
+	assert.NoError(t, err)
+
+	_, err = utils.Setup("#")
+	assert.NoError(t, err)
+
+	conjur := utils.Client()
+
+	testCases := []struct {
+		name         string
+		id           string
+		update       func() IssuerUpdate
+		setup        func(*testing.T)
+		cleanup      func(*testing.T)
+		assertError  func(*testing.T, error)
+		assertIssuer func(*testing.T, Issuer)
+	}{
+		{
+			name: "Update issuer",
+			id:   "update-issuer",
+			setup: func(t *testing.T) {
+				_, err := conjur.CreateIssuer(
+					Issuer{
+						ID:     "update-issuer",
+						Type:   "aws",
+						MaxTTL: 900,
+						Data: map[string]interface{}{
+							"access_key_id":     TestAccessKeyID,
+							"secret_access_key": TestSecretAccessKey,
+						},
+					},
+				)
+				assert.NoError(t, err)
+			},
+			update: func() IssuerUpdate {
+				ttl := 1000
+				return IssuerUpdate{
+					MaxTTL: &ttl,
+					Data: map[string]interface{}{
+						"access_key_id":     "AKIAIOSFODNN7EXAMPLE2",
+						"secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY2",
+					},
+				}
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.NoError(t, err)
+			},
+			assertIssuer: func(t *testing.T, issuer Issuer) {
+				assert.Equal(t, issuer.MaxTTL, 1000)
+				assert.Equal(t, issuer.Data["access_key_id"], "AKIAIOSFODNN7EXAMPLE2")
+			},
+			cleanup: func(t *testing.T) {
+				err := conjur.DeleteIssuer("update-issuer", false)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name:  "Update non-existent issuer",
+			id:    "non-existent-issuer",
+			setup: func(t *testing.T) {},
+			update: func() IssuerUpdate {
+				ttl := 1000
+				return IssuerUpdate{
+					MaxTTL: &ttl,
+					Data: map[string]interface{}{
+						"access_key_id":     "AKIAIOSFODNN7EXAMPLE2",
+						"secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY2",
+					},
+				}
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.Error(t, err, "404 Not Found. Issuer not found.")
+			},
+			assertIssuer: func(t *testing.T, issuer Issuer) {},
+			cleanup:      func(t *testing.T) {},
+		},
+		{
+			name: "Empty issuer update",
+			id:   "empty-update-issuer",
+			setup: func(t *testing.T) {
+				_, err := conjur.CreateIssuer(
+					Issuer{
+						ID:     "empty-update-issuer",
+						Type:   "aws",
+						MaxTTL: 900,
+						Data: map[string]interface{}{
+							"access_key_id":     TestAccessKeyID,
+							"secret_access_key": TestSecretAccessKey,
+						},
+					},
+				)
+				assert.NoError(t, err)
+			},
+			update: func() IssuerUpdate {
+				return IssuerUpdate{}
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.NoError(t, err)
+			},
+			assertIssuer: func(t *testing.T, issuer Issuer) {
+				assert.Equal(t, issuer.MaxTTL, 900)
+				assert.Equal(t, issuer.Data["access_key_id"], TestAccessKeyID)
+			},
+			cleanup: func(t *testing.T) {
+				err := conjur.DeleteIssuer("empty-update-issuer", false)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name: "Invalid max TTL",
+			id:   "invalid-ttl-update",
+			setup: func(t *testing.T) {
+				_, err := conjur.CreateIssuer(
+					Issuer{
+						ID:     "invalid-ttl-update",
+						Type:   "aws",
+						MaxTTL: 900,
+						Data: map[string]interface{}{
+							"access_key_id":     TestAccessKeyID,
+							"secret_access_key": TestSecretAccessKey,
+						},
+					},
+				)
+				assert.NoError(t, err)
+			},
+			update: func() IssuerUpdate {
+				ttl := 800
+				return IssuerUpdate{
+					MaxTTL: &ttl,
+				}
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.ErrorContains(
+					t,
+					err,
+					"400 Bad Request. the 'max_ttl' parameter must be",
+				)
+			},
+			assertIssuer: func(t *testing.T, issuer Issuer) {
+			},
+			cleanup: func(t *testing.T) {
+				err := conjur.DeleteIssuer("invalid-ttl-update", false)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name: "Empty data",
+			id:   "empty-data-update",
+			setup: func(t *testing.T) {
+				_, err := conjur.CreateIssuer(
+					Issuer{
+						ID:     "empty-data-update",
+						Type:   "aws",
+						MaxTTL: 900,
+						Data: map[string]interface{}{
+							"access_key_id":     TestAccessKeyID,
+							"secret_access_key": TestSecretAccessKey,
+						},
+					},
+				)
+				assert.NoError(t, err)
+			},
+			update: func() IssuerUpdate {
+				return IssuerUpdate{
+					Data: map[string]interface{}{},
+				}
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.NoError(t, err)
+			},
+			assertIssuer: func(t *testing.T, issuer Issuer) {
+				assert.Equal(t, issuer.Data["access_key_id"], TestAccessKeyID)
+			},
+			cleanup: func(t *testing.T) {
+				err := conjur.DeleteIssuer("empty-data-update", false)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name: "Invalid data",
+			id:   "invalid-data-update",
+			setup: func(t *testing.T) {
+				_, err := conjur.CreateIssuer(
+					Issuer{
+						ID:     "invalid-data-update",
+						Type:   "aws",
+						MaxTTL: 900,
+						Data: map[string]interface{}{
+							"access_key_id":     TestAccessKeyID,
+							"secret_access_key": TestSecretAccessKey,
+						},
+					},
+				)
+				assert.NoError(t, err)
+			},
+			update: func() IssuerUpdate {
+				return IssuerUpdate{
+					Data: map[string]interface{}{
+						"access_key_id": "invalid",
+					},
+				}
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.Error(
+					t,
+					err,
+					"422 Unprocessable Content. secret_access_key is a required parameter and must be specified.",
+				)
+			},
+			assertIssuer: func(t *testing.T, issuer Issuer) {
+			},
+			cleanup: func(t *testing.T) {
+				err := conjur.DeleteIssuer("invalid-data-update", false)
+				assert.NoError(t, err)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+
+			tc.setup(t)
+			defer tc.cleanup(t)
+
+			issuer, err := conjur.UpdateIssuer(tc.id, tc.update())
+			tc.assertError(t, err)
+
+			if err != nil {
+				return
+			}
+
+			tc.assertIssuer(t, issuer)
 		})
 	}
 }
