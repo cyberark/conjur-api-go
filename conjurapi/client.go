@@ -184,7 +184,7 @@ func NewClientFromJwt(config Config) (*Client, error) {
 }
 
 func newClientFromStoredCredentials(config Config) (*Client, error) {
-	if config.AuthnType == "oidc" {
+	if config.AuthnType == "oidc" || config.AuthnType == "cloud" {
 		return newClientFromStoredOidcCredentials(config)
 	}
 

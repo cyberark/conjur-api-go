@@ -24,8 +24,10 @@ type OidcProvider struct {
 }
 
 func (c *Client) RefreshToken() (err error) {
-	// Fetch cached conjur access token if using OIDC, IAM, or Azure
-	if c.GetConfig().AuthnType == "oidc" || c.GetConfig().AuthnType == "iam" || c.GetConfig().AuthnType == "azure" || c.GetConfig().AuthnType == "gcp" {
+	// Fetch cached conjur access token if using OIDC, IAM, Azure or Conjur Cloud identity
+	authType := c.GetConfig().AuthnType
+	switch authType {
+	case "oidc", "iam", "azure", "gcp", "cloud":
 		token := c.readCachedAccessToken()
 		if token != nil {
 			c.authToken = token

@@ -774,6 +774,10 @@ func (c *Client) authnURL(authenticatorType string, serviceID string) string {
 		return makeRouterURL(c.config.ApplianceURL, authnType, c.config.Account).String()
 	}
 
+	if authenticatorType == "cloud" {
+		return makeRouterURL(c.config.ApplianceURL, "authn-oidc", serviceID, c.config.Account).String()
+	}
+
 	if authenticatorType != "" && authenticatorType != "authn" {
 		return makeRouterURL(c.config.ApplianceURL, authnType, serviceID, c.config.Account).String()
 	}
