@@ -43,12 +43,16 @@ func environmentIsSupported(environment string) bool {
 	return slices.Contains(SupportedEnvironments, strings.ToLower(environment))
 }
 
-func defaultEnvironment(url string) EnvironmentType {
+func defaultEnvironment(url string, showLog bool) EnvironmentType {
 	if isConjurCloudURL(url) {
-		logging.ApiLog.Info("Detected Conjur Cloud URL, setting 'Environment' to 'cloud'")
+		if showLog {
+			logging.ApiLog.Info("Detected Conjur Cloud URL, setting 'Environment' to 'cloud'")
+		}
 		return EnvironmentCC
 	} else {
-		logging.ApiLog.Info("'Environment' not specified, setting to 'enterprise'")
+		if showLog {
+			logging.ApiLog.Info("'Environment' not specified, setting to 'enterprise'")
+		}
 		return EnvironmentCE
 	}
 }

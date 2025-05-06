@@ -1,6 +1,7 @@
 package conjurapi
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -59,7 +60,7 @@ func (c *Config) IsHttps() bool {
 }
 
 func (c *Config) Validate() error {
-	c.applyDefaults()
+	c.applyDefaults(false)
 
 	errors := []string{}
 
@@ -173,8 +174,7 @@ func (c *Config) mergeYAML(filename string) error {
 
 	if err != nil {
 		logging.ApiLog.Debugf("Failed reading %s, %v\n", filename, err)
-		// It is not an error if this file does not exist
-		return nil
+		return err
 	}
 
 	// Parse the YAML file into a new struct containing the same
@@ -258,13 +258,19 @@ func httpTimoutFromEnv() int {
 	return timeout
 }
 
-func (c *Config) applyDefaults() {
+func (c *Config) applyDefaults(persist bool) {
 	if isConjurCloudURL(c.ApplianceURL) && len(c.Account) == 0 {
 		logging.ApiLog.Info("Detected Conjur Cloud URL, setting 'Account' to 'conjur'")
 		c.Account = "conjur"
+		if persist {
+			c.AddToConjurRc("account", c.Account)
+		}
 	}
 	if len(c.Environment) == 0 {
-		c.Environment = defaultEnvironment(c.ApplianceURL)
+		c.Environment = defaultEnvironment(c.ApplianceURL, persist)
+		if persist {
+			c.AddToConjurRc("environment", string(c.Environment))
+		}
 	}
 }
 
@@ -288,21 +294,29 @@ func LoadConfig() (Config, error) {
 	}
 
 	err = config.mergeYAML(path.Join(getSystemPath(), "conjur.conf"))
-	if err != nil {
+
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return config, err
 	}
 
+	conjurrcExists := false
 	conjurrc := os.Getenv("CONJURRC")
-	if conjurrc == "" && home != "" {
+	if len(conjurrc) == 0 && len(home) > 0 {
 		conjurrc = path.Join(home, ".conjurrc")
 	}
-	if conjurrc != "" {
-		config.mergeYAML(conjurrc)
+	if len(conjurrc) > 0 {
+		err = config.mergeYAML(conjurrc)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return config, err
+		}
+		if err == nil {
+			conjurrcExists = true
+		}
 	}
 
 	config.mergeEnv()
 
-	config.applyDefaults()
+	config.applyDefaults(conjurrcExists)
 
 	logging.ApiLog.Debugf("Final config: %+v\n", config)
 	return config, nil
@@ -474,4 +488,29 @@ func (c *Config) ProxyURL() *url.URL {
 		return nil
 	}
 	return proxyURL
+}
+
+func (c *Config) AddToConjurRc(key, val string) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		logging.ApiLog.Warningf("Could not detect homedir.")
+	}
+
+	conjurrc := os.Getenv("CONJURRC")
+	if conjurrc == "" && home != "" {
+		conjurrc = path.Join(home, ".conjurrc")
+	}
+
+	// append the key-value pair to the conjurrc file
+	file, err := os.OpenFile(conjurrc, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	defer file.Close()
+	if err != nil {
+		logging.ApiLog.Errorf("Failed to open %s: %v", conjurrc, err)
+		return
+	}
+
+	if _, err := file.WriteString(fmt.Sprintf("%s: %s\n", key, val)); err != nil {
+		logging.ApiLog.Errorf("Failed to write to %s: %v", conjurrc, err)
+		return
+	}
 }

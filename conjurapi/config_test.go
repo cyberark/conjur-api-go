@@ -463,6 +463,13 @@ cert_file: "C:\badly\escaped\path"
 		assert.Error(t, err)
 	})
 
+	t.Run("Throws errors when conjurrc is a folder", func(t *testing.T) {
+		config := &Config{}
+
+		err := config.mergeYAML("/tmp")
+		assert.ErrorContains(t, err, "is a directory")
+	})
+
 	t.Run("Values in environment variables override conjurrc file", func(t *testing.T) {
 		conjurrcFileContents := `
 ---
