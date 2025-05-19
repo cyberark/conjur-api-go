@@ -1,15 +1,15 @@
 package conjurapi
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
-	"bytes"
 
- 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
+	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 )
 
 func makeFullID(account, kind, id string) string {
@@ -141,30 +141,36 @@ func (c *Client) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, 
 	return req, nil
 }
 
+func createJWTRequestBodyForAuthenticator(authnType, token string) (io.Reader, string, error) {
+	switch authnType {
+	case "iam":
+		// IAM expects raw JSON in the body
+		return bytes.NewReader([]byte(token)), "application/json", nil
+	default:
+		// Default expects url-encoded body
+		formattedToken := fmt.Sprintf("jwt=%s", token)
+		return strings.NewReader(formattedToken), "application/x-www-form-urlencoded", nil
+	}
+}
+
 func (c *Client) JWTAuthenticateRequest(token, hostID string) (*http.Request, error) {
 	var authenticateURL string
-	var req *http.Request
 	var err error
 	if hostID != "" {
 		authenticateURL = makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), url.PathEscape(hostID), "authenticate").String()
 	} else {
 		authenticateURL = makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), "authenticate").String()
 	}
-    if c.config.AuthnType == "iam" {
-	   body := []byte(token)
-	   req, err = http.NewRequest("POST", authenticateURL, bytes.NewReader(body))
-	   if err != nil {
-                 return nil, err
-           }
-	   req.Header.Set("Content-Type", "application/json")
-	}else{
-	   token = fmt.Sprintf("jwt=%s", token)
-	   req, err = http.NewRequest("POST", authenticateURL, strings.NewReader(token))
-	   if err != nil {
-		 return nil, err
-	   }
-	   req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	body, contentType, err := createJWTRequestBodyForAuthenticator(c.config.AuthnType, token)
+	if err != nil {
+		return nil, err
 	}
+
+	req, err := http.NewRequest("POST", authenticateURL, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", contentType)
 	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
 
 	return req, nil
@@ -202,7 +208,7 @@ func (c *Client) OidcAuthenticateRequest(code, nonce, code_verifier string) (*ht
 
 	req, err := http.NewRequest("GET", authenticateURL, nil)
 	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
-	
+
 	if err != nil {
 		return nil, err
 	}

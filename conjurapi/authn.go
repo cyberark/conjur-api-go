@@ -288,27 +288,6 @@ func (c *Client) OidcTokenAuthenticate(token string) ([]byte, error) {
 	return resp, err
 }
 
-func HandleHttpStatus(resp *http.Response) error {
-	if resp == nil {
-		return fmt.Errorf("received nil HTTP response")
-	}
-	switch resp.StatusCode {
-	case http.StatusBadRequest:
-		return fmt.Errorf("Bad request: received 400 status code")
-	case http.StatusUnauthorized:
-		return fmt.Errorf("Unauthorized: received 401 status code")
-	case http.StatusForbidden:
-		return fmt.Errorf("Forbidden: received 403 status code")
-	case http.StatusInternalServerError:
-		return fmt.Errorf("Internal server error: received 500 status code")
-	default:
-		if resp.StatusCode >= 400 {
-			return fmt.Errorf("Unexpected error: received %d status code", resp.StatusCode)
-		}
-	}
-	return nil
-}
-
 func (c *Client) JWTAuthenticate(jwt, hostID string) ([]byte, error) {
 	req, err := c.JWTAuthenticateRequest(jwt, hostID)
 	if err != nil {
@@ -316,7 +295,7 @@ func (c *Client) JWTAuthenticate(jwt, hostID string) ([]byte, error) {
 	}
 
 	res, err := c.httpClient.Do(req)
-    if err := HandleHttpStatus(res); err != nil {
+	if err != nil {
 		return nil, err
 	}
 	resp, err := response.DataResponse(res)
