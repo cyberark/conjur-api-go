@@ -1,6 +1,7 @@
 package conjurapi
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -140,20 +141,36 @@ func (c *Client) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, 
 	return req, nil
 }
 
+func createJWTRequestBodyForAuthenticator(authnType, token string) (io.Reader, string, error) {
+	switch authnType {
+	case "iam":
+		// IAM expects raw JSON in the body
+		return bytes.NewReader([]byte(token)), "application/json", nil
+	default:
+		// Default expects url-encoded body
+		formattedToken := fmt.Sprintf("jwt=%s", token)
+		return strings.NewReader(formattedToken), "application/x-www-form-urlencoded", nil
+	}
+}
+
 func (c *Client) JWTAuthenticateRequest(token, hostID string) (*http.Request, error) {
 	var authenticateURL string
+	var err error
 	if hostID != "" {
 		authenticateURL = makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), url.PathEscape(hostID), "authenticate").String()
 	} else {
 		authenticateURL = makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), "authenticate").String()
 	}
-
-	token = fmt.Sprintf("jwt=%s", token)
-	req, err := http.NewRequest("POST", authenticateURL, strings.NewReader(token))
+	body, contentType, err := createJWTRequestBodyForAuthenticator(c.config.AuthnType, token)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	req, err := http.NewRequest("POST", authenticateURL, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", contentType)
 	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
 
 	return req, nil
@@ -191,7 +208,7 @@ func (c *Client) OidcAuthenticateRequest(code, nonce, code_verifier string) (*ht
 
 	req, err := http.NewRequest("GET", authenticateURL, nil)
 	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
-	
+
 	if err != nil {
 		return nil, err
 	}

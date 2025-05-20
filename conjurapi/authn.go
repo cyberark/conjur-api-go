@@ -298,7 +298,6 @@ func (c *Client) JWTAuthenticate(jwt, hostID string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	resp, err := response.DataResponse(res)
 
 	if err == nil && c.storage != nil {
