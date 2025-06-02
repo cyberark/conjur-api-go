@@ -1069,7 +1069,7 @@ func TestClient_AuthenticatorStatus(t *testing.T) {
 			name:      "Returns error status if authenticator service doesn't exist",
 			authnType: "jwt",
 			serviceID: "non-existent",
-			expectErr: false,
+			expectErr: true,
 			expectedResponse: &AuthenticatorStatusResponse{
 				Status: "error",
 				Error:  "#<Errors::Authentication::Security::WebserviceNotFound: CONJ00005E Webservice 'authn-jwt/non-existent/status' not found>",
