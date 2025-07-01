@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.13.1] - 2025-06-18
+
+### Security
+- Update `github.com/sirupsen/logrus` to 1.9.3. CONJSE-2026
+
 ## [0.13.0] - 2025-04-24
 
 ### Added
