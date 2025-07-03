@@ -26,7 +26,7 @@ if [ "$API_TESTS" != "" ]; then
 fi
 
 export COMPOSE_PROJECT_NAME="conjurapigo_${PROJECT_SUFFIX}"
-export GO_VERSION="${1:-"1.23"}"
+export GO_VERSION="${1:-"1.24"}"
 export REGISTRY_URL="${2:-docker.io}"
 echo "REGISTRY_URL is set to: $REGISTRY_URL"
 
