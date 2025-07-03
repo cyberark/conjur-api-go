@@ -1,4 +1,4 @@
-ARG FROM_IMAGE="golang:1.23"
+ARG FROM_IMAGE="golang:1.24"
 FROM ${FROM_IMAGE}
 LABEL maintainer="CyberArk Software Ltd."
 

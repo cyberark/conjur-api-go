@@ -83,10 +83,10 @@ services:
     entrypoint: sleep
     command: infinity
 
-  jwt-server:
-    image: "ghcr.io/stackitcloud/fake-jwt-server:v0.1.1"
+  mock-jwt-server:
+    image: cyberark/mock-jwt-server:latest
     ports:
-      - 8008
+      - 8080
     environment:
       ISSUER: "jwt-server"
       AUDIENCE: "conjur"

@@ -27,13 +27,16 @@ pipeline {
     buildDiscarder(logRotator(numToKeepStr: '30'))
   }
 
-  triggers {
-    parameterizedCron(getDailyCronString("%TEST_CLOUD=true"))
-  }
-
   environment {
     // Sets the MODE to the specified or autocalculated value as appropriate
     MODE = release.canonicalizeMode()
+  }
+
+  triggers {
+    parameterizedCron("""
+      ${getDailyCronString("%TEST_CLOUD=true")}
+      ${getWeeklyCronString("H(1-5)", "%MODE=RELEASE")}
+    """)
   }
 
   parameters {
