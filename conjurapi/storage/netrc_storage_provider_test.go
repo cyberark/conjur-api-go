@@ -222,10 +222,14 @@ func setupNetrcConfig(t *testing.T) netrcTestConfig {
 }
 
 func setupNetrcStorage(config netrcTestConfig) *NetrcStorageProvider {
-	return NewNetrcStorageProvider(
+	provider, err := NewNetrcStorageProvider(
 		config.NetRCPath,
 		getMachineName(config.ApplianceURL, config.AuthnType, config.ServiceID),
 	)
+	if err != nil {
+		panic(err)
+	}
+	return provider
 }
 
 func getMachineName(applianceURL, authnType, serviceID string) string {

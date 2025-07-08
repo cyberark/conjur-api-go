@@ -268,6 +268,10 @@ func NewTestUtils(config *Config) (TestUtils, error) {
 
 	config.mergeEnv()
 
+	if os.Getenv("HOME") == "" {
+		os.Setenv("HOME", "/tmp")
+	}
+
 	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
 		client, err := NewClientFromEnvironment(*config)
 		if err != nil {

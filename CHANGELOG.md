@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.13.2] - 2025-07-01
 
+### Added
+- Improve error handling for missing .netrc file. CNJR-10190
+
 ## [0.13.1] - 2025-06-18
 
 ### Security

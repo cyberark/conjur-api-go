@@ -83,6 +83,7 @@ func TestNewClientFromEnvironment(t *testing.T) {
 		defer e.RestoreEnv()
 		config := Config{Account: "account", ApplianceURL: "appliance-url"}
 		os.Setenv("CONJUR_AUTHN_TOKEN_FILE", "token-file")
+		os.Setenv("HOME", t.TempDir())
 		client, err := NewClientFromEnvironment(config)
 		require.NoError(t, err)
 		assert.IsType(t, &authn.TokenFileAuthenticator{}, client.authenticator)
@@ -92,6 +93,7 @@ func TestNewClientFromEnvironment(t *testing.T) {
 		defer e.RestoreEnv()
 		config := Config{Account: "account", ApplianceURL: "appliance-url"}
 		os.Setenv("CONJUR_AUTHN_TOKEN", "some-token")
+		os.Setenv("HOME", t.TempDir())
 		client, err := NewClientFromEnvironment(config)
 		require.NoError(t, err)
 		assert.IsType(t, &authn.TokenAuthenticator{}, client.authenticator)
@@ -101,6 +103,7 @@ func TestNewClientFromEnvironment(t *testing.T) {
 		defer e.RestoreEnv()
 		config := Config{Account: "account", ApplianceURL: "appliance-url"}
 		os.Setenv("CONJUR_AUTHN_JWT_SERVICE_ID", "jwt-service")
+		os.Setenv("HOME", t.TempDir())
 		client, err := NewClientFromEnvironment(config)
 		require.NoError(t, err)
 		assert.IsType(t, &authn.JWTAuthenticator{}, client.authenticator)
@@ -111,6 +114,7 @@ func TestNewClientFromEnvironment(t *testing.T) {
 		config := Config{Account: "account", ApplianceURL: "appliance-url"}
 		os.Setenv("CONJUR_AUTHN_LOGIN", "user")
 		os.Setenv("CONJUR_AUTHN_API_KEY", "password")
+		os.Setenv("HOME", t.TempDir())
 		client, err := NewClientFromEnvironment(config)
 		require.NoError(t, err)
 		assert.IsType(t, &authn.APIKeyAuthenticator{}, client.authenticator)
@@ -129,6 +133,7 @@ func TestNewClientFromEnvironment(t *testing.T) {
 		config := Config{Account: "account", ApplianceURL: "appliance-url", CredentialStorage: "none"}
 		os.Setenv("CONJUR_AUTHN_LOGIN", "")
 		os.Setenv("CONJUR_AUTHN_API_KEY", "")
+		os.Setenv("HOME", t.TempDir())
 
 		client, err := NewClientFromEnvironment(config)
 		assert.EqualError(t, err, "No valid credentials found. Please login again.")
@@ -140,6 +145,7 @@ func TestNewClientFromEnvironment(t *testing.T) {
 		defer e.RestoreEnv()
 		os.Setenv("CONJUR_AUTHN_LOGIN", "user")
 		os.Setenv("CONJUR_AUTHN_API_KEY", "password")
+		os.Setenv("HOME", t.TempDir())
 		client, err := NewClientFromEnvironment(Config{Account: "account", ApplianceURL: "https://appliance-url", SSLCertPath: "fake-path"})
 
 		assert.EqualError(t, err, "open fake-path: no such file or directory")
@@ -340,13 +346,15 @@ func Test_newClientFromStoredCredentials(t *testing.T) {
 		assert.Nil(t, client)
 	})
 	t.Run("Returns a client when stored credentials exist", func(t *testing.T) {
-		if storageProvider, _ := createStorageProvider(config); storageProvider != nil {
-			storageProvider.StoreCredentials("user", "password")
-		}
-		client, err := newClientFromStoredCredentials(config)
+		storageProvider, err := createStorageProvider(config)
+		require.NoError(t, err)
+		require.NotNil(t, storageProvider)
 
-		assert.NoError(t, err)
-		assert.NotNil(t, client)
+		err = storageProvider.StoreCredentials("user", "password")
+		require.NoError(t, err)
+		client, err := newClientFromStoredCredentials(config)
+		assert.NoError(t, err, "Unexpected error: %v", err)
+		assert.NotNil(t, client, "Expected client, got error: %v", err)
 	})
 
 	t.Run("Returns error when using nonexistent SSLCertPath", func(t *testing.T) {
@@ -362,9 +370,27 @@ func Test_newClientFromStoredCredentials(t *testing.T) {
 			storageProvider.StoreCredentials("user", "password")
 		}
 		client, err := newClientFromStoredCredentials(badCertConfig)
-
 		assert.EqualError(t, err, "open fake-path: no such file or directory")
 		assert.Nil(t, client)
+	})
+
+	t.Run("Returns error when .netrc does not match appliance URL", func(t *testing.T) {
+		netrcContent := `
+	machine another-url.example.com
+		login netrc-login
+		password netrc-api-key
+	`
+		err := os.WriteFile(config.NetRCPath, []byte(netrcContent), 0600)
+		assert.NoError(t, err)
+		storageProvider, err := createStorageProvider(config)
+		assert.NoError(t, err)
+		assert.NotNil(t, storageProvider)
+
+		client, err := newClientFromStoredCredentials(config)
+		assert.Nil(t, client)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(),
+			".netrc file was read, but credential for machine appliance-url/authn was not found.")
 	})
 }
 

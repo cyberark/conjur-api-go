@@ -21,10 +21,14 @@ func createStorageProvider(config Config) (CredentialStorageProvider, error) {
 
 	switch config.CredentialStorage {
 	case CredentialStorageFile:
-		return storage.NewNetrcStorageProvider(
+		provider, err := storage.NewNetrcStorageProvider(
 			config.NetRCPath,
 			getMachineName(config),
-		), nil
+		)
+		if err != nil {
+			return nil, err
+		}
+		return provider, nil
 	case CredentialStorageKeyring:
 		if !storage.IsKeyringAvailable() {
 			return nil, fmt.Errorf("Keyring is not available")
