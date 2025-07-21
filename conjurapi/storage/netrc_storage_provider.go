@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/bgentry/go-netrc/netrc"
 )
@@ -13,19 +14,30 @@ type NetrcStorageProvider struct {
 	machineName string
 }
 
-func NewNetrcStorageProvider(netRCPath, machineName string) *NetrcStorageProvider {
-	return &NetrcStorageProvider{
+func NewNetrcStorageProvider(netRCPath, machineName string) (*NetrcStorageProvider, error) {
+
+	netrcStorageProvider := &NetrcStorageProvider{
 		netRCPath:   netRCPath,
 		machineName: machineName,
 	}
+	if netRCPath == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get user home directory: %v", err)
+		}
+		netRCPath = filepath.Join(home, ".netrc")
+		netrcStorageProvider.netRCPath = netRCPath
+	}
+	// Ensure file exists
+	err := netrcStorageProvider.ensureNetrcFileExists()
+	if err != nil {
+		return nil, fmt.Errorf("failed to ensure .netrc file exists: %w", err)
+	}
+	return netrcStorageProvider, nil
 }
 
 // StoreCredentials stores credentials to the specified .netrc file
 func (s *NetrcStorageProvider) StoreCredentials(login string, password string) error {
-	err := s.ensureNetrcFileExists()
-	if err != nil {
-		return err
-	}
 
 	nrc, err := netrc.ParseFile(s.netRCPath)
 	if err != nil {
@@ -58,7 +70,7 @@ func (s *NetrcStorageProvider) ReadCredentials() (string, string, error) {
 
 	m := nrc.FindMachine(s.machineName)
 	if m == nil {
-		return "", "", fmt.Errorf("No credentials found in NetRCPath")
+		return "", "", fmt.Errorf(".netrc file was read, but credential for machine %s was not found.", s.machineName)
 	}
 
 	return m.Login, m.Password, nil

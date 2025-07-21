@@ -158,7 +158,11 @@ func newClientFromStoredCredentials(config Config) (*Client, error) {
 	}
 
 	// Attempt to load credentials from whatever storage provider is configured
-	if storageProvider, _ := createStorageProvider(config); storageProvider != nil {
+	storageProvider, err := createStorageProvider(config)
+	if err != nil {
+		return nil, err
+	}
+	if storageProvider != nil {
 		login, password, err := storageProvider.ReadCredentials()
 		if err != nil {
 			return nil, err
