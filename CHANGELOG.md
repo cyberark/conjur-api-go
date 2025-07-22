@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.13.2] - 2025-07-01
+## [0.13.2] - 2025-07-22
 
 ### Added
 - Improve error handling for missing .netrc file. CNJR-10190
@@ -318,7 +318,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.12.14...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.13.2...HEAD
+[0.13.2]: https://github.com/cyberark/conjur-api-go/compare/v0.13.1...v0.13.2
+[0.13.1]: https://github.com/cyberark/conjur-api-go/compare/v0.13.0...v0.13.1
+[0.13.0]: https://github.com/cyberark/conjur-api-go/compare/v0.12.15...v0.13.0
+[0.12.15]: https://github.com/cyberark/conjur-api-go/compare/v0.12.14...v0.12.15
 [0.12.14]: https://github.com/cyberark/conjur-api-go/compare/v0.12.13...v0.12.14
 [0.12.13]: https://github.com/cyberark/conjur-api-go/compare/v0.12.12...v0.12.13
 [0.12.12]: https://github.com/cyberark/conjur-api-go/compare/v0.12.11...v0.12.12
