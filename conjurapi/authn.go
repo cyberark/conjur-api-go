@@ -52,6 +52,10 @@ func (c *Client) ForceRefreshToken() error {
 }
 
 func (c *Client) refreshToken() error {
+	if c.authenticator == nil {
+		return errors.New("authenticator not initialized - check netrc file or credential configuration")
+	}
+
 	var tokenBytes []byte
 	tokenBytes, err := c.authenticator.RefreshToken()
 	if err != nil {
