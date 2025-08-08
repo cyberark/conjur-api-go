@@ -503,7 +503,7 @@ func (c *Config) AddToConjurRc(key, val string) {
 	}
 
 	// append the key-value pair to the conjurrc file
-	file, err := os.OpenFile(conjurrc, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(conjurrc, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	defer file.Close()
 	if err != nil {
 		logging.ApiLog.Errorf("Failed to open %s: %v", conjurrc, err)
