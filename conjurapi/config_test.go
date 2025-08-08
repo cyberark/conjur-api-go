@@ -625,55 +625,15 @@ func TestConfig_GetHttpTimeout(t *testing.T) {
 	}
 }
 
-func TestSetIntegrationName(t *testing.T) {
+func TestDefaultTelemetryHeader(t *testing.T){
 	config := Config{}
-	config.SetIntegrationName("")
-	if config.IntegrationName != "SecretsManagerGo SDK" {
-		t.Errorf("Expected 'SecretsManagerGo SDK', got %s", config.IntegrationName)
-	}
+	config.SetIntegrationVersion("0.0.0")
+	config.SetFinalTelemetryHeader()
+	expected := fmt.Sprintf("in=SecretsManagerGo SDK&iv=0.0.0&it=cybr-secretsmanager&vn=CyberArk")
+	encodedExpected := base64.RawURLEncoding.EncodeToString([]byte(expected))
 
-	config.SetIntegrationName("TestName")
-	if config.IntegrationName != "TestName" {
-		t.Errorf("Expected 'TestName', got %s", config.IntegrationName)
-	}
-}
-
-func TestSetIntegrationType(t *testing.T) {
-	config := Config{}
-	config.SetIntegrationType("")
-	if config.IntegrationType != "cybr-secretsmanager" {
-		t.Errorf("Expected 'cybr-secretsmanager', got %s", config.IntegrationType)
-	}
-
-	config.SetIntegrationType("CustomType")
-	if config.IntegrationType != "CustomType" {
-		t.Errorf("Expected 'CustomType', got %s", config.IntegrationType)
-	}
-}
-
-func TestSetVendorName(t *testing.T) {
-	config := Config{}
-	config.SetVendorName("")
-	if config.VendorName != "CyberArk" {
-		t.Errorf("Expected 'CyberArk', got %s", config.VendorName)
-	}
-
-	config.SetVendorName("CustomVendor")
-	if config.VendorName != "CustomVendor" {
-		t.Errorf("Expected 'CustomVendor', got %s", config.VendorName)
-	}
-}
-
-func TestSetVendorVersion(t *testing.T) {
-	config := Config{}
-	config.SetVendorVersion("")
-	if config.VendorVersion != "" {
-		t.Errorf("Expected '', got %s", config.VendorVersion)
-	}
-
-	config.SetVendorVersion("1.2.3")
-	if config.VendorVersion != "1.2.3" {
-		t.Errorf("Expected '1.2.3', got %s", config.VendorVersion)
+	if result := config.SetFinalTelemetryHeader(); result != encodedExpected {
+		t.Errorf("Expected '%s', got '%s'", encodedExpected, result)
 	}
 }
 

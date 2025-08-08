@@ -320,25 +320,15 @@ func contains(s []string, str string) bool {
 // Parameters:
 //   - inname (string): The name of the integration. If empty, the default value is used.
 func (c *Config) SetIntegrationName(inname string) {
-	if inname == "" {
-		c.IntegrationName = "SecretsManagerGo SDK"
-	} else {
-		c.IntegrationName = inname
-	}
+	c.IntegrationName = inname
 	c.finalTelemetryHeader = ""
 }
 
-// SetIntegrationType sets the type of the integration. If the provided type is
-// an empty string, it defaults to "cybr-secretsmanager".
-//
+// SetIntegrationType sets the type of the integration. 
 // Parameters:
-//   - intype (string): The type of the integration. If empty, the default value is used.
+//   - intype (string): The type of the integration.
 func (c *Config) SetIntegrationType(intype string) {
-	if intype == "" {
-		c.IntegrationType = "cybr-secretsmanager"
-	} else {
-		c.IntegrationType = intype
-	}
+	c.IntegrationType = intype
 	c.finalTelemetryHeader = ""
 }
 
@@ -367,31 +357,19 @@ func (c *Config) SetIntegrationVersion(inversion string) {
 	c.finalTelemetryHeader = ""
 }
 
-// SetVendorName sets the name of the vendor. If the provided name is an empty string, 
-// it defaults to "CyberArk".
-//
+// SetVendorName sets the name of the vendor.
 // Parameters:
-//   - vname (string): The name of the vendor. If empty, the default value is used.
+//   - vname (string): The name of the vendor. 
 func (c *Config) SetVendorName(vname string) {
-	if vname == "" {
-		c.VendorName = "CyberArk"
-	} else {
-		c.VendorName = vname
-	}
+    c.VendorName = vname
 	c.finalTelemetryHeader = ""
 }
 
-// SetVendorVersion sets the version of the vendor. If the provided version is an empty string,
-// it sets the vendor version to an empty string.
-//
+// SetVendorVersion sets the version of the vendor.
 // Parameters:
-//   - vversion (string): The version of the vendor. If empty, the vendor version is set to an empty string.
+//   - vversion (string): The version of the vendor.
 func (c *Config) SetVendorVersion(vversion string) {
-	if vversion == "" {
-		c.VendorVersion = ""
-	} else {
-		c.VendorVersion = vversion
-	}
+	c.VendorVersion = vversion
 	c.finalTelemetryHeader = ""
 }
 
@@ -412,6 +390,21 @@ func GetReleaseVersion(versionPath string) (string, error) {
 	return string(data), nil
 }
 
+func (c *Config) setDefaultIntegrationMetadata() {
+	if c.IntegrationName == "" {
+		c.SetIntegrationName("SecretsManagerGo SDK")
+	}
+	if c.IntegrationType == "" {
+		c.SetIntegrationType("cybr-secretsmanager")
+	}
+	if c.IntegrationVersion == "" {
+		c.SetIntegrationVersion("")
+	}
+	if c.VendorName == "" {
+		c.SetVendorName("CyberArk")
+	}
+}
+
 // SetFinalTelemetryHeader constructs and returns a base64-encoded telemetry header
 // based on the values of the integration and vendor properties. If the header has already been constructed, it returns the cached value.
 //
@@ -421,6 +414,9 @@ func (c *Config) SetFinalTelemetryHeader() string {
 	if c.finalTelemetryHeader != "" {
 		return c.finalTelemetryHeader
 	}
+
+	c.setDefaultIntegrationMetadata()
+
 	finalTelemetryHeader := ""
 	if c.IntegrationName != "" {
 		finalTelemetryHeader += "in=" + c.IntegrationName
