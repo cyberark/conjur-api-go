@@ -53,6 +53,7 @@ type Config struct {
 	finalTelemetryHeader string          `yaml:"-"`
 	Environment          EnvironmentType `yaml:"environment,omitempty"`
 	Proxy                string          `yaml:"proxy,omitempty"`
+	ConjurCloudTimeout   int             `yaml:"cc_timeout,omitempty"`
 }
 
 func (c *Config) IsHttps() bool {
