@@ -60,6 +60,23 @@ exit_code=$?;
 echo "Exit code: $exit_code"
 ```
 
+### Working with Unreleased Changes
+
+#### For CI/Jenkins Builds
+1. Jenkins automatically switches dependencies to internal Enterprise versions, allowing CI to build against private repos without requiring public releases.
+- *Note:* Changes still need to be merged to `main` in the internal `conjur-api-go` repository before the downstream repositories will be able to use them.
+2. In the downstream project (e.g., conjur-cli-go), add replace statements to the bottom of `go.mod` to ensure that the internal dependencies are pulled in when running the CI pipeline:
+  ```
+   replace github.com/cyberark/conjur-api-go => github.com/cyberark/conjur-api-go latest
+   ```
+- *Note:* the custom replace statements and CI business logic are specific to CyberArk internal contributors
+- See the [secrets provider go.mod](https://github.com/cyberark/secrets-provider-for-k8s/blob/main/go.mod) for examples of proper replace statements
+
+#### For Local Development
+1. Locally, you need to follow standard Go practice of replacing the dependency in `go.mod ` with the version in a local directory.
+- See [Go Documentation: Requiring Module Code in a Local Directory](https://go.dev/doc/modules/managing-dependencies#local_directory)
+
+
 ## Releases
 
 Releases should be created by maintainers only. To create a tag and release,
