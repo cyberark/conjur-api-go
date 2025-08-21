@@ -111,13 +111,13 @@ func (c *Client) submitRequestWithCustomAuth(req *http.Request) (resp *http.Resp
 }
 
 func (c *Client) WhoAmIRequest() (*http.Request, error) {
-	return http.NewRequest("GET", makeRouterURL(c.config.ApplianceURL, "whoami").String(), nil)
+	return http.NewRequest(http.MethodGet, makeRouterURL(c.config.ApplianceURL, "whoami").String(), nil)
 }
 
 func (c *Client) LoginRequest(login string, password string) (*http.Request, error) {
 	authenticateURL := makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), "login").String()
 
-	req, err := http.NewRequest("GET", authenticateURL, nil)
+	req, err := http.NewRequest(http.MethodGet, authenticateURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func (c *Client) LoginRequest(login string, password string) (*http.Request, err
 func (c *Client) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, error) {
 	authenticateURL := makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), url.QueryEscape(loginPair.Login), "authenticate").String()
 
-	req, err := http.NewRequest("POST", authenticateURL, strings.NewReader(loginPair.APIKey))
+	req, err := http.NewRequest(http.MethodPost, authenticateURL, strings.NewReader(loginPair.APIKey))
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +166,7 @@ func (c *Client) JWTAuthenticateRequest(token, hostID string) (*http.Request, er
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", authenticateURL, body)
+	req, err := http.NewRequest(http.MethodPost, authenticateURL, body)
 	if err != nil {
 		return nil, err
 	}
@@ -177,13 +177,13 @@ func (c *Client) JWTAuthenticateRequest(token, hostID string) (*http.Request, er
 }
 
 func (c *Client) ListOidcProvidersRequest() (*http.Request, error) {
-	return http.NewRequest("GET", c.oidcProvidersUrl(), nil)
+	return http.NewRequest(http.MethodGet, c.oidcProvidersUrl(), nil)
 }
 
 // ServerInfoRequest crafts an HTTP request to Conjur's /info endpoint to retrieve
 // This is only available in Conjur Enterprise and will fail with a 404 error in Conjur OSS.
 func (c *Client) ServerInfoRequest() (*http.Request, error) {
-	return http.NewRequest("GET", makeRouterURL(c.config.ApplianceURL, "info").String(), nil)
+	return http.NewRequest(http.MethodGet, makeRouterURL(c.config.ApplianceURL, "info").String(), nil)
 }
 
 // RootRequest crafts an HTTP request to Conjur's root endpoint.
@@ -191,7 +191,7 @@ func (c *Client) ServerInfoRequest() (*http.Request, error) {
 // some information about the server.
 // In newer versions of Conjur this will return a JSON object with information about the server.
 func (c *Client) RootRequest() (*http.Request, error) {
-	req, err := http.NewRequest("GET", makeRouterURL(c.config.ApplianceURL).String(), nil)
+	req, err := http.NewRequest(http.MethodGet, makeRouterURL(c.config.ApplianceURL).String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +206,7 @@ func (c *Client) RootRequest() (*http.Request, error) {
 func (c *Client) OidcAuthenticateRequest(code, nonce, code_verifier string) (*http.Request, error) {
 	authenticateURL := makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), "authenticate").withFormattedQuery("code=%s&nonce=%s&code_verifier=%s", code, nonce, code_verifier).String()
 
-	req, err := http.NewRequest("GET", authenticateURL, nil)
+	req, err := http.NewRequest(http.MethodGet, authenticateURL, nil)
 	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
 
 	if err != nil {
@@ -220,7 +220,7 @@ func (c *Client) OidcTokenAuthenticateRequest(token string) (*http.Request, erro
 	authenticateURL := makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), "authenticate").String()
 
 	token = fmt.Sprintf("id_token=%s", token)
-	req, err := http.NewRequest("POST", authenticateURL, strings.NewReader(token))
+	req, err := http.NewRequest(http.MethodPost, authenticateURL, strings.NewReader(token))
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +243,7 @@ func (c *Client) RotateAPIKeyRequest(roleID string) (*http.Request, error) {
 	rotateURL := makeRouterURL(c.authnURL("authn", ""), "api_key").withFormattedQuery("role=%s", roleID).String()
 
 	return http.NewRequest(
-		"PUT",
+		http.MethodPut,
 		rotateURL,
 		nil,
 	)
@@ -258,7 +258,7 @@ func (c *Client) RotateCurrentRoleAPIKeyRequest(login string, password string) (
 	rotateUrl := makeRouterURL(c.authnURL("authn", ""), "api_key")
 
 	req, err := http.NewRequest(
-		"PUT",
+		http.MethodPut,
 		rotateUrl.String(),
 		nil,
 	)
@@ -278,7 +278,7 @@ func (c *Client) ChangeUserPasswordRequest(username string, password string, new
 	passwordURL := makeRouterURL(c.config.ApplianceURL, "authn", c.config.Account, "password")
 
 	req, err := http.NewRequest(
-		"PUT",
+		http.MethodPut,
 		passwordURL.String(),
 		strings.NewReader(newPassword),
 	)
@@ -307,7 +307,7 @@ func (c *Client) CheckPermissionRequest(resourceID, privilege string) (*http.Req
 	checkURL := makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id)).withQuery(query).String()
 
 	return http.NewRequest(
-		"GET",
+		http.MethodGet,
 		checkURL,
 		nil,
 	)
@@ -332,7 +332,7 @@ func (c *Client) CheckPermissionForRoleRequest(resourceID, roleID, privilege str
 	checkURL := makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id)).withQuery(query).String()
 
 	return http.NewRequest(
-		"GET",
+		http.MethodGet,
 		checkURL,
 		nil,
 	)
@@ -347,7 +347,7 @@ func (c *Client) ResourceRequest(resourceID string) (*http.Request, error) {
 	requestURL := makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id))
 
 	return http.NewRequest(
-		"GET",
+		http.MethodGet,
 		requestURL.String(),
 		nil,
 	)
@@ -382,7 +382,7 @@ func (c *Client) resourcesRequest(filter *ResourceFilter, count bool) (*http.Req
 	requestURL := makeRouterURL(c.resourcesURL(c.config.Account)).withQuery(query.Encode())
 
 	return http.NewRequest(
-		"GET",
+		http.MethodGet,
 		requestURL.String(),
 		nil,
 	)
@@ -404,7 +404,7 @@ func (c *Client) PermittedRolesRequest(resourceID string, privilege string) (*ht
 	permittedRolesURL := makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id)).withFormattedQuery("permitted_roles=true&privilege=%s", url.QueryEscape(privilege)).String()
 
 	return http.NewRequest(
-		"GET",
+		http.MethodGet,
 		permittedRolesURL,
 		nil,
 	)
@@ -418,7 +418,7 @@ func (c *Client) RoleRequest(roleID string) (*http.Request, error) {
 	roleURL := makeRouterURL(c.rolesURL(account), kind, url.QueryEscape(id))
 
 	return http.NewRequest(
-		"GET",
+		http.MethodGet,
 		roleURL.String(),
 		nil,
 	)
@@ -432,7 +432,7 @@ func (c *Client) RoleMembersRequest(roleID string) (*http.Request, error) {
 	roleMembersURL := makeRouterURL(c.rolesURL(account), kind, url.QueryEscape(id)).withFormattedQuery("members")
 
 	return http.NewRequest(
-		"GET",
+		http.MethodGet,
 		roleMembersURL.String(),
 		nil,
 	)
@@ -458,7 +458,7 @@ func (c *Client) RoleMembershipsRequestWithOptions(roleID string, includeAll boo
 	roleMembershipsURL := makeRouterURL(c.rolesURL(account), kind, url.QueryEscape(id)).withFormattedQuery(query)
 
 	return http.NewRequest(
-		"GET",
+		http.MethodGet,
 		roleMembershipsURL.String(),
 		nil,
 	)
@@ -487,11 +487,11 @@ func (c *Client) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.R
 	var method string
 	switch mode {
 	case PolicyModePost:
-		method = "POST"
+		method = http.MethodPost
 	case PolicyModePatch:
-		method = "PATCH"
+		method = http.MethodPatch
 	case PolicyModePut:
-		method = "PUT"
+		method = http.MethodPut
 	default:
 		return nil, fmt.Errorf("Invalid PolicyMode: %d", mode)
 	}
@@ -552,7 +552,7 @@ func (c *Client) RetrieveBatchSecretsRequest(variableIDs []string, base64Flag bo
 	}
 
 	request, err := http.NewRequest(
-		"GET",
+		http.MethodGet,
 		c.batchVariableURL(fullVariableIDs),
 		nil,
 	)
@@ -577,7 +577,7 @@ func (c *Client) RetrieveSecretRequest(variableID string) (*http.Request, error)
 	}
 
 	return http.NewRequest(
-		"GET",
+		http.MethodGet,
 		variableURL,
 		nil,
 	)
@@ -592,7 +592,7 @@ func (c *Client) RetrieveSecretWithVersionRequest(variableID string, version int
 	}
 
 	return http.NewRequest(
-		"GET",
+		http.MethodGet,
 		variableURL,
 		nil,
 	)
@@ -607,7 +607,7 @@ func (c *Client) AddSecretRequest(variableID, secretValue string) (*http.Request
 	}
 
 	request, err := http.NewRequest(
-		"POST",
+		http.MethodPost,
 		variableURL,
 		strings.NewReader(secretValue),
 	)
@@ -625,7 +625,7 @@ func (c *Client) CreateTokenRequest(body string) (*http.Request, error) {
 
 	tokenURL := c.createTokenURL()
 	request, err := http.NewRequest(
-		"POST",
+		http.MethodPost,
 		tokenURL,
 		strings.NewReader(body),
 	)
@@ -642,7 +642,7 @@ func (c *Client) DeleteTokenRequest(token string) (*http.Request, error) {
 	tokenURL := c.createTokenURL() + "/" + token
 
 	request, err := http.NewRequest(
-		"DELETE",
+		http.MethodDelete,
 		tokenURL,
 		nil,
 	)
@@ -657,7 +657,7 @@ func (c *Client) DeleteTokenRequest(token string) (*http.Request, error) {
 func (c *Client) CreateHostRequest(body string, token string) (*http.Request, error) {
 	hostURL := c.createHostURL()
 	request, err := http.NewRequest(
-		"POST",
+		http.MethodPost,
 		hostURL,
 		strings.NewReader(body),
 	)
@@ -673,7 +673,7 @@ func (c *Client) CreateHostRequest(body string, token string) (*http.Request, er
 
 func (c *Client) PublicKeysRequest(kind string, identifier string) (*http.Request, error) {
 	publicKeysURL := makeRouterURL(c.config.ApplianceURL, "public_keys", c.config.Account, kind, identifier)
-	return http.NewRequest("GET", publicKeysURL.String(), nil)
+	return http.NewRequest(http.MethodGet, publicKeysURL.String(), nil)
 }
 
 func (c *Client) EnableAuthenticatorRequest(authenticatorType string, serviceID string, enabled bool) (*http.Request, error) {
@@ -681,7 +681,7 @@ func (c *Client) EnableAuthenticatorRequest(authenticatorType string, serviceID 
 	body.Set("enabled", strconv.FormatBool(enabled))
 
 	request, err := http.NewRequest(
-		"PATCH",
+		http.MethodPatch,
 		c.authnURL(authenticatorType, serviceID),
 		strings.NewReader(body.Encode()),
 	)
@@ -695,7 +695,7 @@ func (c *Client) EnableAuthenticatorRequest(authenticatorType string, serviceID 
 
 func (c *Client) AuthenticatorStatusRequest(authenticatorType string, serviceID string) (*http.Request, error) {
 	statusURL := makeRouterURL(c.authnURL(authenticatorType, serviceID), "status").String()
-	return http.NewRequest("GET", statusURL, nil)
+	return http.NewRequest(http.MethodGet, statusURL, nil)
 }
 
 func (c *Client) createTokenURL() string {

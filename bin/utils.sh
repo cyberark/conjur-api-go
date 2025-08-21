@@ -17,6 +17,7 @@ exec_on() {
 }
 
 function teardown {
+  docker compose logs conjur > "../output/$GO_VERSION/conjur-logs.txt" 2>&1 || true
   docker compose down -v
   docker compose down --remove-orphans
   unset API_PKGS

@@ -130,6 +130,7 @@ pipeline {
       }
       post {
         always {
+          script { infrapool.agentArchiveArtifacts artifacts: 'output/1.24/conjur-logs.txt' }
           junit 'output/1.24/junit.xml, output/1.23/junit.xml'
         }
       }

@@ -6,7 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.13.3] - 2025-08-06
+## [0.13.3] - 2025-08-21
+
+### Added
+- Add Authenticators V2 API. CNJR-10814
 
 ## [0.13.2] - 2025-07-22
 
