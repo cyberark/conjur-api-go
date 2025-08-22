@@ -194,7 +194,7 @@ pipeline {
       }
     }
 
-    stage('Run Conjur Cloud tests') {
+    stage('Run Secrets Manager SaaS tests') {
       when {
         expression { params.TEST_CLOUD }
       }

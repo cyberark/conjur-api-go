@@ -1,7 +1,7 @@
 package conjurapi
 
 const MinVersion = "1.23.0"
-const NotSupportedInConjurCloud = "%s is not supported in Conjur Cloud"
+const NotSupportedInConjurCloud = "%s is not supported in Secrets Manager SaaS"
 const NotSupportedInConjurEnterprise = "%s is not supported in Conjur Enterprise/OSS"
 const NotSupportedInOldVersions = "%s is not supported in Conjur versions older than %s"
 

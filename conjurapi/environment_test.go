@@ -105,7 +105,7 @@ func Test_defaultEnvironment(t *testing.T) {
 		url:  "",
 		want: EnvironmentSH,
 	}, {
-		name: "Conjur Cloud",
+		name: "Secrets Manager SaaS",
 		url:  "https://tenant.secretsmgr.cyberark.cloud",
 		want: EnvironmentSaaS,
 	}}
@@ -122,9 +122,11 @@ func Test_environmentIsSupported(t *testing.T) {
 		want bool
 	}{
 		{"", false},
-		{"cloud", true},
+		{"cloud", false},
+		{"saas", true},
 		{"CC", false},
-		{"enterprise", true},
+		{"enterprise", false},
+		{"self-hosted", true},
 		{"CE", false},
 		{"oss", true},
 		{"OSS", true},

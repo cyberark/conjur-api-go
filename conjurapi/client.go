@@ -381,7 +381,7 @@ func newHTTPSClient(cert []byte, config Config) (*http.Client, error) {
 	pool := x509.NewCertPool()
 	ok := pool.AppendCertsFromPEM(cert)
 	if !ok {
-		return nil, fmt.Errorf("Can't append Conjur SSL cert")
+		return nil, fmt.Errorf("Can't append Secrets Manager SSL cert")
 	}
 	//TODO: Test what happens if this cert is expired
 	//TODO: What if server cert is rotated

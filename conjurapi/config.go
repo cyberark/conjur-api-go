@@ -261,7 +261,7 @@ func httpTimoutFromEnv() int {
 
 func (c *Config) applyDefaults(persist bool) {
 	if isConjurCloudURL(c.ApplianceURL) && len(c.Account) == 0 {
-		logging.ApiLog.Info("Detected Conjur Cloud URL, setting 'Account' to 'conjur'")
+		logging.ApiLog.Info("Detected Secrets Manager SaaS URL, setting 'Account' to 'conjur'")
 		c.Account = "conjur"
 		if persist {
 			c.AddToConjurRc("account", c.Account)
@@ -467,12 +467,12 @@ func (c *Config) SetFinalTelemetryHeader() string {
 	return c.finalTelemetryHeader
 }
 
-func (c *Config) IsConjurCloud() bool {
-	return c.Environment == EnvironmentCC
+func (c *Config) IsSaaS() bool {
+	return c.Environment == EnvironmentSaaS
 }
 
-func (c *Config) IsConjurCE() bool {
-	return c.Environment == EnvironmentCE
+func (c *Config) IsSelfHosted() bool {
+	return c.Environment == EnvironmentSH
 }
 
 func (c *Config) IsConjurOSS() bool {

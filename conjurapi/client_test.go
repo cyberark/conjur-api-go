@@ -493,7 +493,7 @@ func TestClient_newHTTPSClient(t *testing.T) {
 		config := Config{}
 		client, err := newHTTPSClient([]byte("invalid cert"), config)
 
-		assert.EqualError(t, err, "Can't append Conjur SSL cert")
+		assert.EqualError(t, err, "Can't append Secrets Manager SSL cert")
 		assert.Nil(t, client)
 	})
 	t.Run("New HTTPS client with valid cert", func(t *testing.T) {

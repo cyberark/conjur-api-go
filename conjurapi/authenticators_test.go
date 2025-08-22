@@ -193,7 +193,7 @@ func TestClient_AuthenticatorCRUD(t *testing.T) {
 					Name:    "test-authenticator-default-vals",
 					Enabled: Bool(true),
 					Owner: &AuthOwner{
-						// Ownership behavior varies between Conjur Cloud and self-hosted currently,
+						// Ownership behavior varies between Secrets Manager SaaS and self-hosted currently,
 						// so we end up ignoring this in the test assertion.
 						ID:   "conjur/authn-jwt/test-authenticator-default-vals",
 						Kind: "policy",
@@ -242,7 +242,7 @@ func TestClient_AuthenticatorCRUD(t *testing.T) {
 					Name:    "test-authenticator-optional-vals",
 					Enabled: Bool(true),
 					Owner: &AuthOwner{
-						// Ownership behavior varies between Conjur Cloud and self-hosted currently,
+						// Ownership behavior varies between Secrets Manager SaaS and self-hosted currently,
 						// so we end up ignoring this in the test assertion.
 						ID:   "PLACEHOLDER",
 						Kind: "user",
@@ -332,7 +332,7 @@ func normalize(resp *AuthenticatorResponse) NormalizedAuthenticatorResponse {
 		enabled = *resp.Enabled
 	}
 
-	// Ownership behavior is currently inconsistent between Conjur Cloud and self-hosted
+	// Ownership behavior is currently inconsistent between Secrets Manager SaaS and self-hosted
 	// For now we set it to 'nil' so it doesn't get compared in the response JSON
 	// var owner map[string]string
 	// if resp.Owner != nil {

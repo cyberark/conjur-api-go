@@ -113,7 +113,7 @@ else
     --build-arg FROM_IMAGE="golang:$GO_VERSION" \
     -t "test-$GO_VERSION" ..
   
-  announce "Running Conjur Cloud tests for Go version: $GO_VERSION...";
+  announce "Running Secrets Manager SaaS tests for Go version: $GO_VERSION...";
   # NOTE: Skipping hostfactory token tests as hostfactory endpoints seem to be disabled by default now
   docker run \
     -e CONJUR_APPLIANCE_URL \

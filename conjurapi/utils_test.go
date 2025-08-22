@@ -22,7 +22,7 @@ type BaseTestUtils struct {
 	client *Client
 }
 
-// We want a sub-path under 'data' to simplify compatibility with Conjur Cloud
+// We want a sub-path under 'data' to simplify compatibility with Secrets Manager SaaS
 // where adding resources under 'root' is restricted
 func (b *BaseTestUtils) PolicyBranch() string {
 	return "data/test"
@@ -49,7 +49,7 @@ func (u *CloudTestUtils) Setup(policy string) (map[string]string, error) {
   owner: !user /%s`, u.AdminUser())
 
 	_, err := u.client.LoadPolicy(
-		PolicyModePatch, // Conjur Cloud doesn't allow 'replace' on 'data' branch
+		PolicyModePatch, // Secrets Manager SaaS doesn't allow 'replace' on 'data' branch
 		"data",
 		strings.NewReader(emptyTestBranch),
 	)

@@ -33,7 +33,7 @@ func TestConfig_Validate(t *testing.T) {
 		config := Config{
 			Account:      "account",
 			ApplianceURL: "appliance-url",
-			Environment:  EnvironmentCE,
+			Environment:  EnvironmentSH,
 		}
 
 		err := config.Validate()
@@ -43,7 +43,7 @@ func TestConfig_Validate(t *testing.T) {
 	t.Run("Return error for invalid configuration missing ApplianceURL", func(t *testing.T) {
 		config := Config{
 			Account:     "account",
-			Environment: EnvironmentCE,
+			Environment: EnvironmentSH,
 		}
 
 		err := config.Validate()
@@ -161,7 +161,7 @@ func TestConfig_Validate(t *testing.T) {
 			config := Config{
 				Account:      "account",
 				ApplianceURL: "appliance-url",
-				Environment:  EnvironmentCE,
+				Environment:  EnvironmentSH,
 			}
 
 			err := config.Validate()
@@ -176,7 +176,7 @@ func TestConfig_Validate(t *testing.T) {
 			AuthnType:    "iam",
 			ServiceID:    "service-id",
 			JWTContent:   "valid-jwt-token",
-			Environment:  EnvironmentCE,
+			Environment:  EnvironmentSH,
 		}
 
 		err := config.Validate()
@@ -193,7 +193,7 @@ func TestConfig_Validate(t *testing.T) {
 			AuthnType:    "azure",
 			ServiceID:    "service-id",
 			JWTContent:   "valid-jwt-token",
-			Environment:  EnvironmentCE,
+			Environment:  EnvironmentSH,
 		}
 
 		err := config.Validate()
@@ -208,7 +208,7 @@ func TestConfig_Validate(t *testing.T) {
 			Account:      "account",
 			ApplianceURL: "appliance-url",
 			AuthnType:    "gcp",
-			Environment:  EnvironmentCE,
+			Environment:  EnvironmentSH,
 		}
 
 		err := config.Validate()
@@ -216,7 +216,7 @@ func TestConfig_Validate(t *testing.T) {
 	})
 
 	t.Run("Validates Environment", func(t *testing.T) {
-		t.Run("Return no error for missing Environment. Defaults to enterprise", func(t *testing.T) {
+		t.Run("Return no error for missing Environment. Defaults to self-hosted", func(t *testing.T) {
 			config := Config{
 				Account:      "account",
 				ApplianceURL: "appliance-url",
@@ -225,9 +225,9 @@ func TestConfig_Validate(t *testing.T) {
 			err := config.Validate()
 			assert.NoError(t, err)
 
-			assert.Equal(t, EnvironmentCE, config.Environment)
+			assert.Equal(t, EnvironmentSH, config.Environment)
 		})
-		t.Run("Return no error for missing Environment. Defaults to cloud", func(t *testing.T) {
+		t.Run("Return no error for missing Environment. Defaults to saas", func(t *testing.T) {
 			config := Config{
 				Account:      "account",
 				ApplianceURL: "appliance-url.secretsmgr.cyberark.cloud",
@@ -236,7 +236,7 @@ func TestConfig_Validate(t *testing.T) {
 			err := config.Validate()
 			assert.NoError(t, err)
 
-			assert.Equal(t, EnvironmentCC, config.Environment)
+			assert.Equal(t, EnvironmentSaaS, config.Environment)
 		})
 		t.Run("Return error for invalid configuration with invalid Environment", func(t *testing.T) {
 			config := Config{
@@ -249,23 +249,23 @@ func TestConfig_Validate(t *testing.T) {
 			assert.Error(t, err)
 
 			errString := err.Error()
-			assert.Contains(t, errString, "Environment must be one of [cloud enterprise oss], got 'invalid-environment'")
+			assert.Contains(t, errString, "Environment must be one of [saas self-hosted oss], got 'invalid-environment'")
 		})
-		t.Run("Return no error if Environment is enterprise", func(t *testing.T) {
+		t.Run("Return no error if Environment is self-hosted", func(t *testing.T) {
 			config := Config{
 				Account:      "account",
 				ApplianceURL: "appliance-url",
-				Environment:  "enterprise",
+				Environment:  "self-hosted",
 			}
 
 			err := config.Validate()
 			assert.NoError(t, err)
 		})
-		t.Run("Return no error if Environment is cloud", func(t *testing.T) {
+		t.Run("Return no error if Environment is saas", func(t *testing.T) {
 			config := Config{
 				Account:      "account",
 				ApplianceURL: "appliance-url",
-				Environment:  "cloud",
+				Environment:  "saas",
 			}
 
 			err := config.Validate()
@@ -373,8 +373,9 @@ var versiontests = []struct {
 
 func TestConfig_mergeYAML(t *testing.T) {
 	t.Run("No other netrc specified", func(t *testing.T) {
-		home := os.Getenv("HOME")
-		assert.NotEmpty(t, home)
+		home, err := os.MkdirTemp("", "test")
+		defer os.RemoveAll(home) // clean up
+		assert.NoError(t, err)
 
 		e := ClearEnv()
 		defer e.RestoreEnv()
@@ -390,13 +391,13 @@ func TestConfig_mergeYAML(t *testing.T) {
 			assert.EqualValues(t, config, Config{
 				Account:      "account",
 				ApplianceURL: "appliance-url",
-				Environment:  EnvironmentCE,
+				Environment:  EnvironmentSH,
 				NetRCPath:    path.Join(home, ".netrc"),
 			})
 		})
 	})
 
-	t.Run("Defaults Account to 'conjur' with Conjur Cloud ApplianceURL", func(t *testing.T) {
+	t.Run("Defaults Account to 'conjur' with Secrets Manager SaaS ApplianceURL", func(t *testing.T) {
 		e := ClearEnv()
 		defer e.RestoreEnv()
 
@@ -421,7 +422,7 @@ cert_file: "/path/to/cert/file/pem%v"
 netrc_path: "/path/to/netrc/file%v"
 authn_type: ldap
 service_id: my-ldap-service
-environment: enterprise
+environment: self-hosted
 %s
 `, index, index, index, index, versiontest.in)
 
@@ -440,7 +441,7 @@ environment: enterprise
 					SSLCertPath:  fmt.Sprintf("/path/to/cert/file/pem%v", index),
 					AuthnType:    "ldap",
 					ServiceID:    "my-ldap-service",
-					Environment:  EnvironmentCE,
+					Environment:  EnvironmentSH,
 				})
 			})
 		})
@@ -496,7 +497,7 @@ cert_file: "/path/to/cert/file/pem"
 			Account:      "env_account",
 			ApplianceURL: "env_appliance_url",
 			SSLCertPath:  "/path/to/cert/file/pem", // from conjurrc, since not set in env
-			Environment:  EnvironmentCE,            // from defaults, since not set explicitly
+			Environment:  EnvironmentSH,            // from defaults, since not set explicitly
 		})
 	})
 
@@ -532,11 +533,11 @@ var conjurrcTestCases = []struct {
 		config: Config{
 			Account:      "test-account",
 			ApplianceURL: "test-appliance-url",
-			Environment:  EnvironmentCE,
+			Environment:  EnvironmentSH,
 		},
 		expected: `account: test-account
 appliance_url: test-appliance-url
-environment: enterprise
+environment: self-hosted
 `,
 	},
 	{
@@ -551,7 +552,7 @@ environment: enterprise
 			SSLCert:           "test-cert",
 			CredentialStorage: "keyring",
 			HTTPTimeout:       100,
-			Environment:       EnvironmentCE,
+			Environment:       EnvironmentSH,
 		},
 		expected: `account: test-account
 appliance_url: test-appliance-url
@@ -561,7 +562,7 @@ authn_type: oidc
 service_id: test-service-id
 credential_storage: keyring
 http_timeout: 100
-environment: enterprise
+environment: self-hosted
 `,
 	},
 }
@@ -734,20 +735,20 @@ func TestConfig_IsConjurCloud(t *testing.T) {
 		expected bool
 	}{
 		{
-			name:     "Conjur Cloud Environment",
-			config:   Config{Environment: "cloud"},
+			name:     "Secrets Manager SaaS Environment",
+			config:   Config{Environment: EnvironmentSaaS},
 			expected: true,
 		},
 		{
 			name:     "Conjur Enterprise Environment",
-			config:   Config{Environment: "enterprise"},
+			config:   Config{Environment: EnvironmentSH},
 			expected: false,
 		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			actual := testCase.config.IsConjurCloud()
+			actual := testCase.config.IsSaaS()
 			assert.Equal(t, testCase.expected, actual)
 		})
 	}

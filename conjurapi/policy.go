@@ -86,11 +86,11 @@ func (c *Client) LoadPolicy(mode PolicyMode, policyID string, policy io.Reader) 
 
 func (c *Client) DryRunPolicy(mode PolicyMode, policyID string, policy io.Reader) (*DryRunPolicyResponse, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, errors.New("Policy Dry Run is not supported in Conjur Cloud")
+		return nil, errors.New("Policy Dry Run is not supported in Secrets Manager SaaS")
 	}
 	err := c.VerifyMinServerVersion("1.21.1")
 	if err != nil {
-		return nil, fmt.Errorf("Policy Dry Run is not supported in Conjur versions older than 1.21.1")
+		return nil, fmt.Errorf("Policy Dry Run is not supported in Secrets Manager versions older than 1.21.1")
 	}
 
 	req, err := c.LoadPolicyRequest(mode, policyID, policy, true)
@@ -110,11 +110,11 @@ func (c *Client) DryRunPolicy(mode PolicyMode, policyID string, policy io.Reader
 // FetchPolicy creates a request to fetch policy from the system
 func (c *Client) FetchPolicy(policyID string, returnJSON bool, policyTreeDepth uint, sizeLimit uint) ([]byte, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, errors.New("Policy Fetch is not supported in Conjur Cloud")
+		return nil, errors.New("Policy Fetch is not supported in Secrets Manager SaaS")
 	}
 	err := c.VerifyMinServerVersion("1.21.1")
 	if err != nil {
-		return nil, fmt.Errorf("Policy Fetch is not supported in Conjur versions older than 1.21.1")
+		return nil, fmt.Errorf("Policy Fetch is not supported in Secrets Manager versions older than 1.21.1")
 	}
 
 	req, err := c.fetchPolicyRequest(policyID, returnJSON, policyTreeDepth, sizeLimit)
