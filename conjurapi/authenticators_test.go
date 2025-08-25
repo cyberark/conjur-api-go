@@ -284,28 +284,28 @@ func TestClient_AuthenticatorCRUD(t *testing.T) {
 			}
 
 			// Test CREATE
-			authenticatorResponse, err := conjur.V2.CreateAuthenticator(tc.authenticator)
+			authenticatorResponse, err := conjur.V2().CreateAuthenticator(tc.authenticator)
 			require.NoError(t, err)
 			assert.EqualValues(t, normalize(tc.expectedResponse), normalize(authenticatorResponse))
 
 			// Test LIST (expect at least two authenticators from test setup + CREATE)
-			authenticatorsList, err := conjur.V2.ListAuthenticators()
+			authenticatorsList, err := conjur.V2().ListAuthenticators()
 			require.NoError(t, err)
 			assert.GreaterOrEqual(t, authenticatorsList.Count, 2)
 			assert.GreaterOrEqual(t, len(authenticatorsList.Authenticators), 2)
 
 			// Test READ (expect the same JSON from CREATE)
-			authenticatorResponse, err = conjur.V2.GetAuthenticator("jwt", tc.authenticator.Name)
+			authenticatorResponse, err = conjur.V2().GetAuthenticator("jwt", tc.authenticator.Name)
 			require.NoError(t, err)
 			assert.EqualValues(t, normalize(tc.expectedResponse), normalize(authenticatorResponse))
 
 			// Test UPDATE (disable the authenticator)
-			authenticatorResponse, err = conjur.V2.UpdateAuthenticator("jwt", tc.authenticator.Name, false)
+			authenticatorResponse, err = conjur.V2().UpdateAuthenticator("jwt", tc.authenticator.Name, false)
 			require.NoError(t, err)
 			assert.EqualValues(t, false, normalize(authenticatorResponse).Enabled)
 
 			// Test DELETE
-			err = conjur.V2.DeleteAuthenticator("jwt", tc.authenticator.Name)
+			err = conjur.V2().DeleteAuthenticator("jwt", tc.authenticator.Name)
 			require.NoError(t, err)
 		})
 	}

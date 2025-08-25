@@ -98,20 +98,20 @@ func (c *V2Client) ListAuthenticatorsRequest() (*http.Request, error) {
 
 func (c *V2Client) authenticatorsURL(authenticatorType string, serviceID string) string {
 	// If running against Conjur Cloud, the account is not used in the URL.
-	account := c.client.config.Account
-	if isConjurCloudURL(c.client.config.ApplianceURL) {
+	account := c.config.Account
+	if isConjurCloudURL(c.config.ApplianceURL) {
 		account = ""
 	}
 
 	// TODO: validate GCP does not use service IDs and if it should be accessible via this API
 	if authenticatorType == "gcp" {
-		return makeRouterURL(c.client.config.ApplianceURL, "authenticators", account, authenticatorType).String()
+		return makeRouterURL(c.config.ApplianceURL, "authenticators", account, authenticatorType).String()
 	}
 
 	if authenticatorType != "" && authenticatorType != "authn" {
-		return makeRouterURL(c.client.config.ApplianceURL, "authenticators", account, authenticatorType, serviceID).String()
+		return makeRouterURL(c.config.ApplianceURL, "authenticators", account, authenticatorType, serviceID).String()
 	}
 
 	// For the default authenticators service endpoint
-	return makeRouterURL(c.client.config.ApplianceURL, "authenticators", account).String()
+	return makeRouterURL(c.config.ApplianceURL, "authenticators", account).String()
 }
