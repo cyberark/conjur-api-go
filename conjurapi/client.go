@@ -32,6 +32,9 @@ type Client struct {
 	httpClient    *http.Client
 	authenticator Authenticator
 	storage       CredentialStorageProvider
+
+	// Sub-client for v2 API operations
+	v2 *V2Client
 }
 
 func NewClientFromKey(config Config, loginPair authn.LoginPair) (*Client, error) {
@@ -226,11 +229,20 @@ func NewClient(config Config) (*Client, error) {
 		return nil, err
 	}
 
-	return &Client{
+	c := &Client{
 		config:     config,
 		httpClient: httpClient,
 		storage:    storageProvider,
-	}, nil
+	}
+
+	return c, nil
+}
+
+func (c *Client) V2() *V2Client {
+	if c.v2 == nil {
+		c.v2 = &V2Client{c}
+	}
+	return c.v2
 }
 
 func createHttpClient(config Config) (*http.Client, error) {

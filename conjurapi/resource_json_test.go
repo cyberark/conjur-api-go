@@ -24,17 +24,17 @@ const (
 
 	jsonB = `
 	{
-		"identifier": "cucumber:variable:example/alpha/secret01",
+		"identifier": "conjur:variable:example/alpha/secret01",
 		"id": "example/alpha/secret01",
 		"type": "variable",
-		"owner": "cucumber:policy:example/alpha",
-		"policy": "cucumber:policy:root",
+		"owner": "conjur:policy:example/alpha",
+		"policy": "conjur:policy:root",
 		"permitted": {
 			"execute": [
-				"cucumber:group:example/alpha/secret-users"
+				"conjur:group:example/alpha/secret-users"
 			],
 			"read": [
-				"cucumber:group:example/alpha/secret-users"
+				"conjur:group:example/alpha/secret-users"
 			]
 		},
 		"annotations": {
@@ -63,14 +63,14 @@ var (
 	}
 
 	resourceB = Resource{
-		Identifier: "cucumber:variable:example/alpha/secret01",
+		Identifier: "conjur:variable:example/alpha/secret01",
 		Id:         "example/alpha/secret01",
 		Type:       "variable",
-		Owner:      "cucumber:policy:example/alpha",
-		Policy:     "cucumber:policy:root",
+		Owner:      "conjur:policy:example/alpha",
+		Policy:     "conjur:policy:root",
 		Permitted: &map[string][]string{
-			"execute": []string{"cucumber:group:example/alpha/secret-users"},
-			"read":    []string{"cucumber:group:example/alpha/secret-users"},
+			"execute": []string{"conjur:group:example/alpha/secret-users"},
+			"read":    []string{"conjur:group:example/alpha/secret-users"},
 		},
 		Annotations: map[string]string{"key": "value"},
 	}

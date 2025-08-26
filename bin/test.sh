@@ -70,7 +70,7 @@ if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
            [ "$exit_code" -eq 0 ]' || failed
 else
   # Export INFRAPOOL env vars for Cloud tests
-  export CONJUR_APPLIANCE_URL=$INFRAPOOL_CONJUR_APPLIANCE_URL
+  export CONJUR_APPLIANCE_URL="$INFRAPOOL_CONJUR_APPLIANCE_URL/api"
   export CONJUR_ACCOUNT=conjur
   export CONJUR_AUTHN_LOGIN=$INFRAPOOL_CONJUR_AUTHN_LOGIN
   export CONJUR_AUTHN_TOKEN=$(echo "$INFRAPOOL_CONJUR_AUTHN_TOKEN" | base64 --decode)
@@ -84,6 +84,7 @@ else
     -t "test-$GO_VERSION" ..
   
   announce "Running Conjur Cloud tests for Go version: $GO_VERSION...";
+  # NOTE: Skipping hostfactory token tests as hostfactory endpoints seem to be disabled by default now
   docker run \
     -e CONJUR_APPLIANCE_URL \
     -e CONJUR_ACCOUNT \
@@ -95,7 +96,7 @@ else
     -v "$(pwd)/../output:/conjur-api-go/output" \
     "test-$GO_VERSION" bash -c 'set -xo pipefail;
             output_dir="./output/cloud"
-            go test -coverprofile="$output_dir/c.out" -v ./... | tee "$output_dir/junit.output";
+            go test -coverprofile="$output_dir/c.out" -skip "TestClient_Token" -v ./... | tee "$output_dir/junit.output";
             exit_code=$?;
             echo "Tests finished - aggregating results...";
             cat "$output_dir/junit.output" | go-junit-report > "$output_dir/junit.xml";
