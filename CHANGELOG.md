@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 - Add Authenticators V2 API. CNJR-10814
+- Add Branches V2 API. CNJR-10817
+- Add Workloads V2 API. CNJR-10819
 
 ## [0.13.2] - 2025-07-22
 
