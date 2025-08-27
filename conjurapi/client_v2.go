@@ -41,14 +41,14 @@ func (c *ClientV2) IsConjurCloud(url string) bool {
 }
 
 func (c *ClientV2) VerifyMinServerVersionV2(minVersion string) error {
+	serverVersion := ""
 	if c.conjurVersion == "" {
-
+		serverVersion, err := c.ServerVersion()
+		if err != nil {
+			return err
+		}
+		c.conjurVersion = serverVersion
 	}
-	serverVersion, err := c.ServerVersion()
-	if err != nil {
-		return err
-	}
-	c.conjurVersion = serverVersion
 
 	return validateMinVersion(serverVersion, minVersion)
 }
