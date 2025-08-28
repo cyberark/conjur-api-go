@@ -3,14 +3,15 @@ package conjurapi
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 )
 
-const V2_API_HEADER string = "application/x.secretsmgr.v2beta+json"
-const V2_API_OUTGOING_HEADER_ID string = "Accept"
-const V2_API_INCOMING_HEADER_ID string = "Content-Type"
+const v2APIHeader string = "application/x.secretsmgr.v2beta+json"
+const v2APIOutgoingHeaderID string = "Accept"
+const v2APIIncomingHeaderID string = "Content-Type"
 
 // Owner defines the JSON data structure used with the Conjur API v2
 type Owner struct {
@@ -20,12 +21,34 @@ type Owner struct {
 
 // Branch defines the JSON data structure used with the Conjur API v2
 type Branch struct {
-	Name             string            `json:"name"`
-	Owner            *Owner            `json:"owner,omitempty"`
-	Branch           string            `json:"branch"`
-	Annotations      map[string]string `json:"annotations,omitempty"`
-	AuthnDescriptors []AuthnDescriptor `json:"authn_descriptors"`
-	RestrictedTo     []string          `json:"restricted_to,omitempty"`
+	Name        string            `json:"name"`
+	Owner       *Owner            `json:"owner,omitempty"`
+	Branch      string            `json:"branch"`
+	Annotations map[string]string `json:"annotations,omitempty"`
+}
+
+type BranchesResponse struct {
+	Branches []Branch `json:"branches,omitempty"`
+	Count    int      `json:"count"`
+}
+
+type BranchFilter struct {
+	Limit  int
+	Offset int
+}
+
+func (b Branch) Validate() error {
+	var errs []error
+	if b.Branch == "" {
+		errs = append(errs, fmt.Errorf("Missing required Branch attribute Branch"))
+	}
+	if b.Name == "" {
+		errs = append(errs, fmt.Errorf("Missing required Branch attribute Name"))
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return nil
 }
 
 type AuthnDescriptorData struct {
@@ -48,6 +71,20 @@ type Workload struct {
 	RestrictedTo     []string          `json:"restricted_to,omitempty"`
 }
 
+func (w Workload) Validate() error {
+	var errs []error
+	if w.Branch == "" {
+		errs = append(errs, fmt.Errorf("Missing required attribute Workload Branch"))
+	}
+	if w.Name == "" {
+		errs = append(errs, fmt.Errorf("Missing required attribute Workload Name"))
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return nil
+}
+
 func (c *ClientV2) CreateAuthenticatorRequest(authenticator *AuthenticatorBase) (*http.Request, error) {
 	body, err := json.Marshal(authenticator)
 
@@ -65,7 +102,7 @@ func (c *ClientV2) CreateAuthenticatorRequest(authenticator *AuthenticatorBase) 
 	}
 
 	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add(V2_API_OUTGOING_HEADER_ID, V2_API_HEADER)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 
 	return request, nil
 }
@@ -80,7 +117,7 @@ func (c *ClientV2) GetAuthenticatorRequest(authenticatorType string, serviceID s
 		return nil, err
 	}
 
-	request.Header.Add(V2_API_OUTGOING_HEADER_ID, V2_API_HEADER)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 
 	return request, nil
 }
@@ -100,7 +137,7 @@ func (c *ClientV2) UpdateAuthenticatorRequest(authenticatorType string, serviceI
 		return nil, err
 	}
 
-	request.Header.Add(V2_API_OUTGOING_HEADER_ID, V2_API_HEADER)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 	request.Header.Add("Content-Type", "application/json")
 	return request, nil
 }
@@ -115,7 +152,7 @@ func (c *ClientV2) DeleteAuthenticatorRequest(authenticatorType string, serviceI
 		return nil, err
 	}
 
-	request.Header.Add(V2_API_OUTGOING_HEADER_ID, V2_API_HEADER)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 
 	return request, nil
 }
@@ -130,7 +167,7 @@ func (c *ClientV2) ListAuthenticatorsRequest() (*http.Request, error) {
 		return nil, err
 	}
 
-	request.Header.Add(V2_API_OUTGOING_HEADER_ID, V2_API_HEADER)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 
 	return request, nil
 }
@@ -155,29 +192,20 @@ func (c *ClientV2) authenticatorsURL(authenticatorType string, serviceID string)
 	return makeRouterURL(c.config.ApplianceURL, "authenticators", account).String()
 }
 
-// CreateBranchRequest requires branch data structure
-func (c *ClientV2) CreateBranchRequest(account string, branch Branch) (*http.Request, error) {
-	errors := []string{}
-
-	if account == "" {
-		errors = append(errors, "Must specify an Account")
+func (c *ClientV2) CreateBranchRequest(branch Branch) (*http.Request, error) {
+	if c.config.Account == "" {
+		return nil, fmt.Errorf("Must specify an Account")
 	}
-	if branch.Branch == "" {
-		errors = append(errors, "Must specify an Branch.Branch")
-	}
-	if branch.Name == "" {
-		errors = append(errors, "Must specify an Branch.Name")
-	}
-
-	if len(errors) > 0 {
-		return nil, fmt.Errorf("%s", strings.Join(errors, " -- "))
+	err := branch.Validate()
+	if err != nil {
+		return nil, err
 	}
 
 	branchJson, err := json.Marshal(branch)
 
-	url := fmt.Sprintf("branches/%s", account)
+	path := fmt.Sprintf("branches/%s", c.config.Account)
 
-	branchURL := makeRouterURL(c.config.ApplianceURL, url).String()
+	branchURL := makeRouterURL(c.config.ApplianceURL, path).String()
 
 	request, err := http.NewRequest(
 		http.MethodPost,
@@ -188,16 +216,15 @@ func (c *ClientV2) CreateBranchRequest(account string, branch Branch) (*http.Req
 		return nil, err
 	}
 
-	request.Header.Add(V2_API_OUTGOING_HEADER_ID, V2_API_HEADER)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 
 	return request, nil
 }
 
-// ReadBranchRequest requires branch data structure
-func (c *ClientV2) ReadBranchRequest(account string, identifier string) (*http.Request, error) {
+func (c *ClientV2) ReadBranchRequest(identifier string) (*http.Request, error) {
 	errors := []string{}
 
-	if account == "" {
+	if c.config.Account == "" {
 		errors = append(errors, "Must specify an Account")
 	}
 	if identifier == "" {
@@ -208,7 +235,7 @@ func (c *ClientV2) ReadBranchRequest(account string, identifier string) (*http.R
 		return nil, fmt.Errorf("%s", strings.Join(errors, " -- "))
 	}
 
-	url := fmt.Sprintf("branches/%s/%s", account, identifier)
+	url := fmt.Sprintf("branches/%s/%s", c.config.Account, identifier)
 
 	branchURL := makeRouterURL(c.config.ApplianceURL, url).String()
 
@@ -221,38 +248,27 @@ func (c *ClientV2) ReadBranchRequest(account string, identifier string) (*http.R
 		return nil, err
 	}
 
-	request.Header.Add(V2_API_OUTGOING_HEADER_ID, V2_API_HEADER)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 
 	return request, nil
 }
 
-// ReadBranchesRequest requires branch data structure
-func (c *ClientV2) ReadBranchesWithOffsetAndLimitRequest(account string, offset uint, limit uint) (*http.Request, error) {
-	errors := []string{}
-
-	if account == "" {
-		errors = append(errors, "Must specify an Account")
+func (c *ClientV2) ReadBranchesRequest(filter *BranchFilter) (*http.Request, error) {
+	if c.config.Account == "" {
+		return nil, fmt.Errorf("Must specify an Account")
 	}
 
-	if limit == 0 {
-		limit = c.default_max_entries_read_limit
-	}
-
-	if len(errors) > 0 {
-		return nil, fmt.Errorf("%s", strings.Join(errors, " -- "))
-	}
-
-	url := fmt.Sprintf("branches/%s", account)
+	url := fmt.Sprintf("branches/%s", c.config.Account)
 
 	branchURL := ""
-	if offset == 0 && limit == 0 {
+	if filter == nil {
 		branchURL = makeRouterURL(c.config.ApplianceURL, url).String()
-	} else if limit > 0 && offset == 0 {
-		branchURL = makeRouterURL(c.config.ApplianceURL, url).withFormattedQuery("limit=%d", limit).String()
-	} else if offset > 0 && limit == 0 {
-		branchURL = makeRouterURL(c.config.ApplianceURL, url).withFormattedQuery("offset=%d", offset).String()
+	} else if filter.Limit > 0 && filter.Offset <= 0 {
+		branchURL = makeRouterURL(c.config.ApplianceURL, url).withFormattedQuery("limit=%d", filter.Limit).String()
+	} else if filter.Offset > 0 && filter.Limit <= 0 {
+		branchURL = makeRouterURL(c.config.ApplianceURL, url).withFormattedQuery("offset=%d", filter.Offset).String()
 	} else {
-		branchURL = makeRouterURL(c.config.ApplianceURL, url).withFormattedQuery("offset=%d&limit=%d", offset, limit).String()
+		branchURL = makeRouterURL(c.config.ApplianceURL, url).withFormattedQuery("offset=%d&limit=%d", filter.Offset, filter.Limit).String()
 	}
 
 	request, err := http.NewRequest(
@@ -264,42 +280,23 @@ func (c *ClientV2) ReadBranchesWithOffsetAndLimitRequest(account string, offset 
 		return nil, err
 	}
 
-	request.Header.Add(V2_API_OUTGOING_HEADER_ID, V2_API_HEADER)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 
 	return request, nil
 }
 
-// ReadBranch
-func (c *ClientV2) ReadBranchesWithOffsetRequest(account string, offset uint) (*http.Request, error) {
-	return c.ReadBranchesWithOffsetAndLimitRequest(account, offset, 0)
-}
-
-// ReadBranch
-func (c *ClientV2) ReadBranchesRequest(account string) (*http.Request, error) {
-	return c.ReadBranchesWithOffsetAndLimitRequest(account, 0, 0)
-}
-
-// UpdateBranchRequest
-func (c *ClientV2) UpdateBranchRequest(account string, branch Branch) (*http.Request, error) {
-	errors := []string{}
-
-	if account == "" {
-		errors = append(errors, "Must specify an Account")
+func (c *ClientV2) UpdateBranchRequest(branch Branch) (*http.Request, error) {
+	if c.config.Account == "" {
+		return nil, fmt.Errorf("Must specify an Account")
 	}
-	if branch.Branch == "" {
-		errors = append(errors, "Must specify an Branch.Branch")
-	}
-	if branch.Name == "" {
-		errors = append(errors, "Must specify an Branch.Name")
-	}
-
-	if len(errors) > 0 {
-		return nil, fmt.Errorf("%s", strings.Join(errors, " -- "))
+	err := branch.Validate()
+	if err != nil {
+		return nil, err
 	}
 
 	branchJson, err := json.Marshal(branch)
 
-	url := fmt.Sprintf("branches/%s/%s", account, branch.Branch)
+	url := fmt.Sprintf("branches/%s/%s", c.config.Account, branch.Branch)
 
 	branchURL := makeRouterURL(c.config.ApplianceURL, url).String()
 
@@ -312,27 +309,20 @@ func (c *ClientV2) UpdateBranchRequest(account string, branch Branch) (*http.Req
 		return nil, err
 	}
 
-	request.Header.Add(V2_API_OUTGOING_HEADER_ID, V2_API_HEADER)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 
 	return request, nil
 }
 
-// DeleteBranchRequest
-func (c *ClientV2) DeleteBranchRequest(account string, identifier string) (*http.Request, error) {
-	errors := []string{}
-
-	if account == "" {
-		errors = append(errors, "Must specify an Account")
+func (c *ClientV2) DeleteBranchRequest(identifier string) (*http.Request, error) {
+	if c.config.Account == "" {
+		return nil, fmt.Errorf("Must specify an Account")
 	}
 	if identifier == "" {
-		errors = append(errors, "Must specify an Identifier")
+		return nil, fmt.Errorf("Must specify an Identifier")
 	}
 
-	if len(errors) > 0 {
-		return nil, fmt.Errorf("%s", strings.Join(errors, " -- "))
-	}
-
-	url := fmt.Sprintf("branches/%s/%s", account, identifier)
+	url := fmt.Sprintf("branches/%s/%s", c.config.Account, identifier)
 
 	branchURL := makeRouterURL(c.config.ApplianceURL, url).String()
 
@@ -345,23 +335,22 @@ func (c *ClientV2) DeleteBranchRequest(account string, identifier string) (*http
 		return nil, err
 	}
 
-	request.Header.Add(V2_API_OUTGOING_HEADER_ID, V2_API_HEADER)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 
 	return request, nil
 }
 
-func (c *ClientV2) CreateWorkloadRequest(account string, workload Workload) (*http.Request, error) {
+func (c *ClientV2) CreateWorkloadRequest(workload Workload) (*http.Request, error) {
 	errors := []string{}
 
-	if account == "" {
-		errors = append(errors, "Must specify an Account")
+	if c.config.Account == "" {
+		return nil, fmt.Errorf("Must specify an Account")
 	}
-	if workload.Name == "" {
-		errors = append(errors, "Must specify a Workload Name")
+	err := workload.Validate()
+	if err != nil {
+		return nil, err
 	}
-	if workload.Branch == "" {
-		errors = append(errors, "Must specify a Branch")
-	}
+
 	if len(workload.AuthnDescriptors) == 0 {
 		errors = append(errors, "Must specify at least one authenticator in authn_descriptors")
 	} else {
@@ -385,7 +374,7 @@ func (c *ClientV2) CreateWorkloadRequest(account string, workload Workload) (*ht
 		return nil, err
 	}
 
-	urlPath := fmt.Sprintf("workloads/%s", account)
+	urlPath := fmt.Sprintf("workloads/%s", c.config.Account)
 	fullURL := makeRouterURL(c.config.ApplianceURL, urlPath).String()
 
 	req, err := http.NewRequest(http.MethodPost, fullURL, bytes.NewBuffer(payload))
@@ -393,25 +382,19 @@ func (c *ClientV2) CreateWorkloadRequest(account string, workload Workload) (*ht
 		return nil, err
 	}
 
-	req.Header.Add(V2_API_OUTGOING_HEADER_ID, V2_API_HEADER)
+	req.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 	return req, nil
 }
 
-func (c *ClientV2) DeleteWorkloadRequest(account string, workloadID string) (*http.Request, error) {
-	errors := []string{}
-
-	if account == "" {
-		errors = append(errors, "Must specify an Account")
+func (c *ClientV2) DeleteWorkloadRequest(workloadID string) (*http.Request, error) {
+	if c.config.Account == "" {
+		return nil, fmt.Errorf("Must specify an Account")
 	}
 	if workloadID == "" {
-		errors = append(errors, "Must specify a Workload ID")
+		return nil, fmt.Errorf("Must specify a Workload ID")
 	}
 
-	if len(errors) > 0 {
-		return nil, fmt.Errorf("%s", strings.Join(errors, " -- "))
-	}
-
-	urlPath := fmt.Sprintf("workloads/%s/%s", account, workloadID)
+	urlPath := fmt.Sprintf("workloads/%s/%s", c.config.Account, workloadID)
 	fullURL := makeRouterURL(c.config.ApplianceURL, urlPath).String()
 
 	req, err := http.NewRequest(http.MethodDelete, fullURL, nil)
@@ -419,6 +402,6 @@ func (c *ClientV2) DeleteWorkloadRequest(account string, workloadID string) (*ht
 		return nil, err
 	}
 
-	req.Header.Add(V2_API_OUTGOING_HEADER_ID, V2_API_HEADER)
+	req.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 	return req, nil
 }

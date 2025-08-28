@@ -9,14 +9,14 @@ import (
 	"testing"
 )
 
-const account = "account"
-const branchBranch = "branch"
-const branchName = "branchName"
+const testAccount = "account"
+const testBranchBranch = "branch"
+const testBranchName = "testBranchName"
 
 func GetConfigForTest(url string) Config {
 	config := Config{}
 	config.ApplianceURL = url
-	config.Account = account
+	config.Account = testAccount
 	config.AuthnType = "jwt"
 	config.ServiceID = "jwt_service"
 	config.JWTContent = "{\"protected\":\"true\",\"payload\":\"true\",\"signature\":\"yes\"}"
@@ -43,8 +43,8 @@ func NewHandler(t *testing.T) http.Handler {
 		}
 
 		// all requests V2 must contain V2 API HEADER
-		if r.Header.Get("Accept") != V2_API_HEADER {
-			custErr := fmt.Sprintf("Expected Accept: %s header, got: %s", V2_API_HEADER, r.Header.Get("Accept"))
+		if r.Header.Get("Accept") != v2APIHeader {
+			custErr := fmt.Sprintf("Expected Accept: %s header, got: %s", v2APIHeader, r.Header.Get("Accept"))
 			t.Errorf(custErr)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(custErr))
@@ -54,7 +54,7 @@ func NewHandler(t *testing.T) http.Handler {
 		body, _ := io.ReadAll(r.Body)
 
 		// Create Branch
-		customUrl := "/branches/" + account
+		customUrl := "/branches/" + testAccount
 		if r.URL.Path == customUrl {
 			if r.Method == http.MethodPost {
 				branch := Branch{}
@@ -66,58 +66,58 @@ func NewHandler(t *testing.T) http.Handler {
 					w.Write([]byte(custErr))
 					return
 				}
-				if branch.Name != branchName || branch.Branch != branchBranch {
+				if branch.Name != testBranchName || branch.Branch != testBranchBranch {
 					custErr := fmt.Sprintf("Request is not in proper json format: %s", body)
 					t.Errorf(custErr)
 					w.WriteHeader(http.StatusInternalServerError)
 					w.Write([]byte(custErr))
 					return
 				}
-				w.Header().Add(V2_API_INCOMING_HEADER_ID, V2_API_HEADER)
+				w.Header().Add(v2APIIncomingHeaderID, v2APIHeader)
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte("200"))
 				return
 			}
 		}
 		// Read Branch
-		customUrl = "/branches/" + account + "/" + branchBranch
+		customUrl = "/branches/" + testAccount + "/" + testBranchBranch
 		if r.URL.Path == customUrl {
 			if r.Method == http.MethodGet {
-				response := `{"name":"` + branchName + `","owner": {"kind": "user","id": "user1"},"branch":"` + branchBranch + `","annotations": {"myannkey": "myannvalue","description": "This is my description"}}`
-				w.Header().Add(V2_API_INCOMING_HEADER_ID, V2_API_HEADER)
+				response := `{"name":"` + testBranchName + `","owner": {"kind": "user","id": "user1"},"branch":"` + testBranchBranch + `","annotations": {"myannkey": "myannvalue","description": "This is my description"}}`
+				w.Header().Add(v2APIIncomingHeaderID, v2APIHeader)
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(response))
 				return
 			}
 		}
 		// Read Branches
-		customUrl = "/branches/" + account
+		customUrl = "/branches/" + testAccount
 		if r.URL.Path == customUrl {
 			if r.Method == http.MethodGet {
-				response := `{"branches":[{"name":"` + branchName + `","owner": {"kind": "user","id": "user1"},"branch":"` + branchBranch + `","annotations": {"myannkey": "myannvalue","description": "This is my description"}}],"count":1}`
-				w.Header().Add(V2_API_INCOMING_HEADER_ID, V2_API_HEADER)
+				response := `{"branches":[{"name":"` + testBranchName + `","owner": {"kind": "user","id": "user1"},"branch":"` + testBranchBranch + `","annotations": {"myannkey": "myannvalue","description": "This is my description"}}],"count":1}`
+				w.Header().Add(v2APIIncomingHeaderID, v2APIHeader)
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(response))
 				return
 			}
 		}
 		// Update Branch
-		customUrl = "/branches/" + account + "/" + branchBranch
+		customUrl = "/branches/" + testAccount + "/" + testBranchBranch
 		if r.URL.Path == customUrl {
 			if r.Method == http.MethodPatch {
-				response := `{"branches":[{"name":"` + branchName + `","owner": {"kind": "user","id": "user1"},"branch":"` + branchBranch + `","annotations": {"myannkey": "myannvalue","description": "This is my description"}}],"count":1}`
-				w.Header().Add(V2_API_INCOMING_HEADER_ID, V2_API_HEADER)
+				response := `{"branches":[{"name":"` + testBranchName + `","owner": {"kind": "user","id": "user1"},"branch":"` + testBranchBranch + `","annotations": {"myannkey": "myannvalue","description": "This is my description"}}],"count":1}`
+				w.Header().Add(v2APIIncomingHeaderID, v2APIHeader)
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(response))
 				return
 			}
 		}
 		// Delete Branch
-		customUrl = "/branches/" + account + "/" + branchBranch
+		customUrl = "/branches/" + testAccount + "/" + testBranchBranch
 		if r.URL.Path == customUrl {
 			if r.Method == http.MethodDelete {
 				response := ``
-				w.Header().Add(V2_API_INCOMING_HEADER_ID, V2_API_HEADER)
+				w.Header().Add(v2APIIncomingHeaderID, v2APIHeader)
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(response))
 				return
@@ -144,13 +144,10 @@ func TestCreateBranchRequestAndResponse(t *testing.T) {
 	}
 
 	branch := Branch{}
-	branch.Name = branchName
-	branch.Branch = branchBranch
-	branch.AuthnDescriptors = append(branch.AuthnDescriptors, AuthnDescriptor{})
-	branch.AuthnDescriptors[0].Type = "authn-jwt"
-	branch.AuthnDescriptors[0].ServiceID = "jwt_service"
+	branch.Name = testBranchName
+	branch.Branch = testBranchBranch
 
-	data, err := client.V2().CreateBranch(account, branch)
+	data, err := client.V2().CreateBranch(branch)
 	if err != nil {
 		t.Errorf("client.V2.CreateBranch error returned %s", err.Error())
 	}
@@ -170,7 +167,7 @@ func TestReadBranchRequestAndResponse(t *testing.T) {
 		t.Errorf("Error: %s", err.Error())
 	}
 
-	data, err := client.V2().ReadBranch(account, branchBranch)
+	data, err := client.V2().ReadBranch(testBranchBranch)
 	if err != nil {
 		t.Errorf("client.V2.CreateBranch error returned %s", err.Error())
 	}
@@ -190,12 +187,12 @@ func TestReadBranchesRequestAndResponse(t *testing.T) {
 		t.Errorf("Error: %s", err.Error())
 	}
 
-	data, err := client.V2().ReadBranches(account)
+	data, err := client.V2().ReadBranches(nil)
 	if err != nil {
 		t.Errorf("client.V2.CreateBranch error returned %s", err.Error())
 	}
-	if data == nil {
-		t.Errorf("client.V2.CreateBranch data returned nil")
+	if data.Count == 0 {
+		t.Errorf("client.V2.CreateBranch, branches response is empty")
 	}
 }
 
@@ -211,13 +208,10 @@ func TestUpdateBranchRequestAndResponse(t *testing.T) {
 	}
 
 	branch := Branch{}
-	branch.Name = branchName
-	branch.Branch = branchBranch
-	branch.AuthnDescriptors = append(branch.AuthnDescriptors, AuthnDescriptor{})
-	branch.AuthnDescriptors[0].Type = "authn-jwt"
-	branch.AuthnDescriptors[0].ServiceID = "jwt_service"
+	branch.Name = testBranchName
+	branch.Branch = testBranchBranch
 
-	data, err := client.V2().UpdateBranch(account, branch)
+	data, err := client.V2().UpdateBranch(branch)
 	if err != nil {
 		t.Errorf("client.V2.CreateBranch error returned %s", err.Error())
 	}
@@ -237,7 +231,7 @@ func TestDeleteBranchRequestAndResponse(t *testing.T) {
 		t.Errorf("Error: %s", err.Error())
 	}
 
-	data, err := client.V2().DeleteBranch(account, branchBranch)
+	data, err := client.V2().DeleteBranch(testBranchBranch)
 	if err != nil {
 		t.Errorf("client.V2.CreateBranch error returned %s", err.Error())
 	}

@@ -17,6 +17,7 @@ func newTestClient(serverURL string) Client {
 	return Client{
 		config: Config{
 			ApplianceURL: serverURL,
+			Account:      "myTestAccount",
 		},
 	}
 }
@@ -27,39 +28,35 @@ func TestClientV2_CreateBranchRequest(t *testing.T) {
 
 	branch := Branch{}
 
-	_, err = client.V2().CreateBranchRequest(account, branch)
+	_, err = client.V2().CreateBranchRequest(branch)
 	if err == nil {
 		return
 	}
-	if !strings.Contains(fmt.Sprint(err), "Branch.Branch") {
-		t.Errorf("Error string do not contain information about missing Branch.Branch")
+	if !strings.Contains(fmt.Sprint(err), "Branch attribute Branch") {
+		t.Errorf("Error string do not contain information about missing Branch")
 		return
 	}
 
-	if !strings.Contains(fmt.Sprint(err), "Branch.Name") {
-		t.Errorf("Error string do not contain information about missing Branch.Name")
+	if !strings.Contains(fmt.Sprint(err), "Branch attribute Name") {
+		t.Errorf("Error string do not contain information about missing Name")
 		return
 	}
 
 	branch.Name = "Name"
 	branch.Branch = "Branch"
 
-	request, err := client.V2().CreateBranchRequest("account", branch)
+	request, err := client.V2().CreateBranchRequest(branch)
 	if err != nil {
 		t.Errorf("Error Test failed %s", err.Error())
 		return
 	}
 
-	if request.Header.Get(V2_API_OUTGOING_HEADER_ID) != V2_API_HEADER {
-		t.Errorf("Error Header %s not found", V2_API_HEADER)
+	if request.Header.Get(v2APIOutgoingHeaderID) != v2APIHeader {
+		t.Errorf("Error Header %s not found", v2APIHeader)
 		return
 	}
 
-	//conf := Config{}
-	//conf.ApplianceURL = "localhost"
-	//cv2.client.config = conf
-
-	request, err = client.V2().CreateBranchRequest("account", branch)
+	request, err = client.V2().CreateBranchRequest(branch)
 	if err != nil {
 		t.Errorf("Error Test failed %s", err.Error())
 		return
@@ -82,7 +79,7 @@ func TestClientV2_ReadBranchRequest(t *testing.T) {
 	ident := "super/hiper/test/id"
 	account := "account"
 
-	_, err = client.V2().ReadBranchRequest(account, ident)
+	_, err = client.V2().ReadBranchRequest(ident)
 	if err == nil {
 		return
 	}
@@ -96,18 +93,18 @@ func TestClientV2_ReadBranchRequest(t *testing.T) {
 		return
 	}
 
-	request, err := client.V2().ReadBranchRequest(account, ident)
+	request, err := client.V2().ReadBranchRequest(ident)
 	if err != nil {
 		t.Errorf("Error Test failed %s", err.Error())
 		return
 	}
 
-	if request.Header.Get(V2_API_OUTGOING_HEADER_ID) != V2_API_HEADER {
-		t.Errorf("Error Header %s not found", V2_API_HEADER)
+	if request.Header.Get(v2APIOutgoingHeaderID) != v2APIHeader {
+		t.Errorf("Error Header %s not found", v2APIHeader)
 		return
 	}
 
-	request, err = client.V2().ReadBranchRequest(account, ident)
+	request, err = client.V2().ReadBranchRequest(ident)
 	if err != nil {
 		t.Errorf("Error Test failed %s", err.Error())
 		return
@@ -128,9 +125,9 @@ func TestClientV2_ReadBranchRequest(t *testing.T) {
 func TestClientV2_ReadBranchesRequest(t *testing.T) {
 	config := GetConfigForTest("localhost")
 	client, err := NewClientFromJwt(config)
-	account := "account"
 
-	_, err = client.V2().ReadBranchesRequest("")
+	client.config.Account = ""
+	_, err = client.V2().ReadBranchesRequest(nil)
 	if err == nil {
 		return
 	}
@@ -139,38 +136,40 @@ func TestClientV2_ReadBranchesRequest(t *testing.T) {
 		return
 	}
 
-	request, err := client.V2().ReadBranchesRequest(account)
+	client.config.Account = testAccount
+	request, err := client.V2().ReadBranchesRequest(nil)
 	if err != nil {
 		t.Errorf("Error Test failed %s", err.Error())
 		return
 	}
 
-	if request.Header.Get(V2_API_OUTGOING_HEADER_ID) != V2_API_HEADER {
-		t.Errorf("Error Header %s not found", V2_API_HEADER)
+	if request.Header.Get(v2APIOutgoingHeaderID) != v2APIHeader {
+		t.Errorf("Error Header %s not found", v2APIHeader)
 		return
 	}
 
-	request, err = client.V2().ReadBranchesRequest(account)
+	request, err = client.V2().ReadBranchesRequest(nil)
 	if err != nil {
 		t.Errorf("Error Test failed %s", err.Error())
 		return
 	}
 
-	reqUrl := "localhost/branches/" + account
+	reqUrl := "localhost/branches/" + client.config.Account
 	if request.URL.Path != reqUrl {
 		t.Errorf("Error Url is not proper: %s, should be: %s", request.URL.Path, reqUrl)
 		return
 	}
 
-	offset := 10
-	request, err = client.V2().ReadBranchesWithOffsetRequest(account, uint(offset))
+	filter := BranchFilter{Offset: 10}
+
+	request, err = client.V2().ReadBranchesRequest(&filter)
 	if err != nil {
 		t.Errorf("Error Test failed %s", err.Error())
 		return
 	}
 
-	reqUrl = "localhost/branches/" + account
-	reqQuery := "offset=" + strconv.Itoa(offset)
+	reqUrl = "localhost/branches/" + client.config.Account
+	reqQuery := "offset=" + strconv.Itoa(filter.Offset)
 	if request.URL.Path != reqUrl {
 		t.Errorf("Error Url is not proper: %s, should be: %s", request.URL.Path, reqUrl)
 		return
@@ -181,15 +180,16 @@ func TestClientV2_ReadBranchesRequest(t *testing.T) {
 		return
 	}
 
-	limit := 10
-	request, err = client.V2().ReadBranchesWithOffsetAndLimitRequest(account, uint(offset), uint(limit))
+	filter.Offset = 10
+	filter.Limit = 10
+	request, err = client.V2().ReadBranchesRequest(&filter)
 	if err != nil {
 		t.Errorf("Error Test failed %s", err.Error())
 		return
 	}
 
-	reqUrl = "localhost/branches/" + account
-	reqQuery = "offset=" + strconv.Itoa(offset) + "&limit=" + strconv.Itoa(limit)
+	reqUrl = "localhost/branches/" + client.config.Account
+	reqQuery = "offset=" + strconv.Itoa(filter.Offset) + "&limit=" + strconv.Itoa(filter.Limit)
 	if request.URL.Path != reqUrl {
 		t.Errorf("Error Url is not proper: %s, should be: %s", request.URL.Path, reqUrl)
 		return
@@ -214,35 +214,35 @@ func TestClientV2_UpdateBranchRequest(t *testing.T) {
 	ident := "super/hiper/test/id"
 	branch := Branch{}
 
-	_, err = client.V2().UpdateBranchRequest(account, branch)
+	_, err = client.V2().UpdateBranchRequest(branch)
 	if err == nil {
 		return
 	}
-	if !strings.Contains(fmt.Sprint(err), "Branch.Branch") {
+	if !strings.Contains(fmt.Sprint(err), "Branch attribute Branch") {
 		t.Errorf("Error string do not contain information about missing Branch.Branch")
 		return
 	}
 
-	if !strings.Contains(fmt.Sprint(err), "Branch.Name") {
+	if !strings.Contains(fmt.Sprint(err), "Branch attribute Name") {
 		t.Errorf("Error string do not contain information about missing Branch.Name")
 		return
 	}
 
 	branch.Branch = ident
-	branch.Name = branchName
+	branch.Name = testBranchName
 
-	request, err := client.V2().UpdateBranchRequest(account, branch)
+	request, err := client.V2().UpdateBranchRequest(branch)
 	if err != nil {
 		t.Errorf("Error Test failed %s", err.Error())
 		return
 	}
 
-	if request.Header.Get(V2_API_OUTGOING_HEADER_ID) != V2_API_HEADER {
-		t.Errorf("Error Header %s not found", V2_API_HEADER)
+	if request.Header.Get(v2APIOutgoingHeaderID) != v2APIHeader {
+		t.Errorf("Error Header %s not found", v2APIHeader)
 		return
 	}
 
-	request, err = client.V2().UpdateBranchRequest(account, branch)
+	request, err = client.V2().UpdateBranchRequest(branch)
 	if err != nil {
 		t.Errorf("Error Test failed %s", err.Error())
 		return
@@ -263,11 +263,11 @@ func TestClientV2_UpdateBranchRequest(t *testing.T) {
 func TestClientV2_DeleteBranchRequest(t *testing.T) {
 	config := GetConfigForTest("localhost")
 	client, err := NewClientFromJwt(config)
+	client.config.Account = ""
 
-	account := "account"
 	ident := "super/hiper/test/id"
 
-	_, err = client.V2().DeleteBranchRequest("", "")
+	_, err = client.V2().DeleteBranchRequest("")
 	if err == nil {
 		return
 	}
@@ -276,29 +276,26 @@ func TestClientV2_DeleteBranchRequest(t *testing.T) {
 		return
 	}
 
-	if !strings.Contains(fmt.Sprint(err), "Identifier") {
-		t.Errorf("Error string do not contain information about missing Identifier")
-		return
-	}
+	client.config.Account = testAccount
 
-	request, err := client.V2().DeleteBranchRequest(account, ident)
+	request, err := client.V2().DeleteBranchRequest(ident)
 	if err != nil {
 		t.Errorf("Error Test failed %s", err.Error())
 		return
 	}
 
-	if request.Header.Get(V2_API_OUTGOING_HEADER_ID) != V2_API_HEADER {
-		t.Errorf("Error Header %s not found", V2_API_HEADER)
+	if request.Header.Get(v2APIOutgoingHeaderID) != v2APIHeader {
+		t.Errorf("Error Header %s not found", v2APIHeader)
 		return
 	}
 
-	request, err = client.V2().DeleteBranchRequest(account, ident)
+	request, err = client.V2().DeleteBranchRequest(ident)
 	if err != nil {
 		t.Errorf("Error Test failed %s", err.Error())
 		return
 	}
 
-	reqUrl := "localhost/branches/" + account + "/" + ident
+	reqUrl := "localhost/branches/" + testAccount + "/" + ident
 	if request.URL.Path != reqUrl {
 		t.Errorf("Error Url is not proper: %s, should be: %s", request.URL.Path, reqUrl)
 		return
@@ -351,7 +348,7 @@ func TestCreateWorkloadRequest_MinimalSuccess(t *testing.T) {
 
 	c := newTestClient(ts.URL)
 
-	req, err := c.V2().CreateWorkloadRequest("myTestAccount", validWorkload())
+	req, err := c.V2().CreateWorkloadRequest(validWorkload())
 	if err != nil {
 		t.Errorf("Error Test failed %s", err)
 	}
@@ -427,7 +424,7 @@ func TestCreateWorkloadRequest_JenkinsJWTWithAnnotationsSuccess(t *testing.T) {
 		},
 	}
 
-	req, err := c.V2().CreateWorkloadRequest("myTestAccount", workloadData)
+	req, err := c.V2().CreateWorkloadRequest(workloadData)
 	if err != nil {
 		t.Errorf("Error Test failed %s", err)
 	}
@@ -483,7 +480,7 @@ func TestCreateWorkloadRequest_ApiKeyRestrictedIPsSuccess(t *testing.T) {
 		},
 	}
 
-	req, err := c.V2().CreateWorkloadRequest("myTestAccount", workloadData)
+	req, err := c.V2().CreateWorkloadRequest(workloadData)
 	if err != nil {
 		t.Errorf("Error Test failed %s", err)
 	}
@@ -502,7 +499,7 @@ func TestCreateWorkloadRequest_MissingNameValidationError422(t *testing.T) {
 	workload := validWorkload()
 	workload.Name = ""
 
-	req, err := c.V2().CreateWorkloadRequest("myTestAccount", workload)
+	req, err := c.V2().CreateWorkloadRequest(workload)
 	if err == nil {
 		t.Errorf("Expected error for missing name, got nil (request=%v)", req)
 	}
@@ -530,7 +527,7 @@ func TestCreateWorkloadRequest_DuplicateWorkload409(t *testing.T) {
 	workload := validWorkload()
 
 	// First create (201)
-	req1, err := c.V2().CreateWorkloadRequest("myTestAccount", workload)
+	req1, err := c.V2().CreateWorkloadRequest(workload)
 	if err != nil {
 		t.Errorf("Error Test failed %s", err)
 	}
@@ -543,7 +540,7 @@ func TestCreateWorkloadRequest_DuplicateWorkload409(t *testing.T) {
 	}
 
 	// Second create (409)
-	req2, err := c.V2().CreateWorkloadRequest("myTestAccount", workload)
+	req2, err := c.V2().CreateWorkloadRequest(workload)
 	if err != nil {
 		t.Errorf("Error Test failed %s", err)
 	}
@@ -577,7 +574,7 @@ func TestCreateWorkloadRequest_MalformedIPs422(t *testing.T) {
 	workload := validWorkload()
 	workload.RestrictedTo = []string{"1.2.3.999", "10.0.0.1"}
 
-	req, err := c.V2().CreateWorkloadRequest("myTestAccount", workload)
+	req, err := c.V2().CreateWorkloadRequest(workload)
 	if err != nil {
 		t.Errorf("Error Test failed %s", err)
 	}
@@ -592,7 +589,7 @@ func TestCreateWorkloadRequest_MalformedIPs422(t *testing.T) {
 
 func TestCreateWorkloadRequest_MissingContentType400(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Content-Type") != V2_API_HEADER {
+		if r.Header.Get("Content-Type") != v2APIHeader {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -601,7 +598,7 @@ func TestCreateWorkloadRequest_MissingContentType400(t *testing.T) {
 	defer ts.Close()
 
 	c := newTestClient(ts.URL)
-	req, err := c.V2().CreateWorkloadRequest("myTestAccount", validWorkload())
+	req, err := c.V2().CreateWorkloadRequest(validWorkload())
 	if err != nil {
 		t.Errorf("Error Test failed %s", err)
 	}
@@ -628,7 +625,7 @@ func TestCreateWorkloadRequest_Unauthorized401(t *testing.T) {
 	defer ts.Close()
 
 	c := newTestClient(ts.URL)
-	req, err := c.V2().CreateWorkloadRequest("myTestAccount", validWorkload())
+	req, err := c.V2().CreateWorkloadRequest(validWorkload())
 	if err != nil {
 		t.Errorf("Error Test failed %s", err)
 	}
@@ -658,7 +655,7 @@ func TestCreateWorkloadRequest_Forbidden403(t *testing.T) {
 	workload := validWorkload()
 	workload.Branch = "forbidden/branch"
 
-	req, err := c.V2().CreateWorkloadRequest("myTestAccount", workload)
+	req, err := c.V2().CreateWorkloadRequest(workload)
 	if err != nil {
 		t.Errorf("Error Test failed %s", err)
 	}
@@ -673,7 +670,7 @@ func TestCreateWorkloadRequest_Forbidden403(t *testing.T) {
 
 func TestDeleteWorkloadRequest_MissingIDError(t *testing.T) {
 	c := newTestClient("http://conjur.test")
-	_, err := c.V2().DeleteWorkloadRequest("myTestAccount", "")
+	_, err := c.V2().DeleteWorkloadRequest("")
 	if err == nil || !strings.Contains(err.Error(), "Workload ID") {
 		t.Errorf("Expected error about Workload ID, got %s", err)
 	}
@@ -690,7 +687,7 @@ func TestDeleteWorkloadRequest_Unauthorized401(t *testing.T) {
 	defer ts.Close()
 
 	c := newTestClient(ts.URL)
-	req, err := c.V2().DeleteWorkloadRequest("myTestAccount", "testWorkload")
+	req, err := c.V2().DeleteWorkloadRequest("testWorkload")
 	if err != nil {
 		t.Errorf("Error Test failed %s", err)
 	}
@@ -714,7 +711,7 @@ func TestDeleteWorkloadRequest_Forbidden403(t *testing.T) {
 	defer ts.Close()
 
 	c := newTestClient(ts.URL)
-	req, err := c.V2().DeleteWorkloadRequest("myTestAccount", "protectedWorkload")
+	req, err := c.V2().DeleteWorkloadRequest("protectedWorkload")
 	if err != nil {
 		t.Errorf("Error Test failed %s", err)
 	}
