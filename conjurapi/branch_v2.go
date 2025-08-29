@@ -32,7 +32,7 @@ type BranchFilter struct {
 	Offset int
 }
 
-func (c *ClientV2) CreateBranch(branch Branch) ([]byte, error) {
+func (c *ClientV2) CreateBranch(branch Branch) (*Branch, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
 		return nil, errors.New("Create Branch is not supported in Conjur Cloud")
 	}
@@ -51,10 +51,21 @@ func (c *ClientV2) CreateBranch(branch Branch) ([]byte, error) {
 		return nil, err
 	}
 
-	return response.DataResponse(resp)
+	bodyData, err := response.DataResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	branchResp := Branch{}
+	err = json.Unmarshal(bodyData, &branchResp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &branchResp, nil
 }
 
-func (c *ClientV2) ReadBranch(identifier string) ([]byte, error) {
+func (c *ClientV2) ReadBranch(identifier string) (*Branch, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
 		return nil, errors.New("Create Branch is not supported in Conjur Cloud")
 	}
@@ -73,7 +84,18 @@ func (c *ClientV2) ReadBranch(identifier string) ([]byte, error) {
 		return nil, err
 	}
 
-	return response.DataResponse(resp)
+	bodyData, err := response.DataResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	branchResp := Branch{}
+	err = json.Unmarshal(bodyData, &branchResp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &branchResp, nil
 }
 
 func (c *ClientV2) ReadBranches(filter *BranchFilter) (BranchesResponse, error) {
