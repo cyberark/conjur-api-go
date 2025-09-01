@@ -26,7 +26,7 @@ func (c *Client) AuthenticatorStatus(authenticatorType string, serviceID string)
 	}
 
 	obj := AuthenticatorStatusResponse{}
-	return &obj, response.AuthenticatorStatusJSONResponse(res, &obj)
+	return &obj, response.JSONResponse(res, &obj)
 }
 
 // EnableAuthenticator enables or disables an authenticator instance

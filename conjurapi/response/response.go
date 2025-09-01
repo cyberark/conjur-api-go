@@ -116,10 +116,3 @@ func EmptyResponse(resp *http.Response) error {
 func DryRunPolicyJSONResponse(resp *http.Response, obj interface{}) error {
 	return JSONResponseWithAllowedStatusCodes(resp, obj, []int{422})
 }
-
-// AuthenticatorStatusJSONResponse checks the HTTP status of the response. If it's less than
-// 300 or equal to 500, it returns the response body as JSON. Otherwise it
-// returns a NewConjurError.
-func AuthenticatorStatusJSONResponse(resp *http.Response, obj interface{}) error {
-	return JSONResponseWithAllowedStatusCodes(resp, obj, []int{500})
-}
