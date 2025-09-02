@@ -66,7 +66,7 @@ func NewHandler(t *testing.T) http.Handler {
 				}
 				w.Header().Add(v2APIIncomingHeaderID, v2APIHeader)
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte("200"))
+				w.Write([]byte(`{"name":"testBranchName","owner":null,"branch":"branch","annotations":null}`))
 				return
 			}
 		}
