@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cyberark/conjur-api-go/conjurapi/response"
 	"net/http"
 	"strings"
+
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
 type Owner struct {
@@ -34,11 +35,11 @@ type BranchFilter struct {
 
 func (c *ClientV2) CreateBranch(branch Branch) (*Branch, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, errors.New("Create Branch is not supported in Conjur Cloud")
+		return nil, fmt.Errorf("Branch API %s", NotSupportedInConjurCloud)
 	}
 	err := c.VerifyMinServerVersion(MinVersion)
 	if err != nil {
-		return nil, fmt.Errorf("Create Branch is not supported in Conjur versions older than %s", MinVersion)
+		return nil, fmt.Errorf(NotSupportedInOldVersions, "Branch API", MinVersion)
 	}
 
 	req, err := c.CreateBranchRequest(branch)
@@ -67,11 +68,11 @@ func (c *ClientV2) CreateBranch(branch Branch) (*Branch, error) {
 
 func (c *ClientV2) ReadBranch(identifier string) (*Branch, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, errors.New("Create Branch is not supported in Conjur Cloud")
+		return nil, fmt.Errorf("Branch API %s", NotSupportedInConjurCloud)
 	}
 	err := c.VerifyMinServerVersion(MinVersion)
 	if err != nil {
-		return nil, fmt.Errorf("Create Branch is not supported in Conjur versions older than %s", MinVersion)
+		return nil, fmt.Errorf(NotSupportedInOldVersions, "Branch API", MinVersion)
 	}
 
 	req, err := c.ReadBranchRequest(identifier)
@@ -101,11 +102,11 @@ func (c *ClientV2) ReadBranch(identifier string) (*Branch, error) {
 func (c *ClientV2) ReadBranches(filter *BranchFilter) (BranchesResponse, error) {
 	branchResp := BranchesResponse{}
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return branchResp, errors.New("Create Branch is not supported in Conjur Cloud")
+		return branchResp, fmt.Errorf("Branch API %s", NotSupportedInConjurCloud)
 	}
 	err := c.VerifyMinServerVersion(MinVersion)
 	if err != nil {
-		return branchResp, fmt.Errorf("Create Branch is not supported in Conjur versions older than %s", MinVersion)
+		return branchResp, fmt.Errorf(NotSupportedInOldVersions, "Branch API", MinVersion)
 	}
 
 	req, err := c.ReadBranchesRequest(filter)
@@ -130,11 +131,11 @@ func (c *ClientV2) ReadBranches(filter *BranchFilter) (BranchesResponse, error) 
 
 func (c *ClientV2) UpdateBranch(branch Branch) ([]byte, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, errors.New("Create Branch is not supported in Conjur Cloud")
+		return nil, fmt.Errorf("Branch API %s", NotSupportedInConjurCloud)
 	}
 	err := c.VerifyMinServerVersion(MinVersion)
 	if err != nil {
-		return nil, fmt.Errorf("Create Branch is not supported in Conjur versions older than %s", MinVersion)
+		return nil, fmt.Errorf(NotSupportedInOldVersions, "Branch API", MinVersion)
 	}
 	req, err := c.UpdateBranchRequest(branch)
 	if err != nil {
@@ -151,11 +152,11 @@ func (c *ClientV2) UpdateBranch(branch Branch) ([]byte, error) {
 
 func (c *ClientV2) DeleteBranch(identifier string) ([]byte, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, errors.New("Create Branch is not supported in Conjur Cloud")
+		return nil, fmt.Errorf("Branch API %s", NotSupportedInConjurCloud)
 	}
 	err := c.VerifyMinServerVersion(MinVersion)
 	if err != nil {
-		return nil, fmt.Errorf("Create Branch is not supported in Conjur versions older than %s", MinVersion)
+		return nil, fmt.Errorf(NotSupportedInOldVersions, "Branch API", MinVersion)
 	}
 
 	req, err := c.DeleteBranchRequest(identifier)
@@ -172,9 +173,6 @@ func (c *ClientV2) DeleteBranch(identifier string) ([]byte, error) {
 }
 
 func (c *ClientV2) CreateBranchRequest(branch Branch) (*http.Request, error) {
-	if c.config.Account == "" {
-		return nil, fmt.Errorf("Must specify an Account")
-	}
 	err := branch.Validate()
 	if err != nil {
 		return nil, err
@@ -203,9 +201,6 @@ func (c *ClientV2) CreateBranchRequest(branch Branch) (*http.Request, error) {
 func (c *ClientV2) ReadBranchRequest(identifier string) (*http.Request, error) {
 	errors := []string{}
 
-	if c.config.Account == "" {
-		errors = append(errors, "Must specify an Account")
-	}
 	if identifier == "" {
 		errors = append(errors, "Must specify an identifier")
 	}
@@ -233,10 +228,6 @@ func (c *ClientV2) ReadBranchRequest(identifier string) (*http.Request, error) {
 }
 
 func (c *ClientV2) ReadBranchesRequest(filter *BranchFilter) (*http.Request, error) {
-	if c.config.Account == "" {
-		return nil, fmt.Errorf("Must specify an Account")
-	}
-
 	url := fmt.Sprintf("branches/%s", c.config.Account)
 
 	branchURL := ""
@@ -265,9 +256,6 @@ func (c *ClientV2) ReadBranchesRequest(filter *BranchFilter) (*http.Request, err
 }
 
 func (c *ClientV2) UpdateBranchRequest(branch Branch) (*http.Request, error) {
-	if c.config.Account == "" {
-		return nil, fmt.Errorf("Must specify an Account")
-	}
 	err := branch.Validate()
 	if err != nil {
 		return nil, err
@@ -294,9 +282,6 @@ func (c *ClientV2) UpdateBranchRequest(branch Branch) (*http.Request, error) {
 }
 
 func (c *ClientV2) DeleteBranchRequest(identifier string) (*http.Request, error) {
-	if c.config.Account == "" {
-		return nil, fmt.Errorf("Must specify an Account")
-	}
 	if identifier == "" {
 		return nil, fmt.Errorf("Must specify an Identifier")
 	}

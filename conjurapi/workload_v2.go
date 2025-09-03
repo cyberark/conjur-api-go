@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cyberark/conjur-api-go/conjurapi/response"
 	"net/http"
 	"strings"
+
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
 type AuthnDescriptorData struct {
@@ -32,7 +33,7 @@ type Workload struct {
 
 func (c *ClientV2) CreateWorkload(workload Workload) ([]byte, error) {
 	if !isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, errors.New("Create Workload is not supported in Conjur Enterprise/OSS")
+		return nil, fmt.Errorf("Workload API %s", NotSupportedInConjurEnterprise)
 	}
 
 	req, err := c.CreateWorkloadRequest(workload)
@@ -49,7 +50,7 @@ func (c *ClientV2) CreateWorkload(workload Workload) ([]byte, error) {
 
 func (c *ClientV2) DeleteWorkload(workloadId string) ([]byte, error) {
 	if !isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, errors.New("Delete Workload is not supported in Conjur Enterprise/OSS")
+		return nil, fmt.Errorf("Workload API %s", NotSupportedInConjurEnterprise)
 	}
 
 	req, err := c.DeleteWorkloadRequest(workloadId)
@@ -67,9 +68,6 @@ func (c *ClientV2) DeleteWorkload(workloadId string) ([]byte, error) {
 func (c *ClientV2) CreateWorkloadRequest(workload Workload) (*http.Request, error) {
 	errors := []string{}
 
-	if c.config.Account == "" {
-		return nil, fmt.Errorf("Must specify an Account")
-	}
 	err := workload.Validate()
 	if err != nil {
 		return nil, err
@@ -111,9 +109,6 @@ func (c *ClientV2) CreateWorkloadRequest(workload Workload) (*http.Request, erro
 }
 
 func (c *ClientV2) DeleteWorkloadRequest(workloadID string) (*http.Request, error) {
-	if c.config.Account == "" {
-		return nil, fmt.Errorf("Must specify an Account")
-	}
 	if workloadID == "" {
 		return nil, fmt.Errorf("Must specify a Workload ID")
 	}

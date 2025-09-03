@@ -490,10 +490,6 @@ func TestClientV2_DeleteBranchRequest(t *testing.T) {
 	if err == nil {
 		return
 	}
-	if !strings.Contains(fmt.Sprint(err), "Account") {
-		t.Errorf("Error string do not contain information about missing Account")
-		return
-	}
 
 	client.config.Account = testAccount
 

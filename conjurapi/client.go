@@ -241,7 +241,7 @@ func NewClient(config Config) (*Client, error) {
 
 func (c *Client) V2() *ClientV2 {
 	if c.v2 == nil {
-		c.v2 = &ClientV2{Client: c, default_max_entries_read_limit: 500}
+		c.v2 = &ClientV2{Client: c}
 	}
 	return c.v2
 }
