@@ -29,7 +29,7 @@ To run the test suite, run:
 ./bin/test.sh
 ```
 
-This will spin up a containerized Conjur environment and build the test containers,
+This will spin up a containerized Conjur OSS environment and build the test containers,
 and will run all tests.
 
 To run the tests against a specific version of Golang, you can run the following:
@@ -37,7 +37,7 @@ To run the tests against a specific version of Golang, you can run the following
 ./bin/test.sh 1.21
 ```
 
-This will spin up a containerized Conjur environment and build the test containers,
+This will spin up a containerized Conjur OSS environment and build the test containers,
 and will run the tests in a `golang:1.23` container
 
 Supported arguments are `1.23` and `1.24`, with the
