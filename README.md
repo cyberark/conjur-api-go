@@ -1,6 +1,6 @@
-# conjurapi
+# CyberArk Secrets Manager API for Go
 
-Programmatic Golang access to the Conjur API.
+Programmatic Golang access to the CyberArk Secrets Manager API.
 
 ## Certification level
 ![](https://img.shields.io/badge/Certification%20Level-Community-28A745?link=https://github.com/cyberark/community/blob/master/Conjur/conventions/certification-levels.md)
@@ -103,9 +103,9 @@ The secret value is: fde5c4a45ce573f9768987cd
 ```
 ## Usage
 
-Connecting to Conjur is a two-step process:
+Connecting to CyberArk Secrets Manager is a two-step process:
 
-* **Configuration** Instruct the API where to find the Conjur endpoint and how to secure the connection.
+* **Configuration** Instruct the API where to find the CyberArk Secrets Manager endpoint and how to secure the connection.
 * **Authentication** Provide the API with credentials that it can use to authenticate.
 
 ### Authenticating with authn-jwt via Environment Variables
