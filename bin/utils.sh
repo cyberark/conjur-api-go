@@ -18,13 +18,13 @@ exec_on() {
 
 function teardown {
   docker compose logs conjur > "../output/$GO_VERSION/conjur-logs.txt" 2>&1 || true
-  docker compose down -v
-  docker compose down --remove-orphans
+  docker compose down -v --remove-orphans
   unset API_PKGS
   unset API_TESTS
 }
 
 failed() {
+  docker compose logs
   announce "TESTS FAILED"
   teardown
   exit 1
@@ -46,14 +46,14 @@ function init_jwt_server() {
   pushd ..
   docker compose up -d mock-jwt-server
   while true; do
-    export JWT=$(docker compose run -T --no-deps --entrypoint /bin/bash conjur -c "curl http://mock-jwt-server:8080/token" | jq -r .token)
+    export JWT=$(docker compose run -T --rm --no-deps --entrypoint /bin/bash conjur -c "curl http://mock-jwt-server:8080/token" | jq -r .token)
     if [[ -n "$JWT" ]]; then
       break
     fi
     echo "Waiting for mock JWT server to be ready..."
     sleep 1
   done
-  export PUBLIC_KEYS=$(docker compose run -T --no-deps --entrypoint /bin/bash conjur -c "curl http://mock-jwt-server:8080/.well-known/jwks.json")
+  export PUBLIC_KEYS=$(docker compose run -T --rm --no-deps --entrypoint /bin/bash conjur -c "curl http://mock-jwt-server:8080/.well-known/jwks.json")
   docker compose down mock-jwt-server
   popd
 }

@@ -174,10 +174,10 @@ func TestConfig_Validate(t *testing.T) {
 			ServiceID:    "service-id",
 			JWTContent:   "valid-jwt-token",
 		}
-	
+
 		err := config.Validate()
 		assert.Error(t, err)
-	
+
 		errString := err.Error()
 		assert.Contains(t, errString, "Must specify a HostID when using iam authentication")
 	})
@@ -190,36 +190,21 @@ func TestConfig_Validate(t *testing.T) {
 			ServiceID:    "service-id",
 			JWTContent:   "valid-jwt-token",
 		}
-	
+
 		err := config.Validate()
 		assert.Error(t, err)
-	
+
 		errString := err.Error()
 		assert.Contains(t, errString, "Must specify a HostID when using azure authentication")
 	})
 
-	t.Run("Return error for gcp authentication missing ServiceID", func(t *testing.T) {
+	t.Run("Return no error for valid gcp configuration without JWT token or ServiceID", func(t *testing.T) {
 		config := Config{
 			Account:      "account",
 			ApplianceURL: "appliance-url",
 			AuthnType:    "gcp",
 		}
-	
-		err := config.Validate()
-		assert.Error(t, err)
-	
-		errString := err.Error()
-		assert.Contains(t, errString, "Must specify a JWT token when using gcp authentication")
-	})
 
-	t.Run("Return no error for valid gcp configuration with JWT token", func(t *testing.T) {
-		config := Config{
-			Account:      "account",
-			ApplianceURL: "appliance-url",
-			AuthnType:    "gcp",
-			JWTContent:   "valid-jwt-token",
-		}
-	
 		err := config.Validate()
 		assert.NoError(t, err)
 	})
@@ -625,7 +610,7 @@ func TestConfig_GetHttpTimeout(t *testing.T) {
 	}
 }
 
-func TestDefaultTelemetryHeader(t *testing.T){
+func TestDefaultTelemetryHeader(t *testing.T) {
 	config := Config{}
 	config.SetIntegrationVersion("0.0.0")
 	config.SetFinalTelemetryHeader()

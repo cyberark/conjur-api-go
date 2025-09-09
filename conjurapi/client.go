@@ -65,6 +65,18 @@ func NewClientFromOidcCode(config Config, code, nonce, code_verifier string) (*C
 	return client, err
 }
 
+func NewClientFromAWSCredentials(config Config) (*Client, error) {
+	authenticator := &authn.IAMAuthenticator{}
+	client, err := newClientWithAuthenticator(
+		config,
+		authenticator,
+	)
+	if err == nil {
+		authenticator.Authenticate = client.IAMAuthenticate
+	}
+	return client, err
+}
+
 func NewClientFromOidcToken(config Config, token string) (*Client, error) {
 	authenticator := &authn.OidcTokenAuthenticator{
 		Token: token,
@@ -160,6 +172,10 @@ func newClientFromStoredCredentials(config Config) (*Client, error) {
 		return newClientFromStoredOidcCredentials(config)
 	}
 
+	if config.AuthnType == "iam" {
+		return newClientFromStoredAWSConfig(config)
+	}
+
 	// Attempt to load credentials from whatever storage provider is configured
 	storageProvider, err := createStorageProvider(config)
 	if err != nil {
@@ -188,6 +204,23 @@ func newClientFromStoredOidcCredentials(config Config) (*Client, error) {
 		return client, nil
 	}
 	return nil, fmt.Errorf("No valid OIDC token found. Please login again.")
+}
+
+func newClientFromStoredAWSConfig(config Config) (*Client, error) {
+	client, err := NewClientFromAWSCredentials(config)
+	if err != nil {
+		return nil, err
+	}
+
+	// RefreshToken() will first check for a cached token
+	// If not found it will go through the authenticator
+	err = client.RefreshToken()
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+
 }
 
 func (c *Client) GetAuthenticator() Authenticator {

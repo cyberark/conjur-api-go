@@ -16,7 +16,7 @@ main() {
   echo "Done!"
 
   announce "Starting Conjur environment..."
-  export CONJUR_DATA_KEY="$(docker compose run -T --no-deps conjur data-key generate)"
+  export CONJUR_DATA_KEY="$(docker compose run --rm -T --no-deps conjur data-key generate)"
   docker compose up --no-deps -d "conjur" "postgres"
   echo "Done!"
 
