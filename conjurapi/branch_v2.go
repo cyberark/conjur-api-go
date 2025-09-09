@@ -102,7 +102,7 @@ func (c *ClientV2) ReadBranch(identifier string) (*Branch, error) {
 func (c *ClientV2) ReadBranches(filter *BranchFilter) (BranchesResponse, error) {
 	branchResp := BranchesResponse{}
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return branchResp, fmt.Errorf("Branch API %s", NotSupportedInConjurCloud)
+		return branchResp, fmt.Errorf(NotSupportedInConjurCloud, "Branch API")
 	}
 	err := c.VerifyMinServerVersion(MinVersion)
 	if err != nil {
@@ -131,7 +131,7 @@ func (c *ClientV2) ReadBranches(filter *BranchFilter) (BranchesResponse, error) 
 
 func (c *ClientV2) UpdateBranch(branch Branch) ([]byte, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, fmt.Errorf("Branch API %s", NotSupportedInConjurCloud)
+		return nil, fmt.Errorf(NotSupportedInConjurCloud, "Branch API")
 	}
 	err := c.VerifyMinServerVersion(MinVersion)
 	if err != nil {
@@ -152,7 +152,7 @@ func (c *ClientV2) UpdateBranch(branch Branch) ([]byte, error) {
 
 func (c *ClientV2) DeleteBranch(identifier string) ([]byte, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, fmt.Errorf("Branch API %s", NotSupportedInConjurCloud)
+		return nil, fmt.Errorf(NotSupportedInConjurCloud, "Branch API")
 	}
 	err := c.VerifyMinServerVersion(MinVersion)
 	if err != nil {

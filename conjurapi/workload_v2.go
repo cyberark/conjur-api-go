@@ -33,7 +33,7 @@ type Workload struct {
 
 func (c *ClientV2) CreateWorkload(workload Workload) ([]byte, error) {
 	if !isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, fmt.Errorf("Workload API %s", NotSupportedInConjurEnterprise)
+		return nil, fmt.Errorf(NotSupportedInConjurEnterprise, "Workload API")
 	}
 
 	req, err := c.CreateWorkloadRequest(workload)
@@ -50,7 +50,7 @@ func (c *ClientV2) CreateWorkload(workload Workload) ([]byte, error) {
 
 func (c *ClientV2) DeleteWorkload(workloadId string) ([]byte, error) {
 	if !isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, fmt.Errorf("Workload API %s", NotSupportedInConjurEnterprise)
+		return nil, fmt.Errorf(NotSupportedInConjurEnterprise, "Workload API")
 	}
 
 	req, err := c.DeleteWorkloadRequest(workloadId)
