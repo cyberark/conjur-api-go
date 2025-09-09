@@ -6,12 +6,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.13.3] - 2025-08-21
+## [0.13.4] - 2025-09-08
 
 ### Added
+- Updated README.md, CONTRIBUTING.md, and SECURITY.md to align with Conjur Enterprise name change to Secrets Manager. (CNJR-10969)
 - Add Authenticators V2 API. CNJR-10814
 - Add Branches V2 API. CNJR-10817
 - Add Workloads V2 API. CNJR-10819
+
+## [0.13.3] - 2025-08-06
+
+### Added
+- Default telemetry header
 
 ## [0.13.2] - 2025-07-22
 
@@ -325,7 +331,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.13.2...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.13.4...HEAD
+[0.13.4]: https://github.com/cyberark/conjur-api-go/compare/v0.13.3...v0.13.4
+[0.13.3]: https://github.com/cyberark/conjur-api-go/compare/v0.13.2...v0.13.3
 [0.13.2]: https://github.com/cyberark/conjur-api-go/compare/v0.13.1...v0.13.2
 [0.13.1]: https://github.com/cyberark/conjur-api-go/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/cyberark/conjur-api-go/compare/v0.12.15...v0.13.0
