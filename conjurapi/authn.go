@@ -76,6 +76,10 @@ func (c *Client) NeedsTokenRefresh() bool {
 }
 
 func (c *Client) readCachedAccessToken() *authn.AuthnToken {
+	if c.storage == nil {
+		return nil
+	}
+
 	tokenBytes, err := c.storage.ReadAuthnToken()
 	if err != nil {
 		return nil

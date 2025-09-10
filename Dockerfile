@@ -16,8 +16,12 @@ RUN apt-get update -y && \
 
 RUN go install github.com/jstemmer/go-junit-report@latest && \
     go install github.com/axw/gocov/gocov@latest && \
-    go install github.com/AlekSi/gocov-xml@latest && \
-    go install github.com/wadey/gocovmerge@latest
+    go install github.com/AlekSi/gocov-xml@latest
+
+# gocovmerge now requires Go 1.24 - since we only merge 1.24.x coverage anyway we can skip installation to avoid build errors
+RUN if go version | grep -q "go1.24"; then \
+        go install github.com/wadey/gocovmerge@latest ; \
+    fi
 
 WORKDIR /conjur-api-go
 
