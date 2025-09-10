@@ -1,7 +1,10 @@
 package conjurapi
 
-// The V2Client struct is a sub-client for interacting with the v2 APIs in Conjur, which
-// are not supported in all versions.
-type V2Client struct {
+const MinVersion = "1.23.0"
+const NotSupportedInConjurCloud = "%s is not supported in Conjur Cloud"
+const NotSupportedInConjurEnterprise = "%s is not supported in Conjur Enterprise/OSS"
+const NotSupportedInOldVersions = "%s is not supported in Conjur versions older than %s"
+
+type ClientV2 struct {
 	*Client
 }

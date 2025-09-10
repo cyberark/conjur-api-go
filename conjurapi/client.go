@@ -32,9 +32,10 @@ type Client struct {
 	httpClient    *http.Client
 	authenticator Authenticator
 	storage       CredentialStorageProvider
+	conjurVersion string
 
 	// Sub-client for v2 API operations
-	v2 *V2Client
+	v2 *ClientV2
 }
 
 func NewClientFromKey(config Config, loginPair authn.LoginPair) (*Client, error) {
@@ -271,9 +272,9 @@ func NewClient(config Config) (*Client, error) {
 	return c, nil
 }
 
-func (c *Client) V2() *V2Client {
+func (c *Client) V2() *ClientV2 {
 	if c.v2 == nil {
-		c.v2 = &V2Client{c}
+		c.v2 = &ClientV2{Client: c}
 	}
 	return c.v2
 }

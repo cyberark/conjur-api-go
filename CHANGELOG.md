@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Updated README.md, CONTRIBUTING.md, and SECURITY.md to align with Conjur Enterprise name change to Secrets Manager. (CNJR-10969)
 - Add Authenticators V2 API. CNJR-10814
+- Add Branches V2 API. CNJR-10817
+- Add Workloads V2 API. CNJR-10819
 
 ## [0.13.3] - 2025-08-06
 

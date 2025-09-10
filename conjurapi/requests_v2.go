@@ -7,9 +7,11 @@ import (
 	"net/http"
 )
 
-const V2AcceptHeader = "application/x.secretsmgr.v2beta+json"
+const v2APIHeader string = "application/x.secretsmgr.v2beta+json"
+const v2APIOutgoingHeaderID string = "Accept"
+const v2APIIncomingHeaderID string = "Content-Type"
 
-func (c *V2Client) CreateAuthenticatorRequest(authenticator *AuthenticatorBase) (*http.Request, error) {
+func (c *ClientV2) CreateAuthenticatorRequest(authenticator *AuthenticatorBase) (*http.Request, error) {
 	body, err := json.Marshal(authenticator)
 
 	if err != nil {
@@ -26,12 +28,12 @@ func (c *V2Client) CreateAuthenticatorRequest(authenticator *AuthenticatorBase) 
 	}
 
 	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Accept", V2AcceptHeader)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 
 	return request, nil
 }
 
-func (c *V2Client) GetAuthenticatorRequest(authenticatorType string, serviceID string) (*http.Request, error) {
+func (c *ClientV2) GetAuthenticatorRequest(authenticatorType string, serviceID string) (*http.Request, error) {
 	request, err := http.NewRequest(
 		http.MethodGet,
 		c.authenticatorsURL(authenticatorType, serviceID),
@@ -41,12 +43,12 @@ func (c *V2Client) GetAuthenticatorRequest(authenticatorType string, serviceID s
 		return nil, err
 	}
 
-	request.Header.Add("Accept", V2AcceptHeader)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 
 	return request, nil
 }
 
-func (c *V2Client) UpdateAuthenticatorRequest(authenticatorType string, serviceID string, enabled bool) (*http.Request, error) {
+func (c *ClientV2) UpdateAuthenticatorRequest(authenticatorType string, serviceID string, enabled bool) (*http.Request, error) {
 	body, err := json.Marshal(map[string]bool{"enabled": enabled})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal authenticator update request: %w", err)
@@ -61,12 +63,12 @@ func (c *V2Client) UpdateAuthenticatorRequest(authenticatorType string, serviceI
 		return nil, err
 	}
 
-	request.Header.Add("Accept", V2AcceptHeader)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 	request.Header.Add("Content-Type", "application/json")
 	return request, nil
 }
 
-func (c *V2Client) DeleteAuthenticatorRequest(authenticatorType string, serviceID string) (*http.Request, error) {
+func (c *ClientV2) DeleteAuthenticatorRequest(authenticatorType string, serviceID string) (*http.Request, error) {
 	request, err := http.NewRequest(
 		http.MethodDelete,
 		c.authenticatorsURL(authenticatorType, serviceID),
@@ -76,12 +78,12 @@ func (c *V2Client) DeleteAuthenticatorRequest(authenticatorType string, serviceI
 		return nil, err
 	}
 
-	request.Header.Add("Accept", V2AcceptHeader)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 
 	return request, nil
 }
 
-func (c *V2Client) ListAuthenticatorsRequest() (*http.Request, error) {
+func (c *ClientV2) ListAuthenticatorsRequest() (*http.Request, error) {
 	request, err := http.NewRequest(
 		http.MethodGet,
 		c.authenticatorsURL("", ""),
@@ -91,12 +93,12 @@ func (c *V2Client) ListAuthenticatorsRequest() (*http.Request, error) {
 		return nil, err
 	}
 
-	request.Header.Add("Accept", V2AcceptHeader)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 
 	return request, nil
 }
 
-func (c *V2Client) authenticatorsURL(authenticatorType string, serviceID string) string {
+func (c *ClientV2) authenticatorsURL(authenticatorType string, serviceID string) string {
 	// If running against Conjur Cloud, the account is not used in the URL.
 	account := c.config.Account
 	if isConjurCloudURL(c.config.ApplianceURL) {

@@ -84,7 +84,7 @@ const AuthenticatorsMinVersion = "1.23.0"
 // CreateAuthenticator creates a new authenticator instance using the V2 API.
 //
 // The authenticated user must have create privileges on the conjur/authn-<type> policy.
-func (c *V2Client) CreateAuthenticator(authenticator *AuthenticatorBase) (*AuthenticatorResponse, error) {
+func (c *ClientV2) CreateAuthenticator(authenticator *AuthenticatorBase) (*AuthenticatorResponse, error) {
 	if !isConjurCloudURL(c.config.ApplianceURL) && c.VerifyMinServerVersion(AuthenticatorsMinVersion) != nil {
 		return nil, fmt.Errorf("authenticators API is not supported in Conjur versions older than %s", AuthenticatorsMinVersion)
 	}
@@ -106,7 +106,7 @@ func (c *V2Client) CreateAuthenticator(authenticator *AuthenticatorBase) (*Authe
 // GetAuthenticator gets an existing authenticator instance using the V2 API.
 //
 // The authenticated user must have read privileges on the authenticator.
-func (c *V2Client) GetAuthenticator(authenticatorType string, authenticatorName string) (*AuthenticatorResponse, error) {
+func (c *ClientV2) GetAuthenticator(authenticatorType string, authenticatorName string) (*AuthenticatorResponse, error) {
 	if !isConjurCloudURL(c.config.ApplianceURL) && c.VerifyMinServerVersion(AuthenticatorsMinVersion) != nil {
 		return nil, fmt.Errorf("authenticators API is not supported in Conjur versions older than %s", AuthenticatorsMinVersion)
 	}
@@ -129,7 +129,7 @@ func (c *V2Client) GetAuthenticator(authenticatorType string, authenticatorName 
 // It currently only supports enabling/disabling an authenticator.
 //
 // The authenticated user must have update privileges on the authenticator.
-func (c *V2Client) UpdateAuthenticator(authenticatorType string, authenticatorName string, enabled bool) (*AuthenticatorResponse, error) {
+func (c *ClientV2) UpdateAuthenticator(authenticatorType string, authenticatorName string, enabled bool) (*AuthenticatorResponse, error) {
 	if !isConjurCloudURL(c.config.ApplianceURL) && c.VerifyMinServerVersion(AuthenticatorsMinVersion) != nil {
 		return nil, fmt.Errorf("authenticators API is not supported in Conjur versions older than %s", AuthenticatorsMinVersion)
 	}
@@ -151,7 +151,7 @@ func (c *V2Client) UpdateAuthenticator(authenticatorType string, authenticatorNa
 // DeleteAuthenticator deletes an existing authenticator instance using the V2 API.
 //
 // The authenticated user must have update privileges on the authenticator.
-func (c *V2Client) DeleteAuthenticator(authenticatorType string, authenticatorName string) error {
+func (c *ClientV2) DeleteAuthenticator(authenticatorType string, authenticatorName string) error {
 	if !isConjurCloudURL(c.config.ApplianceURL) && c.VerifyMinServerVersion(AuthenticatorsMinVersion) != nil {
 		return fmt.Errorf("authenticators API is not supported in Conjur versions older than %s", AuthenticatorsMinVersion)
 	}
@@ -177,7 +177,7 @@ func (c *V2Client) DeleteAuthenticator(authenticatorType string, authenticatorNa
 // ListAuthenticators gets a list of existing authenticators using the V2 API.
 //
 // The authenticated user must have read privileges on the authenticators.
-func (c *V2Client) ListAuthenticators() (*AuthenticatorListResponse, error) {
+func (c *ClientV2) ListAuthenticators() (*AuthenticatorListResponse, error) {
 	if !isConjurCloudURL(c.config.ApplianceURL) && c.VerifyMinServerVersion(AuthenticatorsMinVersion) != nil {
 		return nil, fmt.Errorf("authenticators API is not supported in Conjur versions older than %s", AuthenticatorsMinVersion)
 	}

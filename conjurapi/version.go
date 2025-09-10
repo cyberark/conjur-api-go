@@ -8,12 +8,15 @@ import (
 
 // VerifyMinServerVersion checks if the server version is at least a certain version, using semantic versioning.
 func (c *Client) VerifyMinServerVersion(minVersion string) error {
-	serverVersion, err := c.ServerVersion()
-	if err != nil {
-		return err
-	}
+	if c.conjurVersion == "" {
+		serverVersion, err := c.ServerVersion()
+		if err != nil {
+			return err
+		}
 
-	return validateMinVersion(serverVersion, minVersion)
+		c.conjurVersion = serverVersion
+	}
+	return validateMinVersion(c.conjurVersion, minVersion)
 }
 
 // Validates that the actual version is at least the minimum version, using semantic versioning.
