@@ -230,6 +230,17 @@ func (c *Client) OidcTokenAuthenticateRequest(token string) (*http.Request, erro
 	return req, nil
 }
 
+func (c *Client) IAMAuthenticateRequest(signedHeaders []byte) (*http.Request, error) {
+	authenticateURL := makeRouterURL(c.authnURL("iam", c.config.ServiceID), url.QueryEscape("host/"+c.config.JWTHostID), "authenticate").String()
+
+	req, err := http.NewRequest("POST", authenticateURL, bytes.NewBuffer(signedHeaders))
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // RotateAPIKeyRequest requires roleID argument to be at least partially-qualified
 // ID of from [<account>:]<kind>:<identifier>.
 func (c *Client) RotateAPIKeyRequest(roleID string) (*http.Request, error) {

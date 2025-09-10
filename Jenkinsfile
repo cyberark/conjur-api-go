@@ -92,6 +92,7 @@ pipeline {
         // Added a switch in Jenkinsfile and test configurations to toggle between registry.tld for internal testing and docker.io for using the conjur:edge image externally.
         // Tests default to using DockerHub images. In our internal Jenkins setup, this is overridden to pull from our internal registry instead.
         REGISTRY_URL = "registry.tld"
+        INFRAPOOL_TEST_AWS=true
       }
       parallel {
         stage('Golang 1.24') {
@@ -130,6 +131,7 @@ pipeline {
       }
       post {
         always {
+          script { infrapool.agentArchiveArtifacts artifacts: 'output/1.23/conjur-logs.txt' }
           script { infrapool.agentArchiveArtifacts artifacts: 'output/1.24/conjur-logs.txt' }
           junit 'output/1.24/junit.xml, output/1.23/junit.xml'
         }
@@ -175,6 +177,7 @@ pipeline {
             INFRAPOOL_CONJUR_AUTHN_TOKEN="${env.conj_token}"
             INFRAPOOL_IDENTITY_TOKEN="${env.identity_token}"
             INFRAPOOL_TEST_CLOUD=true
+            INFRAPOOL_TEST_AWS=true
           }
           steps {
             script {
