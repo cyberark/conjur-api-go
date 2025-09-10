@@ -29,6 +29,7 @@ export COMPOSE_PROJECT_NAME="conjurapigo_${PROJECT_SUFFIX}"
 export GO_VERSION="${1:-"1.24"}"
 export REGISTRY_URL="${2:-docker.io}"
 export TEST_AWS=$INFRAPOOL_TEST_AWS
+export TEST_AZURE=$INFRAPOOL_TEST_AZURE
 echo "REGISTRY_URL is set to: $REGISTRY_URL"
 
 init_jwt_server
@@ -57,6 +58,10 @@ if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
   --no-deps \
   -e CONJUR_AUTHN_API_KEY \
   -e TEST_AWS \
+  -e TEST_AZURE \
+  -e AZURE_SUBSCRIPTION_ID \
+  -e AZURE_RESOURCE_GROUP \
+  -e USER_ASSIGNED_IDENTITY \
   -e GO_VERSION \
   -e PUBLIC_KEYS \
   -e JWT \
@@ -93,6 +98,10 @@ else
     -e CONJUR_AUTHN_LOGIN \
     -e CONJUR_AUTHN_TOKEN \
     -e TEST_AWS \
+    -e TEST_AZURE \
+    -e AZURE_SUBSCRIPTION_ID \
+    -e AZURE_RESOURCE_GROUP \
+    -e USER_ASSIGNED_IDENTITY \
     -e PUBLIC_KEYS \
     -e JWT \
     -e IDENTITY_TOKEN \

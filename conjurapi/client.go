@@ -177,6 +177,10 @@ func newClientFromStoredCredentials(config Config) (*Client, error) {
 		return newClientFromStoredAWSConfig(config)
 	}
 
+	if config.AuthnType == "azure" {
+		return newClientFromStoredAzureConfig(config)
+	}
+
 	// Attempt to load credentials from whatever storage provider is configured
 	storageProvider, err := createStorageProvider(config)
 	if err != nil {
@@ -207,6 +211,7 @@ func newClientFromStoredOidcCredentials(config Config) (*Client, error) {
 	return nil, fmt.Errorf("No valid OIDC token found. Please login again.")
 }
 
+// TODO: Refactor to remove code duplication between authn-iam, authn-gcp, and authn-azure (and possibly authn-oidc and authn-jwt)
 func newClientFromStoredAWSConfig(config Config) (*Client, error) {
 	client, err := NewClientFromAWSCredentials(config)
 	if err != nil {
@@ -221,7 +226,34 @@ func newClientFromStoredAWSConfig(config Config) (*Client, error) {
 	}
 
 	return client, nil
+}
 
+func newClientFromStoredAzureConfig(config Config) (*Client, error) {
+	client, err := NewClientFromAzureCredentials(config)
+	if err != nil {
+		return nil, err
+	}
+
+	// RefreshToken() will first check for a cached token
+	// If not found it will go through the authenticator
+	err = client.RefreshToken()
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
+func NewClientFromAzureCredentials(config Config) (*Client, error) {
+	authenticator := &authn.AzureAuthenticator{}
+	client, err := newClientWithAuthenticator(
+		config,
+		authenticator,
+	)
+	if err == nil {
+		authenticator.Authenticate = client.AzureAuthenticate
+	}
+	return client, err
 }
 
 func (c *Client) GetAuthenticator() Authenticator {

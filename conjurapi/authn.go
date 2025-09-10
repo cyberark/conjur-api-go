@@ -24,8 +24,8 @@ type OidcProvider struct {
 }
 
 func (c *Client) RefreshToken() (err error) {
-	// Fetch cached conjur access token if using OIDC or IAM
-	if c.GetConfig().AuthnType == "oidc" || c.GetConfig().AuthnType == "iam" {
+	// Fetch cached conjur access token if using OIDC, IAM, or Azure
+	if c.GetConfig().AuthnType == "oidc" || c.GetConfig().AuthnType == "iam" || c.GetConfig().AuthnType == "azure" {
 		token := c.readCachedAccessToken()
 		if token != nil {
 			c.authToken = token
@@ -279,6 +279,31 @@ func (c *Client) IAMAuthenticate() ([]byte, error) {
 		return nil, err
 	}
 
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := response.DataResponse(res)
+
+	if err == nil && c.storage != nil {
+		c.storage.StoreAuthnToken(resp)
+	}
+
+	return resp, err
+}
+
+// TODO: Refactor to remove code duplication between authn-iam, authn-gcp, and authn-azure (and possibly authn-oidc and authn-jwt)
+func (c *Client) AzureAuthenticate() ([]byte, error) {
+	azureToken, err := authn.AzureAuthenticateToken("")
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := c.AzureAuthenticateRequest(azureToken)
+	if err != nil {
+		return nil, err
+	}
 	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
