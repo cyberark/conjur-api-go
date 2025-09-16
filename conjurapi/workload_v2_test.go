@@ -302,7 +302,7 @@ func TestCreateWorkloadRequest_MalformedIPs422(t *testing.T) {
 
 func TestCreateWorkloadRequest_MissingContentType400(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Content-Type") != v2APIHeader {
+		if r.Header.Get("Content-Type") != v2APIHeaderBeta {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}

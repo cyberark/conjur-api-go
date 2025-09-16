@@ -34,8 +34,8 @@ func NewHandler(t *testing.T) http.Handler {
 		}
 
 		// all requests V2 must contain V2 API HEADER
-		if r.Header.Get("Accept") != v2APIHeader {
-			custErr := fmt.Sprintf("Expected Accept: %s header, got: %s", v2APIHeader, r.Header.Get("Accept"))
+		if r.Header.Get("Accept") != v2APIHeaderBeta {
+			custErr := fmt.Sprintf("Expected Accept: %s header, got: %s", v2APIHeaderBeta, r.Header.Get("Accept"))
 			t.Errorf(custErr)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(custErr))
@@ -64,7 +64,7 @@ func NewHandler(t *testing.T) http.Handler {
 					w.Write([]byte(custErr))
 					return
 				}
-				w.Header().Add(v2APIIncomingHeaderID, v2APIHeader)
+				w.Header().Add(v2APIIncomingHeaderID, v2APIHeaderBeta)
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(`{"name":"testBranchName","owner":null,"branch":"branch","annotations":null}`))
 				return
@@ -75,7 +75,7 @@ func NewHandler(t *testing.T) http.Handler {
 		if r.URL.Path == customUrl {
 			if r.Method == http.MethodGet {
 				response := `{"name":"` + testBranchName + `","owner": {"kind": "user","id": "user1"},"branch":"` + testBranchBranch + `","annotations": {"myannkey": "myannvalue","description": "This is my description"}}`
-				w.Header().Add(v2APIIncomingHeaderID, v2APIHeader)
+				w.Header().Add(v2APIIncomingHeaderID, v2APIHeaderBeta)
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(response))
 				return
@@ -86,7 +86,7 @@ func NewHandler(t *testing.T) http.Handler {
 		if r.URL.Path == customUrl {
 			if r.Method == http.MethodGet {
 				response := `{"branches":[{"name":"` + testBranchName + `","owner": {"kind": "user","id": "user1"},"branch":"` + testBranchBranch + `","annotations": {"myannkey": "myannvalue","description": "This is my description"}}],"count":1}`
-				w.Header().Add(v2APIIncomingHeaderID, v2APIHeader)
+				w.Header().Add(v2APIIncomingHeaderID, v2APIHeaderBeta)
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(response))
 				return
@@ -97,7 +97,7 @@ func NewHandler(t *testing.T) http.Handler {
 		if r.URL.Path == customUrl {
 			if r.Method == http.MethodPatch {
 				response := `{"branches":[{"name":"` + testBranchName + `","owner": {"kind": "user","id": "user1"},"branch":"` + testBranchBranch + `","annotations": {"myannkey": "myannvalue","description": "This is my description"}}],"count":1}`
-				w.Header().Add(v2APIIncomingHeaderID, v2APIHeader)
+				w.Header().Add(v2APIIncomingHeaderID, v2APIHeaderBeta)
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(response))
 				return
@@ -108,7 +108,7 @@ func NewHandler(t *testing.T) http.Handler {
 		if r.URL.Path == customUrl {
 			if r.Method == http.MethodDelete {
 				response := ``
-				w.Header().Add(v2APIIncomingHeaderID, v2APIHeader)
+				w.Header().Add(v2APIIncomingHeaderID, v2APIHeaderBeta)
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(response))
 				return
@@ -270,8 +270,8 @@ func TestClientV2_CreateBranchRequest(t *testing.T) {
 		return
 	}
 
-	if request.Header.Get(v2APIOutgoingHeaderID) != v2APIHeader {
-		t.Errorf("Error Header %s not found", v2APIHeader)
+	if request.Header.Get(v2APIOutgoingHeaderID) != v2APIHeaderBeta {
+		t.Errorf("Error Header %s not found", v2APIHeaderBeta)
 		return
 	}
 
@@ -318,8 +318,8 @@ func TestClientV2_ReadBranchRequest(t *testing.T) {
 		return
 	}
 
-	if request.Header.Get(v2APIOutgoingHeaderID) != v2APIHeader {
-		t.Errorf("Error Header %s not found", v2APIHeader)
+	if request.Header.Get(v2APIOutgoingHeaderID) != v2APIHeaderBeta {
+		t.Errorf("Error Header %s not found", v2APIHeaderBeta)
 		return
 	}
 
@@ -362,8 +362,8 @@ func TestClientV2_ReadBranchesRequest(t *testing.T) {
 		return
 	}
 
-	if request.Header.Get(v2APIOutgoingHeaderID) != v2APIHeader {
-		t.Errorf("Error Header %s not found", v2APIHeader)
+	if request.Header.Get(v2APIOutgoingHeaderID) != v2APIHeaderBeta {
+		t.Errorf("Error Header %s not found", v2APIHeaderBeta)
 		return
 	}
 
@@ -456,8 +456,8 @@ func TestClientV2_UpdateBranchRequest(t *testing.T) {
 		return
 	}
 
-	if request.Header.Get(v2APIOutgoingHeaderID) != v2APIHeader {
-		t.Errorf("Error Header %s not found", v2APIHeader)
+	if request.Header.Get(v2APIOutgoingHeaderID) != v2APIHeaderBeta {
+		t.Errorf("Error Header %s not found", v2APIHeaderBeta)
 		return
 	}
 
@@ -499,8 +499,8 @@ func TestClientV2_DeleteBranchRequest(t *testing.T) {
 		return
 	}
 
-	if request.Header.Get(v2APIOutgoingHeaderID) != v2APIHeader {
-		t.Errorf("Error Header %s not found", v2APIHeader)
+	if request.Header.Get(v2APIOutgoingHeaderID) != v2APIHeaderBeta {
+		t.Errorf("Error Header %s not found", v2APIHeaderBeta)
 		return
 	}
 
