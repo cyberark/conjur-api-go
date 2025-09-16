@@ -193,7 +193,7 @@ func (c *ClientV2) CreateBranchRequest(branch Branch) (*http.Request, error) {
 		return nil, err
 	}
 
-	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeaderBeta)
 
 	return request, nil
 }
@@ -222,7 +222,7 @@ func (c *ClientV2) ReadBranchRequest(identifier string) (*http.Request, error) {
 		return nil, err
 	}
 
-	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeaderBeta)
 
 	return request, nil
 }
@@ -250,7 +250,7 @@ func (c *ClientV2) ReadBranchesRequest(filter *BranchFilter) (*http.Request, err
 		return nil, err
 	}
 
-	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeaderBeta)
 
 	return request, nil
 }
@@ -276,7 +276,7 @@ func (c *ClientV2) UpdateBranchRequest(branch Branch) (*http.Request, error) {
 		return nil, err
 	}
 
-	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeaderBeta)
 
 	return request, nil
 }
@@ -299,7 +299,7 @@ func (c *ClientV2) DeleteBranchRequest(identifier string) (*http.Request, error)
 		return nil, err
 	}
 
-	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
+	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeaderBeta)
 
 	return request, nil
 }

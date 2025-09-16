@@ -104,7 +104,7 @@ func (c *ClientV2) CreateWorkloadRequest(workload Workload) (*http.Request, erro
 		return nil, err
 	}
 
-	req.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
+	req.Header.Add(v2APIOutgoingHeaderID, v2APIHeaderBeta)
 	return req, nil
 }
 
@@ -121,7 +121,7 @@ func (c *ClientV2) DeleteWorkloadRequest(workloadID string) (*http.Request, erro
 		return nil, err
 	}
 
-	req.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
+	req.Header.Add(v2APIOutgoingHeaderID, v2APIHeaderBeta)
 	return req, nil
 }
 
