@@ -141,15 +141,15 @@ func (c *Client) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, 
 	return req, nil
 }
 
-func createJWTRequestBodyForAuthenticator(authnType, token string) (io.Reader, string, error) {
+func createJWTRequestBodyForAuthenticator(authnType, token string) (io.Reader, string) {
 	switch authnType {
 	case "iam":
 		// IAM expects raw JSON in the body
-		return bytes.NewReader([]byte(token)), "application/json", nil
+		return bytes.NewReader([]byte(token)), "application/json"
 	default:
-		// Default expects url-encoded body
+		// Other authenticators expect url-encoded body
 		formattedToken := fmt.Sprintf("jwt=%s", token)
-		return strings.NewReader(formattedToken), "application/x-www-form-urlencoded", nil
+		return strings.NewReader(formattedToken), "application/x-www-form-urlencoded"
 	}
 }
 
@@ -161,10 +161,8 @@ func (c *Client) JWTAuthenticateRequest(token, hostID string) (*http.Request, er
 	} else {
 		authenticateURL = makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), "authenticate").String()
 	}
-	body, contentType, err := createJWTRequestBodyForAuthenticator(c.config.AuthnType, token)
-	if err != nil {
-		return nil, err
-	}
+
+	body, contentType := createJWTRequestBodyForAuthenticator(c.config.AuthnType, token)
 
 	req, err := http.NewRequest(http.MethodPost, authenticateURL, body)
 	if err != nil {
@@ -233,10 +231,27 @@ func (c *Client) OidcTokenAuthenticateRequest(token string) (*http.Request, erro
 func (c *Client) IAMAuthenticateRequest(signedHeaders []byte) (*http.Request, error) {
 	authenticateURL := makeRouterURL(c.authnURL("iam", c.config.ServiceID), url.QueryEscape("host/"+c.config.JWTHostID), "authenticate").String()
 
-	req, err := http.NewRequest("POST", authenticateURL, bytes.NewBuffer(signedHeaders))
+	body, contentType := createJWTRequestBodyForAuthenticator(c.config.AuthnType, string(signedHeaders))
+	req, err := http.NewRequest("POST", authenticateURL, body)
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Set("Content-Type", contentType)
+	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
+
+	return req, nil
+}
+
+func (c *Client) AzureAuthenticateRequest(azureToken []byte) (*http.Request, error) {
+	authenticateURL := makeRouterURL(c.authnURL("azure", c.config.ServiceID), url.QueryEscape("host/"+c.config.JWTHostID), "authenticate").String()
+
+	body, contentType := createJWTRequestBodyForAuthenticator(c.config.AuthnType, string(azureToken))
+	req, err := http.NewRequest("POST", authenticateURL, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", contentType)
+	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
 
 	return req, nil
 }

@@ -34,13 +34,15 @@ pipeline {
 
   triggers {
     parameterizedCron("""
-      ${getDailyCronString("%TEST_CLOUD=true")}
+      ${getDailyCronString("%TEST_CLOUD=true;TEST_AZURE=true")}
       ${getWeeklyCronString("H(1-5)", "%MODE=RELEASE")}
     """)
   }
 
   parameters {
     booleanParam(name: 'TEST_CLOUD', defaultValue: false, description: 'Run integration tests against a Conjur Cloud tenant')
+
+    booleanParam(name: 'TEST_AZURE', defaultValue: false, description: 'Run integration tests against Azure')
   }
 
   stages {
@@ -73,6 +75,11 @@ pipeline {
           INFRAPOOL_EXECUTORV2_AGENTS = getInfraPoolAgent(type: "ExecutorV2", quantity: 1, duration: 1)
           INFRAPOOL_EXECUTORV2_AGENT_0 = INFRAPOOL_EXECUTORV2_AGENTS[0]
           infrapool = infraPoolConnect(INFRAPOOL_EXECUTORV2_AGENT_0, {})
+          
+          // Request additional executors for cloud specific tests
+          if (params.TEST_AZURE) {
+            INFRAPOOL_AZURE_EXECUTORV2_AGENT_0 = getInfraPoolAgent.connected(type: "AzureExecutorV2", quantity: 1, duration: 1)[0]
+          }
         }
       }
     }
@@ -82,6 +89,10 @@ pipeline {
       steps {
         script {
           updateVersion(infrapool, "CHANGELOG.md", "${BUILD_NUMBER}")
+
+          if (params.TEST_AZURE) {
+            updateVersion(INFRAPOOL_AZURE_EXECUTORV2_AGENT_0, "CHANGELOG.md", "${BUILD_NUMBER}")
+          }
         }
       }
     }
@@ -133,7 +144,22 @@ pipeline {
         always {
           script { infrapool.agentArchiveArtifacts artifacts: 'output/1.23/conjur-logs.txt' }
           script { infrapool.agentArchiveArtifacts artifacts: 'output/1.24/conjur-logs.txt' }
-          junit 'output/1.24/junit.xml, output/1.23/junit.xml'
+          junit 'output/1.24/junit.xml'
+        }
+      }
+    }
+
+    stage('Run Azure tests') {
+      when {
+        expression { params.TEST_AZURE }
+      }
+      environment {
+        REGISTRY_URL = "registry.tld"
+        INFRAPOOL_TEST_AZURE=true
+      }
+      steps {
+        script {
+          INFRAPOOL_AZURE_EXECUTORV2_AGENT_0.agentSh "summon ./bin/test.sh 1.24 $REGISTRY_URL"
         }
       }
     }
@@ -246,6 +272,9 @@ pipeline {
   post {
     always {
       releaseInfraPoolAgent(".infrapool/release_agents")
+      // Resolve ownership issue before running infra post hook
+      sh 'git config --global --add safe.directory ${PWD}'
+      infraPostHook()
     }
   }
 }

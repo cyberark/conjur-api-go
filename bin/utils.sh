@@ -24,7 +24,6 @@ function teardown {
 }
 
 failed() {
-  docker compose logs
   announce "TESTS FAILED"
   teardown
   exit 1
