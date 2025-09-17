@@ -34,13 +34,15 @@ pipeline {
 
   triggers {
     parameterizedCron("""
-      ${getDailyCronString("%TEST_CLOUD=true")}
+      ${getDailyCronString("%TEST_CLOUD=true;TEST_AZURE=true")}
       ${getWeeklyCronString("H(1-5)", "%MODE=RELEASE")}
     """)
   }
 
   parameters {
     booleanParam(name: 'TEST_CLOUD', defaultValue: false, description: 'Run integration tests against a Conjur Cloud tenant')
+
+    booleanParam(name: 'TEST_AZURE', defaultValue: false, description: 'Run integration tests against Azure')
   }
 
   stages {
@@ -75,7 +77,9 @@ pipeline {
           infrapool = infraPoolConnect(INFRAPOOL_EXECUTORV2_AGENT_0, {})
           
           // Request additional executors for cloud specific tests
-          INFRAPOOL_AZURE_EXECUTORV2_AGENT_0 = getInfraPoolAgent.connected(type: "AzureExecutorV2", quantity: 1, duration: 1)[0]
+          if (params.TEST_AZURE) {
+            INFRAPOOL_AZURE_EXECUTORV2_AGENT_0 = getInfraPoolAgent.connected(type: "AzureExecutorV2", quantity: 1, duration: 1)[0]
+          }
         }
       }
     }
@@ -85,7 +89,10 @@ pipeline {
       steps {
         script {
           updateVersion(infrapool, "CHANGELOG.md", "${BUILD_NUMBER}")
-          updateVersion(INFRAPOOL_AZURE_EXECUTORV2_AGENT_0, "CHANGELOG.md", "${BUILD_NUMBER}")
+
+          if (params.TEST_AZURE) {
+            updateVersion(INFRAPOOL_AZURE_EXECUTORV2_AGENT_0, "CHANGELOG.md", "${BUILD_NUMBER}")
+          }
         }
       }
     }
@@ -143,6 +150,9 @@ pipeline {
     }
 
     stage('Run Azure tests') {
+      when {
+        expression { params.TEST_AZURE }
+      }
       environment {
         REGISTRY_URL = "registry.tld"
         INFRAPOOL_TEST_AZURE=true
