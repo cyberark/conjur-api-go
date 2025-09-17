@@ -35,8 +35,8 @@ func TestCreateWorkloadRequest_MinimalSuccess(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("Error wrong http method used")
 		}
-		if r.URL.Path != "/workloads/myTestAccount" {
-			t.Errorf("Error Url is not proper: %s, should be: %s", r.URL.Path, "localhost/workloads/myTestAccount")
+		if r.URL.Path != "/workloads" {
+			t.Errorf("Error Url is not proper: %s, should be: %s", r.URL.Path, "localhost/workloads")
 		}
 		body, _ := io.ReadAll(r.Body)
 		var workload Workload
