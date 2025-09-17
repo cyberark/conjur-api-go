@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
@@ -96,8 +97,7 @@ func (c *ClientV2) CreateWorkloadRequest(workload Workload) (*http.Request, erro
 		return nil, err
 	}
 
-	urlPath := fmt.Sprintf("workloads/%s", c.config.Account)
-	fullURL := makeRouterURL(c.config.ApplianceURL, urlPath).String()
+	fullURL := makeRouterURL(c.config.ApplianceURL, "workloads").String()
 
 	req, err := http.NewRequest(http.MethodPost, fullURL, bytes.NewBuffer(payload))
 	if err != nil {
@@ -113,15 +113,13 @@ func (c *ClientV2) DeleteWorkloadRequest(workloadID string) (*http.Request, erro
 		return nil, fmt.Errorf("Must specify a Workload ID")
 	}
 
-	urlPath := fmt.Sprintf("workloads/%s/%s", c.config.Account, workloadID)
-	fullURL := makeRouterURL(c.config.ApplianceURL, urlPath).String()
-
+	fullURL := makeRouterURL(c.config.ApplianceURL, "hosts", url.QueryEscape(workloadID)).String()
 	req, err := http.NewRequest(http.MethodDelete, fullURL, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Add(v2APIOutgoingHeaderID, v2APIHeaderBeta)
+	req.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 	return req, nil
 }
 
