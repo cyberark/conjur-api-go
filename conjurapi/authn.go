@@ -25,7 +25,7 @@ type OidcProvider struct {
 
 func (c *Client) RefreshToken() (err error) {
 	// Fetch cached conjur access token if using OIDC, IAM, or Azure
-	if c.GetConfig().AuthnType == "oidc" || c.GetConfig().AuthnType == "iam" || c.GetConfig().AuthnType == "azure" {
+	if c.GetConfig().AuthnType == "oidc" || c.GetConfig().AuthnType == "iam" || c.GetConfig().AuthnType == "azure" || c.GetConfig().AuthnType == "gcp" {
 		token := c.readCachedAccessToken()
 		if token != nil {
 			c.authToken = token
@@ -301,6 +301,30 @@ func (c *Client) AzureAuthenticate() ([]byte, error) {
 	}
 
 	req, err := c.AzureAuthenticateRequest(azureToken)
+	if err != nil {
+		return nil, err
+	}
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := response.DataResponse(res)
+
+	if err == nil && c.storage != nil {
+		c.storage.StoreAuthnToken(resp)
+	}
+
+	return resp, err
+}
+
+func (c *Client) GCPAuthenticate(baseUrl string) ([]byte, error) {
+	gcpToken, err := authn.GCPAuthenticateToken(c.config.Account, c.config.JWTHostID, baseUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := c.GCPAuthenticateRequest(gcpToken)
 	if err != nil {
 		return nil, err
 	}

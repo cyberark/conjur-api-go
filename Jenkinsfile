@@ -34,7 +34,7 @@ pipeline {
 
   triggers {
     parameterizedCron("""
-      ${getDailyCronString("%TEST_CLOUD=true;TEST_AZURE=true")}
+      ${getDailyCronString("%TEST_CLOUD=true;TEST_AZURE=true;TEST_GCP=true")}
       ${getWeeklyCronString("H(1-5)", "%MODE=RELEASE")}
     """)
   }
@@ -43,6 +43,8 @@ pipeline {
     booleanParam(name: 'TEST_CLOUD', defaultValue: false, description: 'Run integration tests against a Conjur Cloud tenant')
 
     booleanParam(name: 'TEST_AZURE', defaultValue: false, description: 'Run integration tests against Azure')
+
+    booleanParam(name: 'TEST_GCP', defaultValue: false, description: 'Run integration tests against GCP')
   }
 
   stages {
@@ -80,6 +82,9 @@ pipeline {
           if (params.TEST_AZURE) {
             INFRAPOOL_AZURE_EXECUTORV2_AGENT_0 = getInfraPoolAgent.connected(type: "AzureExecutorV2", quantity: 1, duration: 1)[0]
           }
+          if (params.TEST_GCP){
+            INFRAPOOL_GCP_EXECUTORV2_AGENT_0 = getInfraPoolAgent.connected(type: "GcpExecutorV2", quantity: 1, duration: 1)[0]
+          }
         }
       }
     }
@@ -92,6 +97,10 @@ pipeline {
 
           if (params.TEST_AZURE) {
             updateVersion(INFRAPOOL_AZURE_EXECUTORV2_AGENT_0, "CHANGELOG.md", "${BUILD_NUMBER}")
+          }
+
+          if (params.TEST_GCP) {
+            updateVersion(INFRAPOOL_GCP_EXECUTORV2_AGENT_0, "CHANGELOG.md", "${BUILD_NUMBER}")
           }
         }
       }
@@ -160,6 +169,26 @@ pipeline {
       steps {
         script {
           INFRAPOOL_AZURE_EXECUTORV2_AGENT_0.agentSh "summon ./bin/test.sh 1.24 $REGISTRY_URL"
+        }
+      }
+    }
+
+    stage('Run GCP tests') {
+      when {
+        expression { params.TEST_GCP }
+      }
+      environment {
+        REGISTRY_URL = "registry.tld"
+        INFRAPOOL_TEST_GCP=true
+        INFRAPOOL_CONJUR_AUTHN_LOGIN="test-app"
+        GCP_CTX_DIR = "gcp"
+      }
+      steps {
+        script {
+          INFRAPOOL_GCP_EXECUTORV2_AGENT_0.agentSh "./bin/get_gcp_token.sh host/data/test/gcp-apps/test-app conjur $GCP_CTX_DIR"
+          INFRAPOOL_GCP_EXECUTORV2_AGENT_0.agentStash name: 'token-out', includes: "${GCP_CTX_DIR}/*"
+          infrapool.agentUnstash name: 'token-out'
+          infrapool.agentSh "./bin/test.sh 1.24 $REGISTRY_URL $GCP_CTX_DIR"
         }
       }
     }

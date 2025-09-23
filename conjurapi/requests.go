@@ -256,6 +256,19 @@ func (c *Client) AzureAuthenticateRequest(azureToken []byte) (*http.Request, err
 	return req, nil
 }
 
+func (c *Client) GCPAuthenticateRequest(gcpToken []byte) (*http.Request, error) {
+	authenticateURL := makeRouterURL(c.authnURL("gcp", ""), "authenticate").String()
+
+	req, err := http.NewRequest("POST", authenticateURL, bytes.NewBuffer([]byte("jwt="+string(gcpToken))))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
+
+	return req, nil
+}
+
 // RotateAPIKeyRequest requires roleID argument to be at least partially-qualified
 // ID of from [<account>:]<kind>:<identifier>.
 func (c *Client) RotateAPIKeyRequest(roleID string) (*http.Request, error) {
