@@ -297,7 +297,7 @@ func (c *Client) IAMAuthenticate() ([]byte, error) {
 
 // TODO: Refactor to remove code duplication between authn-iam, authn-gcp, and authn-azure (and possibly authn-oidc and authn-jwt)
 func (c *Client) AzureAuthenticate() ([]byte, error) {
-	azureToken, err := authn.AzureAuthenticateToken("")
+	azureToken, err := authn.AzureAuthenticateToken(c.config.AzureClientID)
 	if err != nil {
 		return nil, err
 	}
