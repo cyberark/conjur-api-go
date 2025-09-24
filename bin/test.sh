@@ -1,5 +1,6 @@
 #!/bin/bash -e
 
+top_level_path="$(pwd)"
 cd "$(dirname "$0")"
 source ./utils.sh
 
@@ -28,8 +29,28 @@ fi
 export COMPOSE_PROJECT_NAME="conjurapigo_${PROJECT_SUFFIX}"
 export GO_VERSION="${1:-"1.24"}"
 export REGISTRY_URL="${2:-docker.io}"
-export TEST_AWS=$INFRAPOOL_TEST_AWS
-export TEST_AZURE=$INFRAPOOL_TEST_AZURE
+export TEST_AWS="${INFRAPOOL_TEST_AWS:-false}"
+export TEST_AZURE="${INFRAPOOL_TEST_AZURE:-false}"
+export TEST_GCP="${INFRAPOOL_TEST_GCP:-false}"
+
+if [[ "$TEST_GCP" == "true" ]]; then
+  export GCP_CTX_DIR="${3:-gcp}"
+  GCP_PROJECT_ID=""
+  GCP_ID_TOKEN=""
+  if [[ -f "$top_level_path/$GCP_CTX_DIR/project-id" ]]; then
+    read -r GCP_PROJECT_ID < "$top_level_path/$GCP_CTX_DIR/project-id"
+  fi
+  if [[ -f "$top_level_path/$GCP_CTX_DIR/token" ]]; then
+    read -r GCP_ID_TOKEN < "$top_level_path/$GCP_CTX_DIR/token"
+  fi
+  if [[ -z "$GCP_PROJECT_ID" || -z "$GCP_ID_TOKEN" ]]; then
+    echo "GCP_PROJECT_ID and GCP_ID_TOKEN must be set to run GCP tests"
+    failed
+  fi
+  export GCP_PROJECT_ID
+  export GCP_ID_TOKEN
+fi
+
 echo "REGISTRY_URL is set to: $REGISTRY_URL"
 
 init_jwt_server
@@ -61,6 +82,9 @@ if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
   -e TEST_AZURE \
   -e AZURE_SUBSCRIPTION_ID \
   -e AZURE_RESOURCE_GROUP \
+  -e TEST_GCP \
+  -e GCP_PROJECT_ID \
+  -e GCP_ID_TOKEN \
   -e GO_VERSION \
   -e PUBLIC_KEYS \
   -e JWT \
@@ -100,6 +124,9 @@ else
     -e TEST_AZURE \
     -e AZURE_SUBSCRIPTION_ID \
     -e AZURE_RESOURCE_GROUP \
+    -e TEST_GCP \
+    -e GCP_PROJECT_ID \
+    -e GCP_ID_TOKEN \
     -e PUBLIC_KEYS \
     -e JWT \
     -e IDENTITY_TOKEN \

@@ -78,6 +78,20 @@ func NewClientFromAWSCredentials(config Config) (*Client, error) {
 	return client, err
 }
 
+func NewClientFromGCPCredentials(config Config, identityUrl string) (*Client, error) {
+	authenticator := &authn.GCPAuthenticator{}
+	client, err := newClientWithAuthenticator(
+		config,
+		authenticator,
+	)
+	if err == nil {
+		authenticator.Authenticate = func() ([]byte, error) {
+			return client.GCPAuthenticate(identityUrl)
+		}
+	}
+	return client, err
+}
+
 func NewClientFromOidcToken(config Config, token string) (*Client, error) {
 	authenticator := &authn.OidcTokenAuthenticator{
 		Token: token,
@@ -181,6 +195,10 @@ func newClientFromStoredCredentials(config Config) (*Client, error) {
 		return newClientFromStoredAzureConfig(config)
 	}
 
+	if config.AuthnType == "gcp" {
+		return NewClientFromStoredGCPConfig(config)
+	}
+
 	// Attempt to load credentials from whatever storage provider is configured
 	storageProvider, err := createStorageProvider(config)
 	if err != nil {
@@ -254,6 +272,22 @@ func NewClientFromAzureCredentials(config Config) (*Client, error) {
 		authenticator.Authenticate = client.AzureAuthenticate
 	}
 	return client, err
+}
+
+func NewClientFromStoredGCPConfig(config Config) (*Client, error) {
+	client, err := NewClientFromGCPCredentials(config, authn.GcpIdentityURL)
+	if err != nil {
+		return nil, err
+	}
+
+	// RefreshToken() will first check for a cached token
+	// If not found it will go through the authenticator
+	err = client.RefreshToken()
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }
 
 func (c *Client) GetAuthenticator() Authenticator {

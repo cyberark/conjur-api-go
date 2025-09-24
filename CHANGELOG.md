@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Add support for automatic AWS IAM authentication using EC2 instance metadata. CNJR-10957
 - Add support for automatic Azure authentication. CNJR-10959
 - Add Static Secrets V2 API. CNJR-10824
+- Add support for automatic GCP authentication using GCP instance metadata. CNJR-10958
 
 ## [0.13.4] - 2025-09-08
 
