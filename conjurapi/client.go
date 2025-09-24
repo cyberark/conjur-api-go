@@ -78,7 +78,7 @@ func NewClientFromAWSCredentials(config Config) (*Client, error) {
 	return client, err
 }
 
-func NewClientFromGCPCredentials(config Config, baseUrl string) (*Client, error) {
+func NewClientFromGCPCredentials(config Config, identityUrl string) (*Client, error) {
 	authenticator := &authn.GCPAuthenticator{}
 	client, err := newClientWithAuthenticator(
 		config,
@@ -86,7 +86,7 @@ func NewClientFromGCPCredentials(config Config, baseUrl string) (*Client, error)
 	)
 	if err == nil {
 		authenticator.Authenticate = func() ([]byte, error) {
-			return client.GCPAuthenticate(baseUrl)
+			return client.GCPAuthenticate(identityUrl)
 		}
 	}
 	return client, err
@@ -275,8 +275,7 @@ func NewClientFromAzureCredentials(config Config) (*Client, error) {
 }
 
 func NewClientFromStoredGCPConfig(config Config) (*Client, error) {
-	client, err := NewClientFromGCPCredentials(config,
-		"http://metadata/computeMetadata/v1/instance/service-accounts/default/identity")
+	client, err := NewClientFromGCPCredentials(config, authn.GcpIdentityURL)
 	if err != nil {
 		return nil, err
 	}

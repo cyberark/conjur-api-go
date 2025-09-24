@@ -8,8 +8,9 @@ import (
 	"net/url"
 )
 
-const MetadataFlavorHeaderName = "Metadata-Flavor"
-const MetadataFlavorHeaderValue = "Google"
+const GcpMetadataFlavorHeaderName = "Metadata-Flavor"
+const GcpMetadataFlavorHeaderValue = "Google"
+const GcpIdentityURL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity"
 
 type GCPAuthenticator struct {
 	Authenticate func() ([]byte, error)
@@ -23,7 +24,7 @@ func (a *GCPAuthenticator) NeedsTokenRefresh() bool {
 	return false
 }
 
-func GCPAuthenticateToken(account, hostID string, baseUrl string) ([]byte, error) {
+func GCPAuthenticateToken(account, hostID string, identityUrl string) ([]byte, error) {
 	// Build query parameters
 	params := url.Values{}
 	audience := "conjur/" + account + "/host/" + hostID
@@ -31,7 +32,7 @@ func GCPAuthenticateToken(account, hostID string, baseUrl string) ([]byte, error
 	params.Add("format", "full")
 
 	// Build final URL with encoded parameters
-	fullURL := fmt.Sprintf("%s?%s", baseUrl, params.Encode())
+	fullURL := fmt.Sprintf("%s?%s", identityUrl, params.Encode())
 	// Create a new request
 	req, err := http.NewRequest("GET", fullURL, nil)
 	if err != nil {
@@ -40,7 +41,7 @@ func GCPAuthenticateToken(account, hostID string, baseUrl string) ([]byte, error
 	}
 
 	// Set required header
-	req.Header.Add(MetadataFlavorHeaderName, MetadataFlavorHeaderValue)
+	req.Header.Add(GcpMetadataFlavorHeaderName, GcpMetadataFlavorHeaderValue)
 
 	// Perform the request
 	client := &http.Client{}

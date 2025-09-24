@@ -82,7 +82,7 @@ pipeline {
           if (params.TEST_AZURE) {
             INFRAPOOL_AZURE_EXECUTORV2_AGENT_0 = getInfraPoolAgent.connected(type: "AzureExecutorV2", quantity: 1, duration: 1)[0]
           }
-          if (params.TEST_GCP){
+          if (params.TEST_GCP || params.TEST_CLOUD){
             INFRAPOOL_GCP_EXECUTORV2_AGENT_0 = getInfraPoolAgent.connected(type: "GcpExecutorV2", quantity: 1, duration: 1)[0]
           }
         }
@@ -187,6 +187,7 @@ pipeline {
         script {
           INFRAPOOL_GCP_EXECUTORV2_AGENT_0.agentSh "./bin/get_gcp_token.sh host/data/test/gcp-apps/test-app conjur $GCP_CTX_DIR"
           INFRAPOOL_GCP_EXECUTORV2_AGENT_0.agentStash name: 'token-out', includes: "${GCP_CTX_DIR}/*"
+          GCP_TOKEN_STASHED = true
           infrapool.agentUnstash name: 'token-out'
           infrapool.agentSh "./bin/test.sh 1.24 $REGISTRY_URL $GCP_CTX_DIR"
         }
@@ -233,9 +234,18 @@ pipeline {
             INFRAPOOL_IDENTITY_TOKEN="${env.identity_token}"
             INFRAPOOL_TEST_CLOUD=true
             INFRAPOOL_TEST_AWS=true
+            INFRAPOOL_TEST_GCP=true
+            GCP_CTX_DIR = "gcp"
           }
           steps {
             script {
+              if (GCP_TOKEN_STASHED != true) {
+                // Stash GCP token files on the GCP agent and un-stash them on the AWS agent
+                INFRAPOOL_GCP_EXECUTORV2_AGENT_0.agentSh "./bin/get_gcp_token.sh host/data/test/gcp-apps/test-app conjur $GCP_CTX_DIR"
+                INFRAPOOL_GCP_EXECUTORV2_AGENT_0.agentStash name: 'token-out', includes: "${GCP_CTX_DIR}/*"
+              }
+
+              infrapool.agentUnstash name: 'token-out'
               infrapool.agentSh "./bin/test.sh"
               infrapool.agentStash name: 'merged-out', includes: 'output/cloud/*.xml'
               unstash 'merged-out'

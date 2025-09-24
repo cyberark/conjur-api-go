@@ -318,8 +318,8 @@ func (c *Client) AzureAuthenticate() ([]byte, error) {
 	return resp, err
 }
 
-func (c *Client) GCPAuthenticate(baseUrl string) ([]byte, error) {
-	gcpToken, err := authn.GCPAuthenticateToken(c.config.Account, c.config.JWTHostID, baseUrl)
+func (c *Client) GCPAuthenticate(identityUrl string) ([]byte, error) {
+	gcpToken, err := authn.GCPAuthenticateToken(c.config.Account, c.config.JWTHostID, identityUrl)
 	if err != nil {
 		return nil, err
 	}

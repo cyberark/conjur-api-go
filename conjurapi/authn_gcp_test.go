@@ -59,19 +59,19 @@ var authGcpRolesPolicy = `
 `
 
 func TestAuthnGCP_WithStubbedJwtResponse(t *testing.T) {
-	// Only run this if running on AWS
+	// Only run this if explicitly enabled
 	if strings.ToLower(os.Getenv("TEST_GCP")) != "true" {
 		t.Skip("Skipping GCP authn test")
 	}
 
 	// Run a stub HTTP server and set the metadata URL to point to it:
 	// this is necessary because GCP agents lack Docker runtime,
-	// so the test must be run outside of GCP.
+	// so the test must be run on a non GCP agent (e.g. on AWS).
 	const metadataEndpointUri = "/test-identity"
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet && r.URL.Path == metadataEndpointUri {
-			w.Header().Set(authn.MetadataFlavorHeaderName, authn.MetadataFlavorHeaderValue)
+			w.Header().Set(authn.GcpMetadataFlavorHeaderName, authn.GcpMetadataFlavorHeaderValue)
 			w.WriteHeader(http.StatusOK)
 			gcpToken := os.Getenv("GCP_ID_TOKEN")
 			if gcpToken == "" {
@@ -112,7 +112,7 @@ func TestAuthnGCP_WithStubbedJwtResponse(t *testing.T) {
 			AuthnType:    "gcp",
 			JWTHostID:    "data/test/gcp-apps/test-app",
 		}
-		gcpConjur, err := NewClientFromGCPCredentials(config, server.URL + metadataEndpointUri)
+		gcpConjur, err := NewClientFromGCPCredentials(config, server.URL+metadataEndpointUri)
 		require.NoError(t, err)
 
 		_, err = gcpConjur.GetAuthenticator().RefreshToken()
