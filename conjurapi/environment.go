@@ -8,20 +8,27 @@ import (
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 )
 
+// EnvironmentType represents the type of Secrets Manager environment.
 type EnvironmentType string
 
 const (
+	// EnvironmentSaaS represents the Secrets Manager SaaS environment.
 	EnvironmentSaaS EnvironmentType = "saas"
-	EnvironmentSH   EnvironmentType = "self-hosted"
-	EnvironmentOSS  EnvironmentType = "oss"
+	// EnvironmentSH represents the Secrets Manager Self-Hosted environment.
+	EnvironmentSH EnvironmentType = "self-hosted"
+	// EnvironmentOSS represents the Conjur Open Source environment.
+	EnvironmentOSS EnvironmentType = "oss"
 )
 
+// SupportedEnvironments lists all supported environment types.
 var SupportedEnvironments = []string{string(EnvironmentSaaS), string(EnvironmentSH), string(EnvironmentOSS)}
 
+// String returns the string representation of the EnvironmentType.
 func (e *EnvironmentType) String() string {
 	return string(*e)
 }
 
+// FullName returns the full descriptive name of the EnvironmentType.
 func (e *EnvironmentType) FullName() string {
 	switch *e {
 	case EnvironmentSaaS:
@@ -35,6 +42,7 @@ func (e *EnvironmentType) FullName() string {
 	}
 }
 
+// Set sets the EnvironmentType based on the provided string value.
 func (e *EnvironmentType) Set(value string) error {
 	switch value {
 	case string(EnvironmentSH), "CE", "enterprise":
@@ -49,6 +57,7 @@ func (e *EnvironmentType) Set(value string) error {
 	return nil
 }
 
+// Type returns the type of the EnvironmentType for flag parsing.
 func (e *EnvironmentType) Type() string {
 	return "string"
 }
@@ -63,10 +72,9 @@ func defaultEnvironment(url string, showLog bool) EnvironmentType {
 			logging.ApiLog.Info("Detected Secrets Manager SaaS URL, setting 'Environment' to 'saas'")
 		}
 		return EnvironmentSaaS
-	} else {
-		if showLog {
-			logging.ApiLog.Info("'Environment' not specified, setting to 'self-hosted'")
-		}
-		return EnvironmentSH
 	}
+	if showLog {
+		logging.ApiLog.Info("'Environment' not specified, setting to 'self-hosted'")
+	}
+	return EnvironmentSH
 }

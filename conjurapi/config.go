@@ -467,18 +467,22 @@ func (c *Config) SetFinalTelemetryHeader() string {
 	return c.finalTelemetryHeader
 }
 
+// IsSaaS returns true if the Environment is set to SaaS, false otherwise.
 func (c *Config) IsSaaS() bool {
 	return c.Environment == EnvironmentSaaS
 }
 
+// IsSelfHosted returns true if the Environment is set to Self-Hosted, false otherwise.
 func (c *Config) IsSelfHosted() bool {
 	return c.Environment == EnvironmentSH
 }
 
+// IsConjurOSS returns true if the Environment is set to Conjur OSS, false otherwise.
 func (c *Config) IsConjurOSS() bool {
 	return c.Environment == EnvironmentOSS
 }
 
+// ProxyURL parses the Proxy string from the Config and returns a url.URL pointer. If the Proxy string is empty or invalid, it returns nil.
 func (c *Config) ProxyURL() *url.URL {
 	if len(c.Proxy) == 0 {
 		return nil
@@ -491,6 +495,11 @@ func (c *Config) ProxyURL() *url.URL {
 	return proxyURL
 }
 
+// AddToConjurRc appends a key-value pair to the conjurrc file located at $CONJURRC or ~/.conjurrc if $CONJURRC is not set.
+// If the home directory cannot be determined, it logs a warning and attempts to use $CONJURRC directly.
+// Parameters:
+//   - key (string): The key to add to the conjurrc file.
+//   - val (string): The value associated with the key.
 func (c *Config) AddToConjurRc(key, val string) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -504,11 +513,11 @@ func (c *Config) AddToConjurRc(key, val string) {
 
 	// append the key-value pair to the conjurrc file
 	file, err := os.OpenFile(conjurrc, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-	defer file.Close()
 	if err != nil {
 		logging.ApiLog.Errorf("Failed to open %s: %v", conjurrc, err)
 		return
 	}
+	defer file.Close()
 
 	if _, err := file.WriteString(fmt.Sprintf("%s: %s\n", key, val)); err != nil {
 		logging.ApiLog.Errorf("Failed to write to %s: %v", conjurrc, err)
