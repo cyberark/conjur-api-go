@@ -54,6 +54,7 @@ type Config struct {
 	Environment          EnvironmentType `yaml:"environment,omitempty"`
 	Proxy                string          `yaml:"proxy,omitempty"`
 	ConjurCloudTimeout   int             `yaml:"cc_timeout,omitempty"`
+	AzureClientID        string          `yaml:"azure_client_id,omitempty"`
 }
 
 func (c *Config) IsHttps() bool {
@@ -167,6 +168,7 @@ func (c *Config) merge(o *Config) {
 	c.HTTPTimeout = mergeValue(c.HTTPTimeout, o.HTTPTimeout)
 	c.Environment = EnvironmentType(mergeValue(string(c.Environment), string(o.Environment)))
 	c.Proxy = mergeValue(c.Proxy, o.Proxy)
+	c.AzureClientID = mergeValue(c.AzureClientID, o.AzureClientID)
 }
 
 func (c *Config) mergeYAML(filename string) error {
@@ -230,6 +232,7 @@ func (c *Config) mergeEnv() {
 		HTTPTimeout:       httpTimoutFromEnv(),
 		Environment:       EnvironmentType(os.Getenv("CONJUR_ENVIRONMENT")),
 		Proxy:             os.Getenv("HTTPS_PROXY"),
+		AzureClientID:     os.Getenv("CONJUR_AUTHN_AZURE_CLIENT_ID"),
 	}
 
 	if os.Getenv("CONJUR_AUTHN_JWT_SERVICE_ID") != "" {
