@@ -21,7 +21,7 @@ func Test_makeRouterURL(t *testing.T) {
 		assert.Equal(t, urlWithSubPath, makeRouterURL("http://some.host/path/to/something/", "//subpath//to//another"))
 	})
 
-	t.Run("makeRouterURL handles Conjur Cloud base URL", func(t *testing.T) {
+	t.Run("makeRouterURL handles Secrets Manager SaaS base URL", func(t *testing.T) {
 		cloudUrlWithPath := routerURL("http://some.host.secretsmgr.cyberark.cloud/api/some/path")
 		cloudUrlWithSubPath := routerURL("http://some.host.secretsmgr.cyberark.cloud/api/some/path/subpath/to/another")
 

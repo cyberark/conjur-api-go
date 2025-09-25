@@ -33,12 +33,12 @@ type EnterpriseInfoService struct {
 	Arch        string `json:"arch"`
 }
 
-// ServerVersion retrieves the Conjur server version, either from the '/info' endpoint in Conjur Enterprise,
+// ServerVersion retrieves the Conjur server version, either from the '/info' endpoint in Secrets Manager Self-Hosted,
 // or from the root endpoint in Conjur OSS. The version returned corresponds to the Conjur OSS version,
 // which in Conjur Enterprise is the version of the 'possum' service.
 func (c *Client) ServerVersion() (string, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return "", errors.New("Unable to retrieve server version: not supported in Conjur Cloud")
+		return "", errors.New("Unable to retrieve server version: not supported in Secrets Manager SaaS")
 	}
 
 	info, err := c.EnterpriseServerInfo()
@@ -59,7 +59,7 @@ func (c *Client) ServerVersion() (string, error) {
 // This is only available in Conjur Enterprise and will fail with a 404 error in Conjur OSS.
 func (c *Client) EnterpriseServerInfo() (*EnterpriseInfoResponse, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, errors.New("Unable to retrieve server info: not supported in Conjur Cloud")
+		return nil, errors.New("Unable to retrieve server info: not supported in Secrets Manager SaaS")
 	}
 
 	req, err := c.ServerInfoRequest()
@@ -89,7 +89,7 @@ func (c *Client) EnterpriseServerInfo() (*EnterpriseInfoResponse, error) {
 // In newer Conjur versions, the version is available in a JSON response.
 func (c *Client) ServerVersionFromRoot() (string, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return "", errors.New("Unable to retrieve server version: not supported in Conjur Cloud")
+		return "", errors.New("Unable to retrieve server version: not supported in Secrets Manager SaaS")
 	}
 
 	req, err := c.RootRequest()

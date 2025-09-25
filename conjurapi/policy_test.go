@@ -142,7 +142,7 @@ func TestPolicy_DryRunPolicy(t *testing.T) {
 	conjur := utils.Client()
 
 	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
-		t.Run("Dry run not supported on Conjur Cloud", func(t *testing.T) {
+		t.Run("Dry run not supported on Secrets Manager SaaS", func(t *testing.T) {
 			utils, err := NewTestUtils(&Config{})
 			assert.NoError(t, err)
 			conjur := utils.Client()
@@ -154,10 +154,10 @@ func TestPolicy_DryRunPolicy(t *testing.T) {
 			)
 
 			require.Error(t, err)
-			assert.EqualError(t, err, "Policy Dry Run is not supported in Conjur Cloud")
+			assert.EqualError(t, err, "Policy Dry Run is not supported in Secrets Manager SaaS")
 			assert.Nil(t, resp)
 		})
-		// Skip the rest of the tests when running against Conjur Cloud
+		// Skip the rest of the tests when running against Secrets Manager SaaS
 		return
 	}
 
@@ -518,12 +518,12 @@ func TestPolicy_DryRunPolicy(t *testing.T) {
 		resp, err := mockClient.DryRunPolicy(PolicyModePut, "test", strings.NewReader(""))
 		assert.Error(t, err)
 		assert.Nil(t, resp)
-		assert.Contains(t, err.Error(), "Policy Dry Run is not supported in Conjur versions older than 1.21.1")
+		assert.Contains(t, err.Error(), "Policy Dry Run is not supported in Secrets Manager versions older than 1.21.1")
 
 		fetchResp, err := mockClient.FetchPolicy(utils.PolicyBranch(), false, 64, 100000)
 		assert.Error(t, err)
 		assert.Nil(t, fetchResp)
-		assert.Contains(t, err.Error(), "Policy Fetch is not supported in Conjur versions older than 1.21.1")
+		assert.Contains(t, err.Error(), "Policy Fetch is not supported in Secrets Manager versions older than 1.21.1")
 	})
 }
 
@@ -554,7 +554,7 @@ func TestPolicy_FetchPolicy(t *testing.T) {
 	assert.NoError(t, err)
 
 	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
-		t.Run("Fetch policy not supported on Conjur Cloud", func(t *testing.T) {
+		t.Run("Fetch policy not supported on Secrets Manager SaaS", func(t *testing.T) {
 			utils, err := NewTestUtils(&Config{})
 			assert.NoError(t, err)
 			conjur := utils.Client()
@@ -562,10 +562,10 @@ func TestPolicy_FetchPolicy(t *testing.T) {
 			resp, err := conjur.FetchPolicy(utils.PolicyBranch(), false, 64, 100000)
 
 			require.Error(t, err)
-			assert.EqualError(t, err, "Policy Fetch is not supported in Conjur Cloud")
+			assert.EqualError(t, err, "Policy Fetch is not supported in Secrets Manager SaaS")
 			assert.Nil(t, resp)
 		})
-		// Skip the rest of the tests when running against Conjur Cloud
+		// Skip the rest of the tests when running against Secrets Manager SaaS
 		return
 	}
 

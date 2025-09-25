@@ -11,21 +11,21 @@ import (
 
 // Issuer defines the JSON data structure used with the Conjur API
 type Issuer struct {
-	ID string `json:"id"`
-	Type string `json:"type"`
-	MaxTTL int `json:"max_ttl"`
-	Data map[string]interface{} `json:"data"`
+	ID     string                 `json:"id"`
+	Type   string                 `json:"type"`
+	MaxTTL int                    `json:"max_ttl"`
+	Data   map[string]interface{} `json:"data"`
 
 	// Metadata fields returned by the Conjur API
-	CreatedAt string `json:"created_at,omitempty"`
+	CreatedAt  string `json:"created_at,omitempty"`
 	ModifiedAt string `json:"modified_at,omitempty"`
 }
 
 // IssuerUpdate defines the specific fields allowed in an Issuer update
 // request.
 type IssuerUpdate struct {
-	MaxTTL *int `json:"max_ttl,omitempty"`
-	Data map[string]interface{} `json:"data,omitempty"`
+	MaxTTL *int                   `json:"max_ttl,omitempty"`
+	Data   map[string]interface{} `json:"data,omitempty"`
 }
 
 // IssuerList defines the JSON structure returned by the issuer list endpoint

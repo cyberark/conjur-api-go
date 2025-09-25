@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Add support for automatic Azure authentication. CNJR-10959
 - Add Static Secrets V2 API. CNJR-10824
 - Add support for automatic GCP authentication using GCP instance metadata. CNJR-10958
+- Implemented support for both Secrets Manager Self-Hosted and Secrets Manager SaaS based on the configuration.
+  CNJR-9039, CNJR-9043, CNJR-9044, CNJR-9349
 
 ## [0.13.4] - 2025-09-08
 

@@ -179,7 +179,7 @@ func (c *Client) ListOidcProvidersRequest() (*http.Request, error) {
 }
 
 // ServerInfoRequest crafts an HTTP request to Conjur's /info endpoint to retrieve
-// This is only available in Conjur Enterprise and will fail with a 404 error in Conjur OSS.
+// This is only available in Secrets Manager Self-Hosted and will fail with a 404 error in Conjur OSS.
 func (c *Client) ServerInfoRequest() (*http.Request, error) {
 	return http.NewRequest(http.MethodGet, makeRouterURL(c.config.ApplianceURL, "info").String(), nil)
 }
@@ -772,6 +772,10 @@ func (c *Client) authnURL(authenticatorType string, serviceID string) string {
 
 	if authenticatorType == "gcp" {
 		return makeRouterURL(c.config.ApplianceURL, authnType, c.config.Account).String()
+	}
+
+	if authenticatorType == "cloud" {
+		return makeRouterURL(c.config.ApplianceURL, "authn-oidc", serviceID, c.config.Account).String()
 	}
 
 	if authenticatorType != "" && authenticatorType != "authn" {

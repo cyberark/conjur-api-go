@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -183,7 +184,7 @@ func NewClientFromJwt(config Config) (*Client, error) {
 }
 
 func newClientFromStoredCredentials(config Config) (*Client, error) {
-	if config.AuthnType == "oidc" {
+	if config.AuthnType == "oidc" || config.AuthnType == "cloud" {
 		return newClientFromStoredOidcCredentials(config)
 	}
 
@@ -359,7 +360,7 @@ func createHttpClient(config Config) (*http.Client, error) {
 		}
 	} else {
 		httpClient = &http.Client{
-			Transport: newHTTPTransport(),
+			Transport: newHTTPTransport(config.ProxyURL()),
 			Timeout:   time.Second * time.Duration(config.GetHttpTimeout()),
 		}
 	}
@@ -380,21 +381,24 @@ func newHTTPSClient(cert []byte, config Config) (*http.Client, error) {
 	pool := x509.NewCertPool()
 	ok := pool.AppendCertsFromPEM(cert)
 	if !ok {
-		return nil, fmt.Errorf("Can't append Conjur SSL cert")
+		return nil, fmt.Errorf("Can't append Secrets Manager SSL cert")
 	}
 	//TODO: Test what happens if this cert is expired
 	//TODO: What if server cert is rotated
-	tr := newHTTPTransport()
+	tr := newHTTPTransport(config.ProxyURL())
 	tr.TLSClientConfig = &tls.Config{RootCAs: pool}
 	return &http.Client{Transport: tr, Timeout: time.Second * time.Duration(config.GetHttpTimeout())}, nil
 }
 
-func newHTTPTransport() *http.Transport {
+func newHTTPTransport(proxy *url.URL) *http.Transport {
 	// Clone the default transport to preserve its settings (e.g., Proxy)
 	tr := http.DefaultTransport.(*http.Transport).Clone()
 	tr.DialContext = (&net.Dialer{
 		Timeout: time.Second * time.Duration(HTTPDialTimeout),
 	}).DialContext
+	if proxy != nil {
+		tr.Proxy = http.ProxyURL(proxy)
+	}
 	return tr
 }
 

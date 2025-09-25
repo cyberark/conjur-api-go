@@ -3,15 +3,26 @@ package conjurapi
 import (
 	"fmt"
 	"path"
+	"regexp"
 	"strings"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 )
 
+// ConjurCloudSuffixes is a list of all possible Secrets Manager SaaS URL suffixes.
 var ConjurCloudSuffixes = []string{
-	".secretsmgr.cyberark.cloud",
-	".secretsmgr.integration-cyberark.cloud",
+	".cyberark.cloud",
+	".integration-cyberark.cloud",
+	".test-cyberark.cloud",
+	".dev-cyberark.cloud",
+	".cyberark-everest-integdev.cloud",
+	".cyberark-everest-pre-prod.cloud",
+	".sandbox-cyberark.cloud",
+	".pt-cyberark.cloud",
 }
+
+// ConjurCloudRegexp is a regex pattern that matches all possible Secrets Manager SaaS URLs.
+var ConjurCloudRegexp = regexp.MustCompile("(\\.secretsmgr|-secretsmanager)" + strings.Join(ConjurCloudSuffixes, "|"))
 
 type routerURL string
 
@@ -37,9 +48,8 @@ func (u routerURL) String() string {
 
 func normalizeBaseURL(baseURL string) string {
 	url := strings.TrimSuffix(baseURL, "/")
-
-	if isConjurCloudURL(url) && !strings.HasSuffix(url, "/api") {
-		logging.ApiLog.Info("Detected Conjur Cloud URL, adding '/api' prefix")
+	if isConjurCloudURL(url) && !strings.Contains(url, "/api") {
+		logging.ApiLog.Info("Detected Secrets Manager SaaS URL, adding '/api' prefix")
 		return url + "/api"
 	}
 
@@ -47,13 +57,5 @@ func normalizeBaseURL(baseURL string) string {
 }
 
 func isConjurCloudURL(baseURL string) bool {
-	url := strings.TrimSuffix(baseURL, "/")
-
-	for _, suffix := range ConjurCloudSuffixes {
-		if strings.HasSuffix(url, suffix) || strings.HasSuffix(url, suffix+"/api") {
-			return true
-		}
-	}
-
-	return false
+	return ConjurCloudRegexp.MatchString(baseURL)
 }

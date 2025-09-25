@@ -69,7 +69,7 @@ func TestClient_CreateIssuer(t *testing.T) {
 				assert.Error(t, err)
 				assert.Regexp(
 					t,
-					// Conjur cloud returns "Entity", Enterprise returns "Content"
+					// Secrets Manager SaaS returns "Entity", Enterprise returns "Content"
 					"422 Unprocessable (Content|Entity). invalid 'access_key_id' parameter format",
 					err.Error(),
 				)
@@ -352,7 +352,7 @@ func TestClient_Issuers(t *testing.T) {
 			},
 			assertError: func(t *testing.T, err error) {
 				if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
-					// In Conjur Cloud, the issuer branch is pre-created
+					// In Secrets Manager SaaS, the issuer branch is pre-created
 					assert.NoError(t, err)
 				} else {
 					// In this case, the Issuer policy doesn't yet exist

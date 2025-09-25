@@ -33,6 +33,7 @@ func TestConfig_Validate(t *testing.T) {
 		config := Config{
 			Account:      "account",
 			ApplianceURL: "appliance-url",
+			Environment:  EnvironmentSH,
 		}
 
 		err := config.Validate()
@@ -41,7 +42,8 @@ func TestConfig_Validate(t *testing.T) {
 
 	t.Run("Return error for invalid configuration missing ApplianceURL", func(t *testing.T) {
 		config := Config{
-			Account: "account",
+			Account:     "account",
+			Environment: EnvironmentSH,
 		}
 
 		err := config.Validate()
@@ -159,6 +161,7 @@ func TestConfig_Validate(t *testing.T) {
 			config := Config{
 				Account:      "account",
 				ApplianceURL: "appliance-url",
+				Environment:  EnvironmentSH,
 			}
 
 			err := config.Validate()
@@ -173,6 +176,7 @@ func TestConfig_Validate(t *testing.T) {
 			AuthnType:    "iam",
 			ServiceID:    "service-id",
 			JWTContent:   "valid-jwt-token",
+			Environment:  EnvironmentSH,
 		}
 
 		err := config.Validate()
@@ -189,6 +193,7 @@ func TestConfig_Validate(t *testing.T) {
 			AuthnType:    "azure",
 			ServiceID:    "service-id",
 			JWTContent:   "valid-jwt-token",
+			Environment:  EnvironmentSH,
 		}
 
 		err := config.Validate()
@@ -203,10 +208,79 @@ func TestConfig_Validate(t *testing.T) {
 			Account:      "account",
 			ApplianceURL: "appliance-url",
 			AuthnType:    "gcp",
+			Environment:  EnvironmentSH,
 		}
 
 		err := config.Validate()
 		assert.NoError(t, err)
+	})
+
+	t.Run("Validates Environment", func(t *testing.T) {
+		t.Run("Return no error for missing Environment. Defaults to self-hosted", func(t *testing.T) {
+			config := Config{
+				Account:      "account",
+				ApplianceURL: "appliance-url",
+			}
+
+			err := config.Validate()
+			assert.NoError(t, err)
+
+			assert.Equal(t, EnvironmentSH, config.Environment)
+		})
+		t.Run("Return no error for missing Environment. Defaults to saas", func(t *testing.T) {
+			config := Config{
+				Account:      "account",
+				ApplianceURL: "appliance-url.secretsmgr.cyberark.cloud",
+			}
+
+			err := config.Validate()
+			assert.NoError(t, err)
+
+			assert.Equal(t, EnvironmentSaaS, config.Environment)
+		})
+		t.Run("Return error for invalid configuration with invalid Environment", func(t *testing.T) {
+			config := Config{
+				Account:      "account",
+				ApplianceURL: "appliance-url",
+				Environment:  "invalid-environment",
+			}
+
+			err := config.Validate()
+			assert.Error(t, err)
+
+			errString := err.Error()
+			assert.Contains(t, errString, "Environment must be one of [saas self-hosted oss], got 'invalid-environment'")
+		})
+		t.Run("Return no error if Environment is self-hosted", func(t *testing.T) {
+			config := Config{
+				Account:      "account",
+				ApplianceURL: "appliance-url",
+				Environment:  "self-hosted",
+			}
+
+			err := config.Validate()
+			assert.NoError(t, err)
+		})
+		t.Run("Return no error if Environment is saas", func(t *testing.T) {
+			config := Config{
+				Account:      "account",
+				ApplianceURL: "appliance-url",
+				Environment:  "saas",
+			}
+
+			err := config.Validate()
+			assert.NoError(t, err)
+		})
+		t.Run("Return no error if Environment is OSS", func(t *testing.T) {
+			config := Config{
+				Account:      "account",
+				ApplianceURL: "conjur-url",
+				Environment:  "OSS",
+			}
+
+			err := config.Validate()
+			assert.NoError(t, err)
+		})
 	})
 }
 
@@ -299,8 +373,9 @@ var versiontests = []struct {
 
 func TestConfig_mergeYAML(t *testing.T) {
 	t.Run("No other netrc specified", func(t *testing.T) {
-		home := os.Getenv("HOME")
-		assert.NotEmpty(t, home)
+		home, err := os.MkdirTemp("", "test")
+		defer os.RemoveAll(home) // clean up
+		assert.NoError(t, err)
 
 		e := ClearEnv()
 		defer e.RestoreEnv()
@@ -316,12 +391,13 @@ func TestConfig_mergeYAML(t *testing.T) {
 			assert.EqualValues(t, config, Config{
 				Account:      "account",
 				ApplianceURL: "appliance-url",
+				Environment:  EnvironmentSH,
 				NetRCPath:    path.Join(home, ".netrc"),
 			})
 		})
 	})
 
-	t.Run("Defaults Account to 'conjur' with Conjur Cloud ApplianceURL", func(t *testing.T) {
+	t.Run("Defaults Account to 'conjur' with Secrets Manager SaaS ApplianceURL", func(t *testing.T) {
 		e := ClearEnv()
 		defer e.RestoreEnv()
 
@@ -346,6 +422,7 @@ cert_file: "/path/to/cert/file/pem%v"
 netrc_path: "/path/to/netrc/file%v"
 authn_type: ldap
 service_id: my-ldap-service
+environment: self-hosted
 %s
 `, index, index, index, index, versiontest.in)
 
@@ -364,6 +441,7 @@ service_id: my-ldap-service
 					SSLCertPath:  fmt.Sprintf("/path/to/cert/file/pem%v", index),
 					AuthnType:    "ldap",
 					ServiceID:    "my-ldap-service",
+					Environment:  EnvironmentSH,
 				})
 			})
 		})
@@ -384,6 +462,13 @@ cert_file: "C:\badly\escaped\path"
 		config := &Config{}
 		err = config.mergeYAML(tmpFileName)
 		assert.Error(t, err)
+	})
+
+	t.Run("Throws errors when conjurrc is a folder", func(t *testing.T) {
+		config := &Config{}
+
+		err := config.mergeYAML("/tmp")
+		assert.ErrorContains(t, err, "is a directory")
 	})
 
 	t.Run("Values in environment variables override conjurrc file", func(t *testing.T) {
@@ -412,6 +497,7 @@ cert_file: "/path/to/cert/file/pem"
 			Account:      "env_account",
 			ApplianceURL: "env_appliance_url",
 			SSLCertPath:  "/path/to/cert/file/pem", // from conjurrc, since not set in env
+			Environment:  EnvironmentSH,            // from defaults, since not set explicitly
 		})
 	})
 
@@ -447,9 +533,11 @@ var conjurrcTestCases = []struct {
 		config: Config{
 			Account:      "test-account",
 			ApplianceURL: "test-appliance-url",
+			Environment:  EnvironmentSH,
 		},
 		expected: `account: test-account
 appliance_url: test-appliance-url
+environment: self-hosted
 `,
 	},
 	{
@@ -464,6 +552,7 @@ appliance_url: test-appliance-url
 			SSLCert:           "test-cert",
 			CredentialStorage: "keyring",
 			HTTPTimeout:       100,
+			Environment:       EnvironmentSH,
 		},
 		expected: `account: test-account
 appliance_url: test-appliance-url
@@ -473,6 +562,7 @@ authn_type: oidc
 service_id: test-service-id
 credential_storage: keyring
 http_timeout: 100
+environment: self-hosted
 `,
 	},
 }
@@ -635,5 +725,31 @@ func TestSetFinalTelemetryHeader(t *testing.T) {
 
 	if result := config.SetFinalTelemetryHeader(); result != encodedExpected {
 		t.Errorf("Expected '%s', got '%s'", encodedExpected, result)
+	}
+}
+
+func TestConfig_IsConjurCloud(t *testing.T) {
+	testCases := []struct {
+		name     string
+		config   Config
+		expected bool
+	}{
+		{
+			name:     "Secrets Manager SaaS Environment",
+			config:   Config{Environment: EnvironmentSaaS},
+			expected: true,
+		},
+		{
+			name:     "Conjur Enterprise Environment",
+			config:   Config{Environment: EnvironmentSH},
+			expected: false,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			actual := testCase.config.IsSaaS()
+			assert.Equal(t, testCase.expected, actual)
+		})
 	}
 }

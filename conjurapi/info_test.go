@@ -15,14 +15,14 @@ var versionRegex = regexp.MustCompile(`^[\d.-]+`)
 
 func TestServerVersion(t *testing.T) {
 	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
-		t.Run("Server version not supported on Conjur Cloud", func(t *testing.T) {
+		t.Run("Server version not supported on Secrets Manager SaaS", func(t *testing.T) {
 			utils, err := NewTestUtils(&Config{})
 			assert.NoError(t, err)
 			conjur := utils.Client()
 
 			version, err := conjur.ServerVersion()
 			require.Error(t, err)
-			assert.ErrorContains(t, err, "not supported in Conjur Cloud")
+			assert.ErrorContains(t, err, "not supported in Secrets Manager SaaS")
 			assert.Empty(t, version)
 		})
 		return
@@ -76,14 +76,14 @@ func TestServerVersion(t *testing.T) {
 
 func TestEnterpriseServerInfo(t *testing.T) {
 	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
-		t.Run("Server version not supported on Conjur Cloud", func(t *testing.T) {
+		t.Run("Server version not supported on Secrets Manager SaaS", func(t *testing.T) {
 			utils, err := NewTestUtils(&Config{})
 			assert.NoError(t, err)
 			conjur := utils.Client()
 
 			info, err := conjur.EnterpriseServerInfo()
 			require.Error(t, err)
-			assert.ErrorContains(t, err, "not supported in Conjur Cloud")
+			assert.ErrorContains(t, err, "not supported in Secrets Manager SaaS")
 			assert.Nil(t, info)
 		})
 		return
@@ -120,17 +120,17 @@ func TestEnterpriseServerInfo(t *testing.T) {
 
 func TestServerVersionFromRoot(t *testing.T) {
 	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
-		t.Run("Server version not supported on Conjur Cloud", func(t *testing.T) {
+		t.Run("Server version not supported on Secrets Manager SaaS", func(t *testing.T) {
 			utils, err := NewTestUtils(&Config{})
 			assert.NoError(t, err)
 			conjur := utils.Client()
 
 			version, err := conjur.ServerVersionFromRoot()
 			require.Error(t, err)
-			assert.ErrorContains(t, err, "not supported in Conjur Cloud")
+			assert.ErrorContains(t, err, "not supported in Secrets Manager SaaS")
 			assert.Empty(t, version)
 		})
-		// Skip the rest of the tests when running against Conjur Cloud
+		// Skip the rest of the tests when running against Secrets Manager SaaS
 		return
 	}
 

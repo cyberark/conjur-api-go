@@ -1,7 +1,9 @@
 package conjurapi
 
 import (
+	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path"
 	"runtime"
@@ -28,27 +30,30 @@ const (
 	ConjurSourceHeader = "x-cybr-telemetry"
 )
 
-var supportedAuthnTypes = []string{"authn", "ldap", "oidc", "jwt", "iam", "azure", "gcp"}
+var supportedAuthnTypes = []string{"authn", "ldap", "oidc", "jwt", "iam", "azure", "gcp", "cloud"}
 
 type Config struct {
-	Account              string `yaml:"account,omitempty"`
-	ApplianceURL         string `yaml:"appliance_url,omitempty"`
-	NetRCPath            string `yaml:"netrc_path,omitempty"`
-	SSLCert              string `yaml:"-"`
-	SSLCertPath          string `yaml:"cert_file,omitempty"`
-	AuthnType            string `yaml:"authn_type,omitempty"`
-	ServiceID            string `yaml:"service_id,omitempty"`
-	CredentialStorage    string `yaml:"credential_storage,omitempty"`
-	JWTHostID            string `yaml:"jwt_host_id,omitempty"`
-	JWTContent           string `yaml:"-"`
-	JWTFilePath          string `yaml:"jwt_file,omitempty"`
-	HTTPTimeout          int    `yaml:"http_timeout,omitempty"`
-	IntegrationName      string `yaml:"-"`
-	IntegrationType      string `yaml:"-"`
-	IntegrationVersion   string `yaml:"-"`
-	VendorVersion        string `yaml:"-"`
-	VendorName           string `yaml:"-"`
-	finalTelemetryHeader string `yaml:"-"`
+	Account              string          `yaml:"account,omitempty"`
+	ApplianceURL         string          `yaml:"appliance_url,omitempty"`
+	NetRCPath            string          `yaml:"netrc_path,omitempty"`
+	SSLCert              string          `yaml:"-"`
+	SSLCertPath          string          `yaml:"cert_file,omitempty"`
+	AuthnType            string          `yaml:"authn_type,omitempty"`
+	ServiceID            string          `yaml:"service_id,omitempty"`
+	CredentialStorage    string          `yaml:"credential_storage,omitempty"`
+	JWTHostID            string          `yaml:"jwt_host_id,omitempty"`
+	JWTContent           string          `yaml:"-"`
+	JWTFilePath          string          `yaml:"jwt_file,omitempty"`
+	HTTPTimeout          int             `yaml:"http_timeout,omitempty"`
+	IntegrationName      string          `yaml:"-"`
+	IntegrationType      string          `yaml:"-"`
+	IntegrationVersion   string          `yaml:"-"`
+	VendorVersion        string          `yaml:"-"`
+	VendorName           string          `yaml:"-"`
+	finalTelemetryHeader string          `yaml:"-"`
+	Environment          EnvironmentType `yaml:"environment,omitempty"`
+	Proxy                string          `yaml:"proxy,omitempty"`
+	ConjurCloudTimeout   int             `yaml:"cc_timeout,omitempty"`
 }
 
 func (c *Config) IsHttps() bool {
@@ -56,6 +61,8 @@ func (c *Config) IsHttps() bool {
 }
 
 func (c *Config) Validate() error {
+	c.applyDefaults(false)
+
 	errors := []string{}
 
 	if c.ApplianceURL == "" {
@@ -64,6 +71,10 @@ func (c *Config) Validate() error {
 
 	if c.Account == "" {
 		errors = append(errors, "Must specify an Account")
+	}
+
+	if c.Environment == "" {
+		errors = append(errors, "Must specify an Environment")
 	}
 
 	if c.AuthnType != "" && !contains(supportedAuthnTypes, c.AuthnType) {
@@ -84,6 +95,10 @@ func (c *Config) Validate() error {
 
 	if c.HTTPTimeout < 0 || c.HTTPTimeout > HTTPTimeoutMaxValue {
 		errors = append(errors, fmt.Sprintf("HTTPTimeout must be between 1 and %d seconds", HTTPTimeoutMaxValue))
+	}
+
+	if c.Environment != "" && !environmentIsSupported(string(c.Environment)) {
+		errors = append(errors, fmt.Sprintf("Environment must be one of %v, got '%s'", SupportedEnvironments, strings.ToLower(string(c.Environment))))
 	}
 
 	if len(errors) == 0 {
@@ -130,15 +145,8 @@ func (c *Config) GetHttpTimeout() int {
 	}
 }
 
-func mergeValue(a, b string) string {
-	if len(b) != 0 {
-		return b
-	}
-	return a
-}
-
-func mergeInt(a, b int) int {
-	if b != 0 {
+func mergeValue[T comparable](a, b T) T {
+	if b != *new(T) { // Check if `b` is not the zero value for its type
 		return b
 	}
 	return a
@@ -156,7 +164,9 @@ func (c *Config) merge(o *Config) {
 	c.JWTHostID = mergeValue(c.JWTHostID, o.JWTHostID)
 	c.JWTContent = mergeValue(c.JWTContent, o.JWTContent)
 	c.JWTFilePath = mergeValue(c.JWTFilePath, o.JWTFilePath)
-	c.HTTPTimeout = mergeInt(c.HTTPTimeout, o.HTTPTimeout)
+	c.HTTPTimeout = mergeValue(c.HTTPTimeout, o.HTTPTimeout)
+	c.Environment = EnvironmentType(mergeValue(string(c.Environment), string(o.Environment)))
+	c.Proxy = mergeValue(c.Proxy, o.Proxy)
 }
 
 func (c *Config) mergeYAML(filename string) error {
@@ -165,8 +175,7 @@ func (c *Config) mergeYAML(filename string) error {
 
 	if err != nil {
 		logging.ApiLog.Debugf("Failed reading %s, %v\n", filename, err)
-		// It is not an error if this file does not exist
-		return nil
+		return err
 	}
 
 	// Parse the YAML file into a new struct containing the same
@@ -219,6 +228,8 @@ func (c *Config) mergeEnv() {
 		JWTFilePath:       os.Getenv("JWT_TOKEN_PATH"),
 		JWTHostID:         os.Getenv("CONJUR_AUTHN_JWT_HOST_ID"),
 		HTTPTimeout:       httpTimoutFromEnv(),
+		Environment:       EnvironmentType(os.Getenv("CONJUR_ENVIRONMENT")),
+		Proxy:             os.Getenv("HTTPS_PROXY"),
 	}
 
 	if os.Getenv("CONJUR_AUTHN_JWT_SERVICE_ID") != "" {
@@ -248,10 +259,19 @@ func httpTimoutFromEnv() int {
 	return timeout
 }
 
-func (c *Config) applyDefaults() {
-	if isConjurCloudURL(c.ApplianceURL) && c.Account == "" {
-		logging.ApiLog.Info("Detected Conjur Cloud URL, setting 'Account' to 'conjur")
+func (c *Config) applyDefaults(persist bool) {
+	if isConjurCloudURL(c.ApplianceURL) && len(c.Account) == 0 {
+		logging.ApiLog.Info("Detected Secrets Manager SaaS URL, setting 'Account' to 'conjur'")
 		c.Account = "conjur"
+		if persist {
+			c.AddToConjurRc("account", c.Account)
+		}
+	}
+	if len(c.Environment) == 0 {
+		c.Environment = defaultEnvironment(c.ApplianceURL, persist)
+		if persist {
+			c.AddToConjurRc("environment", string(c.Environment))
+		}
 	}
 }
 
@@ -275,21 +295,29 @@ func LoadConfig() (Config, error) {
 	}
 
 	err = config.mergeYAML(path.Join(getSystemPath(), "conjur.conf"))
-	if err != nil {
+
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return config, err
 	}
 
+	conjurrcExists := false
 	conjurrc := os.Getenv("CONJURRC")
-	if conjurrc == "" && home != "" {
+	if len(conjurrc) == 0 && len(home) > 0 {
 		conjurrc = path.Join(home, ".conjurrc")
 	}
-	if conjurrc != "" {
-		config.mergeYAML(conjurrc)
+	if len(conjurrc) > 0 {
+		err = config.mergeYAML(conjurrc)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return config, err
+		}
+		if err == nil {
+			conjurrcExists = true
+		}
 	}
 
 	config.mergeEnv()
 
-	config.applyDefaults()
+	config.applyDefaults(conjurrcExists)
 
 	logging.ApiLog.Debugf("Final config: %+v\n", config)
 	return config, nil
@@ -437,4 +465,62 @@ func (c *Config) SetFinalTelemetryHeader() string {
 	encodedHeader := base64.RawURLEncoding.EncodeToString([]byte(finalTelemetryHeader))
 	c.finalTelemetryHeader = encodedHeader
 	return c.finalTelemetryHeader
+}
+
+// IsSaaS returns true if the Environment is set to SaaS, false otherwise.
+func (c *Config) IsSaaS() bool {
+	return c.Environment == EnvironmentSaaS
+}
+
+// IsSelfHosted returns true if the Environment is set to Self-Hosted, false otherwise.
+func (c *Config) IsSelfHosted() bool {
+	return c.Environment == EnvironmentSH
+}
+
+// IsConjurOSS returns true if the Environment is set to Conjur OSS, false otherwise.
+func (c *Config) IsConjurOSS() bool {
+	return c.Environment == EnvironmentOSS
+}
+
+// ProxyURL parses the Proxy string from the Config and returns a url.URL pointer. If the Proxy string is empty or invalid, it returns nil.
+func (c *Config) ProxyURL() *url.URL {
+	if len(c.Proxy) == 0 {
+		return nil
+	}
+	proxyURL, err := url.Parse(c.Proxy)
+	if err != nil {
+		logging.ApiLog.Errorf("Failed to parse proxy URL: %v", err)
+		return nil
+	}
+	return proxyURL
+}
+
+// AddToConjurRc appends a key-value pair to the conjurrc file located at $CONJURRC or ~/.conjurrc if $CONJURRC is not set.
+// If the home directory cannot be determined, it logs a warning and attempts to use $CONJURRC directly.
+// Parameters:
+//   - key (string): The key to add to the conjurrc file.
+//   - val (string): The value associated with the key.
+func (c *Config) AddToConjurRc(key, val string) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		logging.ApiLog.Warningf("Could not detect homedir.")
+	}
+
+	conjurrc := os.Getenv("CONJURRC")
+	if conjurrc == "" && home != "" {
+		conjurrc = path.Join(home, ".conjurrc")
+	}
+
+	// append the key-value pair to the conjurrc file
+	file, err := os.OpenFile(conjurrc, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		logging.ApiLog.Errorf("Failed to open %s: %v", conjurrc, err)
+		return
+	}
+	defer file.Close()
+
+	if _, err := file.WriteString(fmt.Sprintf("%s: %s\n", key, val)); err != nil {
+		logging.ApiLog.Errorf("Failed to write to %s: %v", conjurrc, err)
+		return
+	}
 }

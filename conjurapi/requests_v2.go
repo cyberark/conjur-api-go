@@ -100,7 +100,7 @@ func (c *ClientV2) ListAuthenticatorsRequest() (*http.Request, error) {
 }
 
 func (c *ClientV2) authenticatorsURL(authenticatorType string, serviceID string) string {
-	// If running against Conjur Cloud, the account is not used in the URL.
+	// If running against Secrets Manager SaaS, the account is not used in the URL.
 	account := c.config.Account
 	if isConjurCloudURL(c.config.ApplianceURL) {
 		account = ""

@@ -84,7 +84,7 @@ var userPolicy = `
 
 func TestClient_RotateCurrentUserAPIKey(t *testing.T) {
 	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
-		t.Run("Rotate the API key of the current user not supported in Conjur Cloud", func(t *testing.T) {
+		t.Run("Rotate the API key of the current user not supported in Secrets Manager SaaS", func(t *testing.T) {
 			utils, err := NewTestUtils(&Config{})
 			assert.NoError(t, err)
 
@@ -93,7 +93,7 @@ func TestClient_RotateCurrentUserAPIKey(t *testing.T) {
 
 			_, err = conjur.RotateCurrentUserAPIKey()
 			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "Rotate API Key for users is not supported in Conjur Cloud")
+			assert.Contains(t, err.Error(), "Rotate API Key for users is not supported in Secrets Manager SaaS")
 		})
 		return
 	}
@@ -254,7 +254,7 @@ type rotateUserAPIKeyTestCase struct {
 
 func TestClient_RotateUserAPIKey(t *testing.T) {
 	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
-		t.Run("Rotate the API key of a user not supported in Conjur Cloud", func(t *testing.T) {
+		t.Run("Rotate the API key of a user not supported in Secrets Manager SaaS", func(t *testing.T) {
 			utils, err := NewTestUtils(&Config{})
 			assert.NoError(t, err)
 
@@ -263,7 +263,7 @@ func TestClient_RotateUserAPIKey(t *testing.T) {
 
 			_, err = conjur.RotateUserAPIKey("alice@data-test")
 			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "Rotate API Key for users is not supported in Conjur Cloud")
+			assert.Contains(t, err.Error(), "Rotate API Key for users is not supported in Secrets Manager SaaS")
 		})
 		return
 	}
@@ -355,7 +355,7 @@ func TestClient_Whoami(t *testing.T) {
 
 func TestClient_ListOidcProviders(t *testing.T) {
 	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
-		t.Run("List OIDC Providers not supported in Conjur Cloud", func(t *testing.T) {
+		t.Run("List OIDC Providers not supported in Secrets Manager SaaS", func(t *testing.T) {
 			utils, err := NewTestUtils(&Config{})
 			require.NoError(t, err)
 
@@ -363,7 +363,7 @@ func TestClient_ListOidcProviders(t *testing.T) {
 
 			_, err = conjur.ListOidcProviders()
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "List OIDC Providers is not supported in Conjur Cloud")
+			assert.Contains(t, err.Error(), "List OIDC Providers is not supported in Secrets Manager SaaS")
 		})
 	} else {
 		t.Run("List OIDC Providers", func(t *testing.T) {
@@ -439,7 +439,7 @@ func TestClient_AuthenticateReader(t *testing.T) {
 }
 
 func testLoginConjurCloud(t *testing.T) {
-	t.Run("Login not supported in Conjur Cloud", func(t *testing.T) {
+	t.Run("Login not supported in Secrets Manager SaaS", func(t *testing.T) {
 		utils, err := NewTestUtils(&Config{})
 		assert.NoError(t, err)
 
@@ -449,7 +449,7 @@ func testLoginConjurCloud(t *testing.T) {
 
 		apiKey, err := conjur.Login("alice", "password")
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "Login for users is not supported in Conjur Cloud")
+		assert.Contains(t, err.Error(), "Login for users is not supported in Secrets Manager SaaS")
 		assert.Empty(t, apiKey)
 	})
 }
@@ -771,7 +771,7 @@ type changeUserPasswordTestCase struct {
 
 func TestClient_ChangeUserPassword(t *testing.T) {
 	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
-		t.Run("Change User Password not supported in Conjur Cloud", func(t *testing.T) {
+		t.Run("Change User Password not supported in Secrets Manager SaaS", func(t *testing.T) {
 			utils, err := NewTestUtils(&Config{})
 			require.NoError(t, err)
 
@@ -779,7 +779,7 @@ func TestClient_ChangeUserPassword(t *testing.T) {
 
 			_, err = conjur.ChangeUserPassword("alice@data-test", "test-api-key", "new-password")
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "Change User Password is not supported in Conjur Cloud")
+			assert.Contains(t, err.Error(), "Change User Password is not supported in Secrets Manager SaaS")
 		})
 		return
 	}
@@ -836,7 +836,7 @@ type changeCurrentUserPasswordTestCase struct {
 
 func TestClient_ChangeCurrentUserPassword(t *testing.T) {
 	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
-		t.Run("Change Current User Password not supported in Conjur Cloud", func(t *testing.T) {
+		t.Run("Change Current User Password not supported in Secrets Manager SaaS", func(t *testing.T) {
 			utils, err := NewTestUtils(&Config{})
 			require.NoError(t, err)
 
@@ -845,7 +845,7 @@ func TestClient_ChangeCurrentUserPassword(t *testing.T) {
 
 			_, err = conjur.ChangeCurrentUserPassword("new-password")
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "Change User Password is not supported in Conjur Cloud")
+			assert.Contains(t, err.Error(), "Change User Password is not supported in Secrets Manager SaaS")
 		})
 		return
 	}
@@ -917,7 +917,7 @@ type publicKeysTestCase struct {
 
 func TestClient_PublicKeys(t *testing.T) {
 	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
-		t.Run("Display public keys not supported in Conjur Cloud", func(t *testing.T) {
+		t.Run("Display public keys not supported in Secrets Manager SaaS", func(t *testing.T) {
 			utils, err := NewTestUtils(&Config{})
 			require.NoError(t, err)
 
@@ -925,7 +925,7 @@ func TestClient_PublicKeys(t *testing.T) {
 
 			_, err = conjur.PublicKeys("user", "alice@data-test")
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "Public Keys is not supported in Conjur Cloud")
+			assert.Contains(t, err.Error(), "Public Keys is not supported in Secrets Manager SaaS")
 		})
 		return
 	}
@@ -1050,7 +1050,7 @@ func TestClient_JwtAuthenticate(t *testing.T) {
 }
 
 func TestClient_OidcTokenAuthenticate(t *testing.T) {
-	// This test currently only runs against Conjur Cloud, where we have a valid OIDC token
+	// This test currently only runs against Secrets Manager SaaS, where we have a valid OIDC token
 	// from Identity.
 	if os.Getenv("IDENTITY_TOKEN") == "" {
 		t.Skip("IDENTITY_TOKEN is not set")
