@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,7 +32,7 @@ var authnAzurePolicy = `
     role: !group apps
     member: !host /data/test/azure-apps/azureVM
 `
-var authAzureRolesPolicy = `
+var authAzureRolesPolicyTemplate = `
 - !policy
   id: azure-apps
   body:
@@ -54,6 +55,7 @@ var authAzureRolesPolicy = `
     annotations:
       authn-azure/subscription-id: %q
       authn-azure/resource-group: %q
+%s
   # Add our host into our group
   - !grant
     role: !group
@@ -70,19 +72,23 @@ func TestAuthnAzure(t *testing.T) {
 		t.Skip("Skipping Azure authn test")
 	}
 
+	// Ensure required env vars are set
 	if os.Getenv("AZURE_SUBSCRIPTION_ID") == "" ||
-		os.Getenv("AZURE_RESOURCE_GROUP") == "" {
-		t.Fatal("AZURE_SUBSCRIPTION_ID and AZURE_RESOURCE_GROUP must be set to run this test")
+		os.Getenv("AZURE_RESOURCE_GROUP") == "" ||
+		os.Getenv("USER_ASSIGNED_IDENTITY") == "" ||
+		os.Getenv("USER_ASSIGNED_IDENTITY_CLIENT_ID") == "" {
+		t.Fatal("AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP, USER_ASSIGNED_IDENTITY, USER_ASSIGNED_IDENTITY_CLIENT_ID must be set to run this test")
 	}
 
-	t.Run("authn-azure e2e happy path", func(t *testing.T) {
+	t.Run("authn-azure system-assigned identity", func(t *testing.T) {
 		utils, err := NewTestUtils(&Config{})
 		require.NoError(t, err)
 
 		// Replace placeholders in the policy with environment variables
-		authAzureRolesPolicy = fmt.Sprintf(authAzureRolesPolicy,
+		authAzureRolesPolicy := fmt.Sprintf(authAzureRolesPolicyTemplate,
 			os.Getenv("AZURE_SUBSCRIPTION_ID"),
-			os.Getenv("AZURE_RESOURCE_GROUP"))
+			os.Getenv("AZURE_RESOURCE_GROUP"),
+			"")
 
 		err = utils.SetupWithAuthenticator("azure", authnAzurePolicy, authAzureRolesPolicy)
 		require.NoError(t, err)
@@ -122,5 +128,79 @@ func TestAuthnAzure(t *testing.T) {
 		secret, err = azureConjur.RetrieveSecret("data/test/azure-apps/database/password")
 		assert.NoError(t, err)
 		assert.Equal(t, "P@ssw0rd!", string(secret))
+	})
+
+	t.Run("authn-azure user-assigned identity", func(t *testing.T) {
+		utils, err := NewTestUtils(&Config{})
+		require.NoError(t, err)
+
+		// Update host identity annotations based on env variables
+		userIdentityAnnotation := fmt.Sprintf(`      authn-azure/user-assigned-identity: "%s"`, os.Getenv("USER_ASSIGNED_IDENTITY"))
+		authAzureRolesPolicy := fmt.Sprintf(authAzureRolesPolicyTemplate,
+			os.Getenv("AZURE_SUBSCRIPTION_ID"),
+			os.Getenv("AZURE_RESOURCE_GROUP"),
+			userIdentityAnnotation)
+
+		err = utils.SetupWithAuthenticator("azure", authnAzurePolicy, authAzureRolesPolicy)
+		require.NoError(t, err)
+		conjur := utils.Client()
+
+		err = conjur.AddSecret("conjur/authn-azure/prod/provider-uri", "https://sts.windows.net/df242c82-fe4a-47e0-b0f4-e3cb7f8104f1/")
+		require.NoError(t, err)
+		conjur.EnableAuthenticator("azure", "prod", true)
+
+		err = conjur.AddSecret("data/test/azure-apps/database/username", "secret")
+		require.NoError(t, err)
+		err = conjur.AddSecret("data/test/azure-apps/database/password", "P@ssw0rd!")
+		require.NoError(t, err)
+
+		// EXERCISE
+		config := Config{
+			ApplianceURL:  conjur.config.ApplianceURL,
+			Account:       conjur.config.Account,
+			AuthnType:     "azure",
+			ServiceID:     "prod",
+			JWTHostID:     "data/test/azure-apps/azureVM",
+			AzureClientID: os.Getenv("USER_ASSIGNED_IDENTITY_CLIENT_ID"),
+		}
+		azureConjur, err := NewClientFromAzureCredentials(config)
+		require.NoError(t, err)
+
+		_, err = azureConjur.GetAuthenticator().RefreshToken()
+		require.NoError(t, err)
+
+		whoami, err := azureConjur.WhoAmI()
+		assert.NoError(t, err)
+		assert.Contains(t, string(whoami), config.JWTHostID)
+
+		secret, err := azureConjur.RetrieveSecret("data/test/azure-apps/database/username")
+		assert.NoError(t, err)
+		assert.Equal(t, "secret", string(secret))
+
+		secret, err = azureConjur.RetrieveSecret("data/test/azure-apps/database/password")
+		assert.NoError(t, err)
+		assert.Equal(t, "P@ssw0rd!", string(secret))
+	})
+}
+
+func TestAzureTokenRequest(t *testing.T) {
+	t.Run("creates a valid request when client ID is empty", func(t *testing.T) {
+		req, err := authn.AzureTokenRequest("")
+		require.NoError(t, err)
+		require.NotNil(t, req)
+		assert.Equal(t, "GET", req.Method)
+		assert.Equal(t, "true", req.Header.Get("Metadata"))
+		assert.Contains(t, req.URL.String(), "resource=https%3A%2F%2Fmanagement.azure.com%2F")
+		assert.NotContains(t, req.URL.String(), "client_id=")
+	})
+	t.Run("creates a valid request when client ID is provided", func(t *testing.T) {
+		clientID := "test-client-id"
+		req, err := authn.AzureTokenRequest(clientID)
+		require.NoError(t, err)
+		require.NotNil(t, req)
+		assert.Equal(t, "GET", req.Method)
+		assert.Equal(t, "true", req.Header.Get("Metadata"))
+		assert.Contains(t, req.URL.String(), "resource=https%3A%2F%2Fmanagement.azure.com%2F")
+		assert.Contains(t, req.URL.String(), "client_id="+clientID)
 	})
 }
