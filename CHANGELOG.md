@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.13.6] - 2025-09-26
+
 ## [0.13.5] - 2025-09-09
 
 ### Fixed
@@ -345,6 +347,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Initial version
 
 [Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.13.5...HEAD
+[0.13.6]: https://github.com/cyberark/conjur-api-go/compare/v0.13.5...v0.13.6
 [0.13.5]: https://github.com/cyberark/conjur-api-go/compare/v0.13.4...v0.13.5
 [0.13.4]: https://github.com/cyberark/conjur-api-go/compare/v0.13.3...v0.13.4
 [0.13.3]: https://github.com/cyberark/conjur-api-go/compare/v0.13.2...v0.13.3
