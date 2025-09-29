@@ -25,6 +25,7 @@ function teardown {
 
 failed() {
   announce "TESTS FAILED"
+  # docker compose logs conjur || true
   teardown
   exit 1
 }

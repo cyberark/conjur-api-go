@@ -66,6 +66,20 @@ var authAzureRolesPolicyTemplate = `
     role: !group secrets-users
 `
 
+func TestAzureAuthenticatorRefreshJWT(t *testing.T) {
+	authenticator := &authn.AzureAuthenticator{
+		JWT: "explicit-token",
+		Authenticate: func(jwt string) ([]byte, error) {
+			assert.Equal(t, "explicit-token", jwt)
+			return []byte("fake-token"), nil
+		},
+	}
+
+	err := authenticator.RefreshJWT()
+	require.NoError(t, err)
+	assert.Equal(t, "explicit-token", authenticator.JWT)
+}
+
 func TestAuthnAzure(t *testing.T) {
 	// Only run this if running on AWS
 	if strings.ToLower(os.Getenv("TEST_AZURE")) != "true" {
@@ -185,7 +199,8 @@ func TestAuthnAzure(t *testing.T) {
 
 func TestAzureTokenRequest(t *testing.T) {
 	t.Run("creates a valid request when client ID is empty", func(t *testing.T) {
-		req, err := authn.AzureTokenRequest("")
+		a := &authn.AzureAuthenticator{}
+		req, err := a.AzureTokenRequest()
 		require.NoError(t, err)
 		require.NotNil(t, req)
 		assert.Equal(t, "GET", req.Method)
@@ -194,13 +209,15 @@ func TestAzureTokenRequest(t *testing.T) {
 		assert.NotContains(t, req.URL.String(), "client_id=")
 	})
 	t.Run("creates a valid request when client ID is provided", func(t *testing.T) {
-		clientID := "test-client-id"
-		req, err := authn.AzureTokenRequest(clientID)
+		a := &authn.AzureAuthenticator{
+			ClientID: "test-client-id",
+		}
+		req, err := a.AzureTokenRequest()
 		require.NoError(t, err)
 		require.NotNil(t, req)
 		assert.Equal(t, "GET", req.Method)
 		assert.Equal(t, "true", req.Header.Get("Metadata"))
 		assert.Contains(t, req.URL.String(), "resource=https%3A%2F%2Fmanagement.azure.com%2F")
-		assert.Contains(t, req.URL.String(), "client_id="+clientID)
+		assert.Contains(t, req.URL.String(), "client_id=test-client-id")
 	})
 }

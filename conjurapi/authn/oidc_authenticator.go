@@ -1,5 +1,7 @@
 package authn
 
+// OidcAuthenticator handles authentication to Conjur using the authn-oidc authenticator.
+// It uses an OIDC authorization code flow to get a Conjur access token.
 type OidcAuthenticator struct {
 	Code         string
 	Nonce        string

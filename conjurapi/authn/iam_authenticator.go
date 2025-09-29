@@ -13,10 +13,16 @@ import (
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 )
 
+// IAMAuthenticator handles authentication to Conjur using the authn-iam authenticator.
+// It uses AWS SDK to sign a request to the AWS STS GetCallerIdentity endpoint and sends the signed headers to Conjur
+// to get a Conjur access token.
 type IAMAuthenticator struct {
+	// Authenticate is a function that returns a Conjur access token or an error.
+	// It will usually be set to Client.IAMAuthenticate.
 	Authenticate func() ([]byte, error)
 }
 
+// RefreshToken uses the Authenticate function to get a new Conjur access token.
 func (a *IAMAuthenticator) RefreshToken() ([]byte, error) {
 	return a.Authenticate()
 }
@@ -25,6 +31,8 @@ func (a *IAMAuthenticator) NeedsTokenRefresh() bool {
 	return false
 }
 
+// IAMAuthenticateHeaders fetches AWS credentials and signs a request to the AWS STS GetCallerIdentity endpoint.
+// These headers can then be sent to Conjur to authenticate using the authn-iam authenticator.
 func IAMAuthenticateHeaders() ([]byte, error) {
 	ctx := context.TODO()
 	cfg, err := awsconfig.LoadDefaultConfig(ctx)
