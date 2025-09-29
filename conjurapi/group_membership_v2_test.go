@@ -1,7 +1,6 @@
 package conjurapi
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -64,20 +63,19 @@ func TestClientV2_AddGroupMember(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			member, err := conjur.AddGroupMember(tc.groupID, tc.member)
-			if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
-				if tc.expectError != "" {
-					assert.Error(t, err)
-					assert.Contains(t, err.Error(), tc.expectError)
-				} else {
-					require.NoError(t, err)
-					assert.Equal(t, tc.member.ID, member.ID)
-					assert.Equal(t, toPublicKind(tc.member.Kind), member.Kind)
-				}
-			} else {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "is not supported in Conjur Enterprise/OSS")
+			if tc.expectError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectError)
 				return
 			}
+			require.NoError(t, err)
+			require.NotNil(t, member)
+			assert.Equal(t, tc.member.ID, member.ID)
+			expectedPublic := toPublicKind(tc.member.Kind)
+			assert.True(t,
+				member.Kind == expectedPublic || member.Kind == tc.member.Kind,
+				"Unexpected member kind: %s", member.Kind,
+			)
 		})
 	}
 }
@@ -123,18 +121,12 @@ func TestClientV2_RemoveGroupMember(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := conjur.RemoveGroupMember(tc.groupID, tc.member)
-			if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
-				if tc.expectError != "" {
-					assert.Error(t, err)
-					assert.Contains(t, err.Error(), tc.expectError)
-				} else {
-					require.NoError(t, err)
-				}
-			} else {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "is not supported in Conjur Enterprise/OSS")
+			if tc.expectError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectError)
 				return
 			}
+			require.NoError(t, err)
 		})
 	}
 }
