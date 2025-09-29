@@ -18,8 +18,8 @@ type GroupMember struct {
 func (c *ClientV2) AddGroupMember(groupID string, member GroupMember) (*GroupMember, error) {
 	memberResp := GroupMember{}
 
-	if !isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, fmt.Errorf("Add Group Member is not supported in Conjur Enterprise/OSS")
+	if !isConjurCloudURL(c.config.ApplianceURL) && c.VerifyMinServerVersion(MinVersion) != nil {
+		return nil, fmt.Errorf(NotSupportedInOldVersions, "Group Membership API", MinVersion)
 	}
 
 	req, err := c.AddGroupMemberRequest(groupID, member)
@@ -36,9 +36,10 @@ func (c *ClientV2) AddGroupMember(groupID string, member GroupMember) (*GroupMem
 }
 
 func (c *ClientV2) RemoveGroupMember(groupID string, member GroupMember) ([]byte, error) {
-	if !isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, fmt.Errorf("Remove Group Member is not supported in Conjur Enterprise/OSS")
+	if !isConjurCloudURL(c.config.ApplianceURL) && c.VerifyMinServerVersion(MinVersion) != nil {
+		return nil, fmt.Errorf(NotSupportedInOldVersions, "Group Membership API", MinVersion)
 	}
+
 	req, err := c.RemoveGroupMemberRequest(groupID, member)
 	if err != nil {
 		return nil, err
@@ -67,16 +68,17 @@ func (c *ClientV2) AddGroupMemberRequest(groupID string, member GroupMember) (*h
 		return nil, err
 	}
 
-	urlPath := fmt.Sprintf("groups/%s/members", groupID)
-	fullURL := makeRouterURL(c.config.ApplianceURL, urlPath).String()
-
-	req, err := http.NewRequest(http.MethodPost, fullURL, bytes.NewBuffer(payload))
+	req, err := http.NewRequest(http.MethodPost, c.addGroupMembershipURL(groupID), bytes.NewBuffer(payload))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create add group member request: %w", err)
 	}
 
 	req.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 	req.Header.Add(v2APIIncomingHeaderID, "application/json")
+
+	if !isConjurCloudURL(c.config.ApplianceURL) {
+		req.Header.Add(v2APIOutgoingHeaderID, v2APIHeaderBeta)
+	}
 	return req, nil
 }
 
@@ -89,14 +91,14 @@ func (c *ClientV2) RemoveGroupMemberRequest(groupID string, member GroupMember) 
 		return nil, err
 	}
 
-	urlPath := fmt.Sprintf("groups/%s/members/%s/%s", groupID, member.Kind, member.ID)
-	fullURL := makeRouterURL(c.config.ApplianceURL, urlPath).String()
-
-	req, err := http.NewRequest(http.MethodDelete, fullURL, nil)
+	req, err := http.NewRequest(http.MethodDelete, c.removeGroupMembershipURL(groupID, member), nil)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create remove group member request: %v", err)
 	}
 	req.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
+	if !isConjurCloudURL(c.config.ApplianceURL) {
+		req.Header.Add(v2APIOutgoingHeaderID, v2APIHeaderBeta)
+	}
 	return req, nil
 }
 
@@ -116,4 +118,20 @@ func (member GroupMember) Validate() error {
 		return errors.Join(errs...)
 	}
 	return nil
+}
+
+func (c *ClientV2) addGroupMembershipURL(groupID string) string {
+	account := c.config.Account
+	if isConjurCloudURL(c.config.ApplianceURL) {
+		account = ""
+	}
+	return makeRouterURL(c.config.ApplianceURL, "groups", account, groupID, "members").String()
+}
+
+func (c *ClientV2) removeGroupMembershipURL(groupID string, member GroupMember) string {
+	account := c.config.Account
+	if isConjurCloudURL(c.config.ApplianceURL) {
+		account = ""
+	}
+	return makeRouterURL(c.config.ApplianceURL, "groups", account, groupID, "members", member.Kind, member.ID).String()
 }
