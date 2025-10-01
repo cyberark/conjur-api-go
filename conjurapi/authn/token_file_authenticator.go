@@ -5,14 +5,16 @@ import (
 	"time"
 )
 
+// TokenFileAuthenticator handles authentication to Conjur where a Conjur access token is read from a file.
 type TokenFileAuthenticator struct {
 	TokenFile   string `env:"CONJUR_AUTHN_TOKEN_FILE"`
 	mTime       time.Time
 	MaxWaitTime time.Duration
 }
 
-// TODO: is this implementation concurrent ?
+// RefreshToken reads and returns the Conjur access token from the specified file.
 func (a *TokenFileAuthenticator) RefreshToken() ([]byte, error) {
+	// TODO: is this implementation concurrent ?
 	maxWaitTime := a.MaxWaitTime
 	var timeout <-chan time.Time
 	if maxWaitTime == -1 {
@@ -29,6 +31,7 @@ func (a *TokenFileAuthenticator) RefreshToken() ([]byte, error) {
 	return bytes, err
 }
 
+// NeedsTokenRefresh checks if the token file has been modified since the last read.
 func (a *TokenFileAuthenticator) NeedsTokenRefresh() bool {
 	fi, _ := os.Stat(a.TokenFile)
 	return a.mTime != fi.ModTime()

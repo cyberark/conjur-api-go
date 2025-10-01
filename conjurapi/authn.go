@@ -50,12 +50,14 @@ func (c *Client) refreshToken() error {
 		return errors.New("authenticator not initialized - check netrc file or credential configuration")
 	}
 
+	// Fetch a new Conjur access token using the authenticator
 	var tokenBytes []byte
 	tokenBytes, err := c.authenticator.RefreshToken()
 	if err != nil {
 		return err
 	}
 
+	// Parse and store the new token in memory
 	token, err := authn.NewToken(tokenBytes)
 	if err != nil {
 		return err
@@ -256,18 +258,7 @@ func (c *Client) OidcAuthenticate(code, nonce, code_verifier string) ([]byte, er
 		return nil, err
 	}
 
-	res, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := response.DataResponse(res)
-
-	if err == nil && c.storage != nil {
-		c.storage.StoreAuthnToken(resp)
-	}
-
-	return resp, err
+	return c.authenticateWithTokenStorage(req)
 }
 
 func (c *Client) IAMAuthenticate() ([]byte, error) {
@@ -281,67 +272,23 @@ func (c *Client) IAMAuthenticate() ([]byte, error) {
 		return nil, err
 	}
 
-	res, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := response.DataResponse(res)
-
-	if err == nil && c.storage != nil {
-		c.storage.StoreAuthnToken(resp)
-	}
-
-	return resp, err
+	return c.authenticateWithTokenStorage(req)
 }
 
-// TODO: Refactor to remove code duplication between authn-iam, authn-gcp, and authn-azure (and possibly authn-oidc and authn-jwt)
-func (c *Client) AzureAuthenticate() ([]byte, error) {
-	azureToken, err := authn.AzureAuthenticateToken(c.config.AzureClientID)
-	if err != nil {
-		return nil, err
-	}
-
+func (c *Client) AzureAuthenticate(azureToken string) ([]byte, error) {
 	req, err := c.AzureAuthenticateRequest(azureToken)
 	if err != nil {
 		return nil, err
 	}
-	res, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := response.DataResponse(res)
-
-	if err == nil && c.storage != nil {
-		c.storage.StoreAuthnToken(resp)
-	}
-
-	return resp, err
+	return c.authenticateWithTokenStorage(req)
 }
 
-func (c *Client) GCPAuthenticate(identityUrl string) ([]byte, error) {
-	gcpToken, err := authn.GCPAuthenticateToken(c.config.Account, c.config.JWTHostID, identityUrl)
-	if err != nil {
-		return nil, err
-	}
-
+func (c *Client) GCPAuthenticate(gcpToken string) ([]byte, error) {
 	req, err := c.GCPAuthenticateRequest(gcpToken)
 	if err != nil {
 		return nil, err
 	}
-	res, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := response.DataResponse(res)
-
-	if err == nil && c.storage != nil {
-		c.storage.StoreAuthnToken(resp)
-	}
-
-	return resp, err
+	return c.authenticateWithTokenStorage(req)
 }
 
 func (c *Client) OidcTokenAuthenticate(token string) ([]byte, error) {
@@ -349,19 +296,7 @@ func (c *Client) OidcTokenAuthenticate(token string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	res, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := response.DataResponse(res)
-
-	if err == nil && c.storage != nil {
-		c.storage.StoreAuthnToken(resp)
-	}
-
-	return resp, err
+	return c.authenticateWithTokenStorage(req)
 }
 
 func (c *Client) JWTAuthenticate(jwt, hostID string) ([]byte, error) {
@@ -369,18 +304,7 @@ func (c *Client) JWTAuthenticate(jwt, hostID string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	res, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := response.DataResponse(res)
-
-	if err == nil && c.storage != nil {
-		c.storage.StoreAuthnToken(resp)
-	}
-
-	return resp, err
+	return c.authenticateWithTokenStorage(req)
 }
 
 func (c *Client) ListOidcProviders() ([]OidcProvider, error) {
@@ -527,4 +451,24 @@ func (c *Client) PublicKeys(kind string, identifier string) ([]byte, error) {
 	}
 
 	return response.DataResponse(res)
+}
+
+// authenticateWithTokenStorage is a helper function that handles the common authentication flow
+// for authn-iam, authn-gcp, authn-azure, authn-oidc, and authn-jwt.
+// For these authentication methods, we want to store the obtained token in the credential storage if available.
+// This is different from other authentication methods where we have a credential such as an API key or password
+// which we can store in the credential storage and use to fetch a new access token when needed.
+func (c *Client) authenticateWithTokenStorage(req *http.Request) ([]byte, error) {
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := response.DataResponse(res)
+
+	if err == nil && c.storage != nil {
+		c.storage.StoreAuthnToken(resp)
+	}
+
+	return resp, err
 }

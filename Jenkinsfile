@@ -82,7 +82,7 @@ pipeline {
           if (params.TEST_AZURE) {
             INFRAPOOL_AZURE_EXECUTORV2_AGENT_0 = getInfraPoolAgent.connected(type: "AzureExecutorV2", quantity: 1, duration: 1)[0]
           }
-          if (params.TEST_GCP || params.TEST_CLOUD){
+          if (params.TEST_GCP){
             INFRAPOOL_GCP_EXECUTORV2_AGENT_0 = getInfraPoolAgent.connected(type: "GcpExecutorV2", quantity: 1, duration: 1)[0]
           }
         }
@@ -99,7 +99,7 @@ pipeline {
             updateVersion(INFRAPOOL_AZURE_EXECUTORV2_AGENT_0, "CHANGELOG.md", "${BUILD_NUMBER}")
           }
 
-          if (params.TEST_GCP || params.TEST_CLOUD) {
+          if (params.TEST_GCP) {
             updateVersion(INFRAPOOL_GCP_EXECUTORV2_AGENT_0, "CHANGELOG.md", "${BUILD_NUMBER}")
           }
         }
@@ -175,7 +175,7 @@ pipeline {
 
     stage('Run GCP tests') {
       when {
-        expression { params.TEST_GCP || params.TEST_CLOUD }
+        expression { params.TEST_GCP }
       }
       environment {
         REGISTRY_URL = "registry.tld"

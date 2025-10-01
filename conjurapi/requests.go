@@ -242,31 +242,12 @@ func (c *Client) IAMAuthenticateRequest(signedHeaders []byte) (*http.Request, er
 	return req, nil
 }
 
-func (c *Client) AzureAuthenticateRequest(azureToken []byte) (*http.Request, error) {
-	authenticateURL := makeRouterURL(c.authnURL("azure", c.config.ServiceID), url.QueryEscape("host/"+c.config.JWTHostID), "authenticate").String()
-
-	body, contentType := createJWTRequestBodyForAuthenticator(c.config.AuthnType, string(azureToken))
-	req, err := http.NewRequest("POST", authenticateURL, body)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", contentType)
-	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
-
-	return req, nil
+func (c *Client) AzureAuthenticateRequest(azureToken string) (*http.Request, error) {
+	return c.JWTAuthenticateRequest(azureToken, "host/"+c.config.JWTHostID)
 }
 
-func (c *Client) GCPAuthenticateRequest(gcpToken []byte) (*http.Request, error) {
-	authenticateURL := makeRouterURL(c.authnURL("gcp", ""), "authenticate").String()
-
-	req, err := http.NewRequest("POST", authenticateURL, bytes.NewBuffer([]byte("jwt="+string(gcpToken))))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
-
-	return req, nil
+func (c *Client) GCPAuthenticateRequest(gcpToken string) (*http.Request, error) {
+	return c.JWTAuthenticateRequest(gcpToken, "")
 }
 
 // RotateAPIKeyRequest requires roleID argument to be at least partially-qualified

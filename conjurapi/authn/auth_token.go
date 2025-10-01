@@ -11,7 +11,8 @@ const (
 	TimeFormatToken4 = "2006-01-02 15:04:05 MST"
 )
 
-// Sample token
+// AuthnToken represents a Conjur access token.
+// Sample token:
 // {"protected":"eyJhbGciOiJjb25qdXIub3JnL3Nsb3NpbG8vdjIiLCJraWQiOiI5M2VjNTEwODRmZTM3Zjc3M2I1ODhlNTYyYWVjZGMxMSJ9","payload":"eyJzdWIiOiJhZG1pbiIsImlhdCI6MTUxMDc1MzI1OX0=","signature":"raCufKOf7sKzciZInQTphu1mBbLhAdIJM72ChLB4m5wKWxFnNz_7LawQ9iYEI_we1-tdZtTXoopn_T1qoTplR9_Bo3KkpI5Hj3DB7SmBpR3CSRTnnEwkJ0_aJ8bql5Cbst4i4rSftyEmUqX-FDOqJdAztdi9BUJyLfbeKTW9OGg-QJQzPX1ucB7IpvTFCEjMoO8KUxZpbHj-KpwqAMZRooG4ULBkxp5nSfs-LN27JupU58oRgIfaWASaDmA98O2x6o88MFpxK_M0FeFGuDKewNGrRc8lCOtTQ9cULA080M5CSnruCqu1Qd52r72KIOAfyzNIiBCLTkblz2fZyEkdSKQmZ8J3AakxQE2jyHmMT-eXjfsEIzEt-IRPJIirI3Qm"}
 // https://www.conjur.org/reference/cryptography.html
 type AuthnToken struct {
@@ -98,6 +99,7 @@ func (t *AuthnToken) Raw() []byte {
 	return t.bytes
 }
 
+// ShouldRefresh determines if the token should be refreshed. By default tokens expire 8 minutes after issue.
 func (t *AuthnToken) ShouldRefresh() bool {
 	if t.exp != nil {
 		// Expire when the token is 85% expired

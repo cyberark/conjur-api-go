@@ -6,7 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.13.6] - 2025-09-26
+## [0.13.6] - 2025-09-30
+
+### Added
+- Allow setting authn-gcp and authn-azure JWT in config
 
 ## [0.13.5] - 2025-09-09
 

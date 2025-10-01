@@ -14,8 +14,11 @@ import (
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 )
 
+// Authenticator defines the interface that all authenticators must implement.
 type Authenticator interface {
+	// RefreshToken obtains a new Conjur access token.
 	RefreshToken() ([]byte, error)
+	// NeedsTokenRefresh indicates whether the current token needs to be refreshed.
 	NeedsTokenRefresh() bool
 }
 
@@ -80,15 +83,36 @@ func NewClientFromAWSCredentials(config Config) (*Client, error) {
 }
 
 func NewClientFromGCPCredentials(config Config, identityUrl string) (*Client, error) {
-	authenticator := &authn.GCPAuthenticator{}
+	if identityUrl == "" {
+		identityUrl = authn.GcpIdentityURL
+	}
+	authenticator := &authn.GCPAuthenticator{
+		Account:        config.Account,
+		HostID:         config.JWTHostID,
+		JWT:            config.JWTContent,
+		GCPIdentityUrl: identityUrl,
+	}
 	client, err := newClientWithAuthenticator(
 		config,
 		authenticator,
 	)
 	if err == nil {
-		authenticator.Authenticate = func() ([]byte, error) {
-			return client.GCPAuthenticate(identityUrl)
-		}
+		authenticator.Authenticate = client.GCPAuthenticate
+	}
+	return client, err
+}
+
+func NewClientFromAzureCredentials(config Config) (*Client, error) {
+	authenticator := &authn.AzureAuthenticator{
+		JWT:      config.JWTContent,
+		ClientID: config.AzureClientID,
+	}
+	client, err := newClientWithAuthenticator(
+		config,
+		authenticator,
+	)
+	if err == nil {
+		authenticator.Authenticate = client.AzureAuthenticate
 	}
 	return client, err
 }
@@ -197,7 +221,7 @@ func newClientFromStoredCredentials(config Config) (*Client, error) {
 	}
 
 	if config.AuthnType == "gcp" {
-		return NewClientFromStoredGCPConfig(config)
+		return newClientFromStoredGCPConfig(config)
 	}
 
 	// Attempt to load credentials from whatever storage provider is configured
@@ -263,19 +287,7 @@ func newClientFromStoredAzureConfig(config Config) (*Client, error) {
 	return client, nil
 }
 
-func NewClientFromAzureCredentials(config Config) (*Client, error) {
-	authenticator := &authn.AzureAuthenticator{}
-	client, err := newClientWithAuthenticator(
-		config,
-		authenticator,
-	)
-	if err == nil {
-		authenticator.Authenticate = client.AzureAuthenticate
-	}
-	return client, err
-}
-
-func NewClientFromStoredGCPConfig(config Config) (*Client, error) {
+func newClientFromStoredGCPConfig(config Config) (*Client, error) {
 	client, err := NewClientFromGCPCredentials(config, authn.GcpIdentityURL)
 	if err != nil {
 		return nil, err
