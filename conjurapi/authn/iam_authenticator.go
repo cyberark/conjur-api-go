@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 
@@ -41,24 +44,20 @@ func IAMAuthenticateHeaders() ([]byte, error) {
 		return nil, err
 	}
 
+	if cfg.Region == "" {
+		cfg.Region = "us-east-1"
+	}
+
+	request, err := buildRequest(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	creds, err := cfg.Credentials.Retrieve(ctx)
 	if err != nil {
 		logging.ApiLog.Errorf("Error loading AWS credentials: %v", err)
 		return nil, err
 	}
-
-	if cfg.Region == "" {
-		cfg.Region = "us-east-1"
-	}
-	stsEndpoint := fmt.Sprintf("https://sts.%s.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15", cfg.Region)
-
-	request, err := http.NewRequest(http.MethodGet, stsEndpoint, nil)
-	if err != nil {
-		logging.ApiLog.Errorf("Error creating HTTP request: %v", err)
-		return nil, err
-	}
-
-	request.Header.Set("Host", request.Host)
 
 	// Sign the request
 	signer := v4.NewSigner()
@@ -83,4 +82,44 @@ func IAMAuthenticateHeaders() ([]byte, error) {
 	}
 
 	return jsonData, nil
+}
+
+func buildRequest(cfg aws.Config) (*http.Request, error) {
+	if !isValidAWSRegion(cfg.Region) {
+		return nil, fmt.Errorf("Invalid AWS region: %s", cfg.Region)
+	}
+
+	var stsEndpoint string
+	if cfg.Region == "global" {
+		stsEndpoint = "https://sts.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15"
+	} else {
+		stsEndpoint = fmt.Sprintf("https://sts.%s.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15", cfg.Region)
+	}
+
+	request, err := http.NewRequest(http.MethodGet, stsEndpoint, nil)
+	if err != nil {
+		logging.ApiLog.Errorf("Error creating HTTP request: %v", err)
+		return nil, err
+	}
+
+	if !isValidAWSHost(request.Host) {
+		return nil, fmt.Errorf("Invalid AWS STS endpoint host: %s", request.Host)
+	}
+
+	request.Header.Set("Host", request.Host)
+	return request, nil
+}
+
+func isValidAWSRegion(region string) bool {
+	// Basic validation for AWS region format. An invalid region could lead to vulnerabilities.
+	if region == "global" {
+		return true
+	}
+
+	return regexp.MustCompile(`^([a-z]{2}(-gov)?-[a-z]+-\d)$`).MatchString(region)
+}
+
+func isValidAWSHost(host string) bool {
+	// Extra validation to ensure the STS host is not manipulated to point to a non-AWS domain
+	return strings.HasSuffix(host, ".amazonaws.com")
 }
