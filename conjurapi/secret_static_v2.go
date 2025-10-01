@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cyberark/conjur-api-go/conjurapi/response"
 	"net/http"
+
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
 type Subject struct {
@@ -28,21 +29,16 @@ type PermissionResponse struct {
 type StaticSecret struct {
 	Branch      string            `json:"branch"`
 	Name        string            `json:"name"`
-	MimeType    string            `json:"mime_type"`
+	MimeType    string            `json:"mime_type,omitempty"`
 	Owner       *Owner            `json:"owner,omitempty"`
-	Value       string            `json:"value"`
+	Value       string            `json:"value,omitempty"`
 	Annotations map[string]string `json:"annotations,omitempty"`
-	Permissions []Permission      `json:"permissions"`
+	Permissions []Permission      `json:"permissions,omitempty"`
 }
 
 type StaticSecretResponse struct {
-	Branch      string            `json:"branch"`
-	Name        string            `json:"name"`
-	MimeType    string            `json:"mime_type"`
-	Owner       *Owner            `json:"owner,omitempty"`
-	Value       string            `json:"value"`
-	Annotations map[string]string `json:"annotations,omitempty"`
-	Permissions Permission        `json:"permissions"`
+	StaticSecret
+	Permissions Permission `json:"permissions"`
 }
 
 func (c *ClientV2) CreateStaticSecretRequest(secret StaticSecret) (*http.Request, error) {
@@ -52,10 +48,11 @@ func (c *ClientV2) CreateStaticSecretRequest(secret StaticSecret) (*http.Request
 	}
 
 	branchJson, err := json.Marshal(secret)
+	if err != nil {
+		return nil, err
+	}
 
-	path := "secrets/static"
-
-	branchURL := makeRouterURL(c.config.ApplianceURL, path).String()
+	branchURL := makeRouterURL(c.config.ApplianceURL, "secrets/static").String()
 
 	request, err := http.NewRequest(
 		http.MethodPost,
