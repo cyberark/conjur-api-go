@@ -7,7 +7,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"time"
 
@@ -371,8 +370,9 @@ func createHttpClient(config Config) (*http.Client, error) {
 			return nil, err
 		}
 	} else {
+		var transport = newHTTPTransport(config)
 		httpClient = &http.Client{
-			Transport: newHTTPTransport(config.ProxyURL()),
+			Transport: transport,
 			Timeout:   time.Second * time.Duration(config.GetHttpTimeout()),
 		}
 	}
@@ -397,20 +397,21 @@ func newHTTPSClient(cert []byte, config Config) (*http.Client, error) {
 	}
 	//TODO: Test what happens if this cert is expired
 	//TODO: What if server cert is rotated
-	tr := newHTTPTransport(config.ProxyURL())
+	tr := newHTTPTransport(config)
 	tr.TLSClientConfig = &tls.Config{RootCAs: pool}
 	return &http.Client{Transport: tr, Timeout: time.Second * time.Duration(config.GetHttpTimeout())}, nil
 }
 
-func newHTTPTransport(proxy *url.URL) *http.Transport {
+func newHTTPTransport(cfg Config) *http.Transport {
 	// Clone the default transport to preserve its settings (e.g., Proxy)
 	tr := http.DefaultTransport.(*http.Transport).Clone()
 	tr.DialContext = (&net.Dialer{
 		Timeout: time.Second * time.Duration(HTTPDialTimeout),
 	}).DialContext
-	if proxy != nil {
-		tr.Proxy = http.ProxyURL(proxy)
+	if cfg.ProxyURL() != nil {
+		tr.Proxy = http.ProxyURL(cfg.ProxyURL())
 	}
+	tr.DisableKeepAlives = cfg.DisableKeepAlives
 	return tr
 }
 
@@ -424,4 +425,9 @@ func newHTTPTransport(proxy *url.URL) *http.Transport {
 //   - string: The base64-encoded telemetry header.
 func (c *Client) GetTelemetryHeader() string {
 	return c.config.SetFinalTelemetryHeader()
+}
+
+// Cleanup function close unused connections
+func (c *Client) Cleanup() {
+	c.httpClient.CloseIdleConnections()
 }

@@ -323,6 +323,7 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 		os.Setenv("CONJUR_SERVICE_ID", "service-id")
 		os.Setenv("CONJUR_CREDENTIAL_STORAGE", "keyring")
 		os.Setenv("CONJUR_HTTP_TIMEOUT", "99")
+		os.Setenv("CONJUR_DISABLE_KEEP_ALIVES", "true")
 
 		t.Run("Returns Config loaded with values from env", func(t *testing.T) {
 			config := &Config{}
@@ -335,6 +336,23 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 				ServiceID:         "service-id",
 				CredentialStorage: "keyring",
 				HTTPTimeout:       99,
+				DisableKeepAlives: true,
+			})
+		})
+	})
+
+	t.Run("When CONJUR_DISABLE_KEEP_ALIVES is set to error (boolean value expected)", func(t *testing.T) {
+		e := ClearEnv()
+		defer e.RestoreEnv()
+
+		os.Setenv("CONJUR_DISABLE_KEEP_ALIVES", "error")
+
+		t.Run("Returns Config loaded with values from env", func(t *testing.T) {
+			config := &Config{}
+			config.mergeEnv()
+
+			assert.EqualValues(t, *config, Config{
+				DisableKeepAlives: false,
 			})
 		})
 	})
@@ -698,6 +716,14 @@ func TestConfig_GetHttpTimeout(t *testing.T) {
 			assert.Equal(t, testCase.expectedHttpTimeout, config.GetHttpTimeout())
 		})
 	}
+}
+
+func TestConfig_DisableKeepAlive(t *testing.T) {
+
+	t.Run("DisableKeepAlives set to false by default", func(t *testing.T) {
+		config := Config{}
+		assert.Equal(t, config.DisableKeepAlives, false)
+	})
 }
 
 func TestDefaultTelemetryHeader(t *testing.T) {

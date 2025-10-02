@@ -48,11 +48,12 @@ func TestNewClientFromKey(t *testing.T) {
 func TestClient_GetConfig(t *testing.T) {
 	t.Run("Returns Client Config", func(t *testing.T) {
 		expectedConfig := Config{
-			Account:      "some-account",
-			ApplianceURL: "some-appliance-url",
-			NetRCPath:    "some-netrc-path",
-			SSLCert:      "some-ssl-cert",
-			SSLCertPath:  "some-ssl-cert-path",
+			Account:           "some-account",
+			ApplianceURL:      "some-appliance-url",
+			NetRCPath:         "some-netrc-path",
+			SSLCert:           "some-ssl-cert",
+			SSLCertPath:       "some-ssl-cert-path",
+			DisableKeepAlives: true,
 		}
 		client := Client{
 			config: expectedConfig,
@@ -561,4 +562,61 @@ func mockConjurServerWithJWT() *httptest.Server {
 		}
 	}))
 	return mockConjurServer
+}
+
+func TestClient_DisableKeepAlive(t *testing.T) {
+	t.Run("Returns default disableKeepAlives value", func(t *testing.T) {
+		expectedConfig := Config{
+			Account: "some-account",
+		}
+		client := Client{
+			config: expectedConfig,
+		}
+
+		assert.EqualValues(t, client.GetConfig().DisableKeepAlives, false)
+	})
+
+	t.Run("Check default option disableKeepAlive must be false", func(t *testing.T) {
+		e := ClearEnv()
+		defer e.RestoreEnv()
+		os.Setenv("CONJUR_DISABLE_KEEP_ALIVES", "error")
+		os.Setenv("HOME", t.TempDir())
+		config := Config{Account: "account", ApplianceURL: "appliance-url"}
+		client := Client{
+			config: config,
+		}
+		assert.NotNil(t, client)
+		assert.Equal(t, client.GetConfig().DisableKeepAlives, false)
+	})
+
+	t.Run("Returns ok when CONJUR_DISABLE_KEEP_ALIVES is set to true", func(t *testing.T) {
+		e := ClearEnv()
+		defer e.RestoreEnv()
+		os.Setenv("CONJUR_ACCOUNT", "account")
+		os.Setenv("CONJUR_APPLIANCE_URL", "appliance-url")
+		os.Setenv("CONJUR_AUTHN_LOGIN", "user")
+		os.Setenv("CONJUR_AUTHN_API_KEY", "password")
+		os.Setenv("CONJUR_DISABLE_KEEP_ALIVES", "true")
+		os.Setenv("HOME", t.TempDir())
+		config, err := LoadConfig()
+		assert.NoError(t, err)
+		client, err := NewClient(config)
+		assert.NotNil(t, client)
+		assert.NoError(t, err)
+		assert.Equal(t, client.GetConfig().DisableKeepAlives, true)
+	})
+
+	t.Run("Returns ok when disableKeepAlives is set in config", func(t *testing.T) {
+		e := ClearEnv()
+		defer e.RestoreEnv()
+		os.Setenv("CONJUR_AUTHN_LOGIN", "user")
+		os.Setenv("CONJUR_AUTHN_API_KEY", "password")
+		os.Setenv("HOME", t.TempDir())
+		config := Config{Account: "account", ApplianceURL: "appliance-url", DisableKeepAlives: true}
+		client := Client{
+			config: config,
+		}
+		assert.NotNil(t, client)
+		assert.Equal(t, client.GetConfig().DisableKeepAlives, true)
+	})
 }

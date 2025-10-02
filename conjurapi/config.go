@@ -26,6 +26,8 @@ const (
 	HTTPTimeoutMaxValue = 600
 	// HTTPDialTimeout is the default value for the DialTimeout in the HTTP client
 	HTTPDialTimeout = 10
+	// DisableKeepAlivesDefaultValue is the default value for DisableKeepAlivesDefaultValue in the HTTP client
+	DisableKeepAlivesDefaultValue = false
 
 	ConjurSourceHeader = "x-cybr-telemetry"
 )
@@ -45,6 +47,7 @@ type Config struct {
 	JWTContent           string          `yaml:"-"`
 	JWTFilePath          string          `yaml:"jwt_file,omitempty"`
 	HTTPTimeout          int             `yaml:"http_timeout,omitempty"`
+	DisableKeepAlives    bool            `yaml:"disable_keep_alives,omitempty"`
 	IntegrationName      string          `yaml:"-"`
 	IntegrationType      string          `yaml:"-"`
 	IntegrationVersion   string          `yaml:"-"`
@@ -166,6 +169,7 @@ func (c *Config) merge(o *Config) {
 	c.JWTContent = mergeValue(c.JWTContent, o.JWTContent)
 	c.JWTFilePath = mergeValue(c.JWTFilePath, o.JWTFilePath)
 	c.HTTPTimeout = mergeValue(c.HTTPTimeout, o.HTTPTimeout)
+	c.DisableKeepAlives = mergeValue(c.DisableKeepAlives, o.DisableKeepAlives)
 	c.Environment = EnvironmentType(mergeValue(string(c.Environment), string(o.Environment)))
 	c.Proxy = mergeValue(c.Proxy, o.Proxy)
 	c.AzureClientID = mergeValue(c.AzureClientID, o.AzureClientID)
@@ -230,6 +234,7 @@ func (c *Config) mergeEnv() {
 		JWTFilePath:       os.Getenv("JWT_TOKEN_PATH"),
 		JWTHostID:         os.Getenv("CONJUR_AUTHN_JWT_HOST_ID"),
 		HTTPTimeout:       httpTimoutFromEnv(),
+		DisableKeepAlives: disableKeepAlivesFromEnv(),
 		Environment:       EnvironmentType(os.Getenv("CONJUR_ENVIRONMENT")),
 		Proxy:             os.Getenv("HTTPS_PROXY"),
 		AzureClientID:     os.Getenv("CONJUR_AUTHN_AZURE_CLIENT_ID"),
@@ -260,6 +265,24 @@ func httpTimoutFromEnv() int {
 		timeout = HTTPTimeoutDefaultValue
 	}
 	return timeout
+}
+
+func disableKeepAlivesFromEnv() bool {
+	disableKeepAlivesStr, ok := os.LookupEnv("CONJUR_DISABLE_KEEP_ALIVES")
+	if !ok || len(disableKeepAlivesStr) == 0 {
+		return DisableKeepAlivesDefaultValue
+	}
+
+	value, err := strconv.ParseBool(disableKeepAlivesStr)
+	if err != nil {
+		logging.ApiLog.Infof(
+			"Could not parse CONJUR_DISABLE_KEEP_ALIVES, using default value (%t): %s",
+			DisableKeepAlivesDefaultValue,
+			err)
+	} else {
+		return value
+	}
+	return DisableKeepAlivesDefaultValue
 }
 
 func (c *Config) applyDefaults(persist bool) {
