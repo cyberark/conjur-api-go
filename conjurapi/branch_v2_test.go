@@ -93,7 +93,7 @@ func NewHandler(t *testing.T) http.Handler {
 			}
 		}
 		// Update Branch
-		customUrl = "/branches/" + testAccount + "/" + testBranchBranch
+		customUrl = "/branches/" + testAccount + "/" + testBranchName
 		if r.URL.Path == customUrl {
 			if r.Method == http.MethodPatch {
 				response := `{"branches":[{"name":"` + testBranchName + `","owner": {"kind": "user","id": "user1"},"branch":"` + testBranchBranch + `","annotations": {"myannkey": "myannvalue","description": "This is my description"}}],"count":1}`
@@ -198,16 +198,25 @@ func TestUpdateBranchRequestAndResponse(t *testing.T) {
 		t.Errorf("Error: %s", err.Error())
 	}
 
-	branch := Branch{}
-	branch.Name = testBranchName
-	branch.Branch = testBranchBranch
+	owner := &Owner{
+		Kind: "user",
+		Id:   "user1",
+	}
+	annotations := map[string]string{
+		"key1": "value1",
+		"key2": "value2",
+	}
 
-	data, err := client.V2().UpdateBranch(branch)
+	data, err := client.V2().UpdateBranch(Branch{
+		Name:        testBranchName,
+		Owner:       owner,
+		Annotations: annotations,
+	})
 	if err != nil {
-		t.Errorf("client.V2.CreateBranch error returned %s", err.Error())
+		t.Errorf("client.V2.UpdateBranch error returned %s", err.Error())
 	}
 	if data == nil {
-		t.Errorf("client.V2.CreateBranch data returned nil")
+		t.Errorf("client.V2.UpdateBranch data returned nil")
 	}
 }
 
@@ -430,27 +439,24 @@ func TestClientV2_UpdateBranchRequest(t *testing.T) {
 	client, err := NewClientFromJwt(config)
 
 	account := "account"
-	ident := "super/hiper/test/id"
-	branch := Branch{}
+	branchName := testBranchName
 
-	_, err = client.V2().UpdateBranchRequest(branch)
-	if err == nil {
-		return
-	}
-	if !strings.Contains(fmt.Sprint(err), "Branch attribute Branch") {
-		t.Errorf("Error string do not contain information about missing Branch.Branch")
+	_, err = client.V2().UpdateBranchRequest("", nil, nil)
+	if err != nil {
+		t.Errorf("Error Test failed %s", err.Error())
 		return
 	}
 
-	if !strings.Contains(fmt.Sprint(err), "Branch attribute Name") {
-		t.Errorf("Error string do not contain information about missing Branch.Name")
-		return
+	owner := &Owner{
+		Kind: "user",
+		Id:   "user1",
+	}
+	annotations := map[string]string{
+		"key1": "value1",
+		"key2": "value2",
 	}
 
-	branch.Branch = ident
-	branch.Name = testBranchName
-
-	request, err := client.V2().UpdateBranchRequest(branch)
+	request, err := client.V2().UpdateBranchRequest(branchName, owner, annotations)
 	if err != nil {
 		t.Errorf("Error Test failed %s", err.Error())
 		return
@@ -461,13 +467,7 @@ func TestClientV2_UpdateBranchRequest(t *testing.T) {
 		return
 	}
 
-	request, err = client.V2().UpdateBranchRequest(branch)
-	if err != nil {
-		t.Errorf("Error Test failed %s", err.Error())
-		return
-	}
-
-	reqUrl := "localhost/branches/" + account + "/" + ident
+	reqUrl := "localhost/branches/" + account + "/" + branchName
 	if request.URL.Path != reqUrl {
 		t.Errorf("Error Url is not proper: %s, should be: %s", request.URL.Path, reqUrl)
 		return
