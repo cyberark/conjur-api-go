@@ -6,11 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.13.8] - 2025-09-30
+## [0.13.7] - 2025-10-03
 
+### Added
+- Extra validation for authn-iam configuration. CNJR-10225
 - Add DisableKeepAlives connection option through configuration or CONJUR_DISABLE_KEEP_ALIVES environment variable
-
-## [0.13.7] - 2025-10-01
 
 ## [0.13.6] - 2025-09-30
 
