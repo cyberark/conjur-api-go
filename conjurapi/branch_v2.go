@@ -137,7 +137,7 @@ func (c *ClientV2) UpdateBranch(branch Branch) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf(NotSupportedInOldVersions, "Branch API", MinVersion)
 	}
-	req, err := c.UpdateBranchRequest(branch)
+	req, err := c.UpdateBranchRequest(branch.Name, branch.Owner, branch.Annotations)
 	if err != nil {
 		return nil, err
 	}
@@ -255,16 +255,21 @@ func (c *ClientV2) ReadBranchesRequest(filter *BranchFilter) (*http.Request, err
 	return request, nil
 }
 
-func (c *ClientV2) UpdateBranchRequest(branch Branch) (*http.Request, error) {
-	err := branch.Validate()
+func (c *ClientV2) UpdateBranchRequest(branchName string, owner *Owner, annotations map[string]string) (*http.Request, error) {
+	payload := struct {
+		Owner       *Owner            `json:"owner,omitempty"`
+		Annotations map[string]string `json:"annotations,omitempty"`
+	}{
+		Owner:       owner,
+		Annotations: annotations,
+	}
+
+	branchJson, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
 	}
 
-	branchJson, err := json.Marshal(branch)
-
-	url := fmt.Sprintf("branches/%s/%s", c.config.Account, branch.Branch)
-
+	url := fmt.Sprintf("branches/%s/%s", c.config.Account, branchName)
 	branchURL := makeRouterURL(c.config.ApplianceURL, url).String()
 
 	request, err := http.NewRequest(
