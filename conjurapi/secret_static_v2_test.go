@@ -1,11 +1,12 @@
 package conjurapi
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestClientV2_CreateStaticSecretRequest(t *testing.T) {
@@ -98,9 +99,9 @@ func TestClientV2_CreateStaticSecret(t *testing.T) {
 		expectError string
 	}{
 		{
-			name:        "Add static secret missing mimetype",
+			name:        "Add static secret missing privileges",
 			secret:      StaticSecret{Branch: "/data/test", Name: "secret2", Permissions: []Permission{{Subject: Subject{Id: "data/test/test-users", Kind: "group"}}}},
-			expectError: "mime_type",
+			expectError: "privileges",
 		},
 		{
 			name:   "Add static secret",
