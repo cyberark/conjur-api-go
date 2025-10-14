@@ -77,7 +77,7 @@ pipeline {
           INFRAPOOL_EXECUTORV2_AGENTS = getInfraPoolAgent(type: "ExecutorV2", quantity: 1, duration: 1)
           INFRAPOOL_EXECUTORV2_AGENT_0 = INFRAPOOL_EXECUTORV2_AGENTS[0]
           infrapool = infraPoolConnect(INFRAPOOL_EXECUTORV2_AGENT_0, {})
-          
+
           // Request additional executors for cloud specific tests
           if (params.TEST_AZURE) {
             INFRAPOOL_AZURE_EXECUTORV2_AGENT_0 = getInfraPoolAgent.connected(type: "AzureExecutorV2", quantity: 1, duration: 1)[0]
