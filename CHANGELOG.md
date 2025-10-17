@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- Add Certificate V2 API. CNJR-10829
+
 ## [0.13.7] - 2025-10-03
 
 ### Added
