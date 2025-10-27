@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.13.8] - 2025-10-27
+
 ### Added
 - Add Certificate V2 API. CNJR-10829
 
@@ -358,7 +360,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.13.5...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.13.8...HEAD
+[0.13.8]: https://github.com/cyberark/conjur-api-go/compare/v0.13.7...v0.13.8
+[0.13.7]: https://github.com/cyberark/conjur-api-go/compare/v0.13.6...v0.13.7
 [0.13.6]: https://github.com/cyberark/conjur-api-go/compare/v0.13.5...v0.13.6
 [0.13.5]: https://github.com/cyberark/conjur-api-go/compare/v0.13.4...v0.13.5
 [0.13.4]: https://github.com/cyberark/conjur-api-go/compare/v0.13.3...v0.13.4
