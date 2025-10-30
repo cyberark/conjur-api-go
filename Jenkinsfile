@@ -115,25 +115,15 @@ pipeline {
         INFRAPOOL_TEST_AWS=true
       }
       parallel {
-        stage('Golang 1.24') {
+        stage('Golang 1.25') {
           steps {
             script {
-              infrapool.agentSh "./bin/test.sh 1.24 $REGISTRY_URL"
-              infrapool.agentStash name: '1.24-out', includes: 'output/1.24/*.xml'
-              unstash '1.24-out'
-            }
-          }
-        }
-
-        stage('Golang 1.23') {
-          steps {
-            script {
-              infrapool.agentSh "./bin/test.sh 1.23 $REGISTRY_URL"
-              infrapool.agentStash name: '1.23-out', includes: 'output/1.23/*.xml'
-              unstash '1.23-out'
+              infrapool.agentSh "./bin/test.sh 1.25 $REGISTRY_URL"
+              infrapool.agentStash name: '1.25-out', includes: 'output/1.25/*.xml'
+              unstash '1.25-out'
               cobertura autoUpdateHealth: false,
                         autoUpdateStability: false,
-                        coberturaReportFile: 'output/1.23/coverage.xml',
+                        coberturaReportFile: 'output/1.25/coverage.xml',
                         conditionalCoverageTargets: '30, 0, 0',
                         failUnhealthy: true,
                         failUnstable: false,
@@ -143,17 +133,27 @@ pipeline {
                         onlyStable: false,
                         sourceEncoding: 'ASCII',
                         zoomCoverageChart: false
-              infrapool.agentSh 'cp output/1.23/c.out .'
-              codacy action: 'reportCoverage', filePath: "output/1.23/coverage.xml"
+              infrapool.agentSh 'cp output/1.25/c.out .'
+              codacy action: 'reportCoverage', filePath: "output/1.25/coverage.xml"
+            }
+          }
+        }
+
+        stage('Golang 1.24') {
+          steps {
+            script {
+              infrapool.agentSh "./bin/test.sh 1.24 $REGISTRY_URL"
+              infrapool.agentStash name: '1.24-out', includes: 'output/1.24/*.xml'
+              unstash '1.24-out'
             }
           }
         }
       }
       post {
         always {
-          script { infrapool.agentArchiveArtifacts artifacts: 'output/1.23/conjur-logs.txt' }
           script { infrapool.agentArchiveArtifacts artifacts: 'output/1.24/conjur-logs.txt' }
-          junit 'output/1.24/junit.xml'
+          script { infrapool.agentArchiveArtifacts artifacts: 'output/1.25/conjur-logs.txt' }
+          junit 'output/1.25/junit.xml'
         }
       }
     }
@@ -168,7 +168,7 @@ pipeline {
       }
       steps {
         script {
-          INFRAPOOL_AZURE_EXECUTORV2_AGENT_0.agentSh "summon ./bin/test.sh 1.24 $REGISTRY_URL"
+          INFRAPOOL_AZURE_EXECUTORV2_AGENT_0.agentSh "summon ./bin/test.sh 1.25 $REGISTRY_URL"
         }
       }
     }
@@ -189,7 +189,7 @@ pipeline {
           INFRAPOOL_GCP_EXECUTORV2_AGENT_0.agentStash name: 'token-out', includes: "${GCP_CTX_DIR}/*"
           GCP_TOKEN_STASHED = true
           infrapool.agentUnstash name: 'token-out'
-          infrapool.agentSh "./bin/test.sh 1.24 $REGISTRY_URL $GCP_CTX_DIR"
+          infrapool.agentSh "./bin/test.sh 1.25 $REGISTRY_URL $GCP_CTX_DIR"
         }
       }
     }

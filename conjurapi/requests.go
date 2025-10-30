@@ -475,7 +475,7 @@ func (c *Client) RoleMembershipsRequestWithOptions(roleID string, includeAll boo
 		query = "all"
 	}
 
-	roleMembershipsURL := makeRouterURL(c.rolesURL(account), kind, url.QueryEscape(id)).withFormattedQuery(query)
+	roleMembershipsURL := makeRouterURL(c.rolesURL(account), kind, url.QueryEscape(id)).withQuery(query)
 
 	return http.NewRequest(
 		http.MethodGet,
