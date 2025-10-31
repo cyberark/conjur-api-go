@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.13.9] - 2025-10-30
+
+### Changed
+- Support Go 1.24 and 1.25 (CONJSE-2067)
+
 ## [0.13.8] - 2025-10-27
 
 ### Added
@@ -360,7 +365,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.13.8...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.13.9...HEAD
+[0.13.9]: https://github.com/cyberark/conjur-api-go/compare/v0.13.8...v0.13.9
 [0.13.8]: https://github.com/cyberark/conjur-api-go/compare/v0.13.7...v0.13.8
 [0.13.7]: https://github.com/cyberark/conjur-api-go/compare/v0.13.6...v0.13.7
 [0.13.6]: https://github.com/cyberark/conjur-api-go/compare/v0.13.5...v0.13.6

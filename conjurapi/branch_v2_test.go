@@ -36,7 +36,7 @@ func NewHandler(t *testing.T) http.Handler {
 		// all requests V2 must contain V2 API HEADER
 		if r.Header.Get("Accept") != v2APIHeaderBeta {
 			custErr := fmt.Sprintf("Expected Accept: %s header, got: %s", v2APIHeaderBeta, r.Header.Get("Accept"))
-			t.Errorf(custErr)
+			t.Error(custErr)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(custErr))
 			return
@@ -52,14 +52,14 @@ func NewHandler(t *testing.T) http.Handler {
 				err := json.Unmarshal(body, &branch)
 				if err != nil {
 					custErr := fmt.Sprintf("Request is not in proper json format: %s . Error: %s", body, err.Error())
-					t.Errorf(custErr)
+					t.Error(custErr)
 					w.WriteHeader(http.StatusInternalServerError)
 					w.Write([]byte(custErr))
 					return
 				}
 				if branch.Name != testBranchName || branch.Branch != testBranchBranch {
 					custErr := fmt.Sprintf("Request is not in proper json format: %s", body)
-					t.Errorf(custErr)
+					t.Error(custErr)
 					w.WriteHeader(http.StatusInternalServerError)
 					w.Write([]byte(custErr))
 					return

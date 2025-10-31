@@ -27,7 +27,7 @@ var authnAzurePolicy = `
     privilege: [ read, authenticate ]
     resource: !webservice
 
-  # Give the host permission to authenticate using the IAM Authenticator
+  # Give the host permission to authenticate using the Azure Authenticator
   - !grant
     role: !group apps
     member: !host /data/test/azure-apps/azureVM
@@ -49,7 +49,7 @@ var authAzureRolesPolicyTemplate = `
 
   # Create a group to hold this application's hosts
   - !group
-  # The host ID needs to match the AWS ARN of the role we wish to authenticate
+  # The host ID needs to match the Azure ARN of the role we wish to authenticate
   - !host
     id: azureVM
     annotations:

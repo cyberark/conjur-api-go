@@ -25,25 +25,6 @@ services:
     depends_on:
       - postgres
 
-  test-1.23:
-    build:
-      context: .
-      args:
-        FROM_IMAGE: "golang:1.23"
-    ports:
-      - 8080
-    depends_on:
-      - conjur
-    volumes:
-      - ./output:/conjur-api-go/output
-    environment:
-      CONJUR_DATA_KEY:
-      CONJUR_APPLIANCE_URL: http://conjur
-      CONJUR_ACCOUNT: conjur
-      CONJUR_AUTHN_LOGIN: admin
-      CONJUR_AUTHN_API_KEY:
-      GO_VERSION:
-
   test-1.24:
     build:
       context: .
@@ -63,11 +44,30 @@ services:
       CONJUR_AUTHN_API_KEY:
       GO_VERSION:
 
+  test-1.25:
+    build:
+      context: .
+      args:
+        FROM_IMAGE: "golang:1.25"
+    ports:
+      - 8080
+    depends_on:
+      - conjur
+    volumes:
+      - ./output:/conjur-api-go/output
+    environment:
+      CONJUR_DATA_KEY:
+      CONJUR_APPLIANCE_URL: http://conjur
+      CONJUR_ACCOUNT: conjur
+      CONJUR_AUTHN_LOGIN: admin
+      CONJUR_AUTHN_API_KEY:
+      GO_VERSION:
+
   dev:
     build:
       context: .
       args:
-        FROM_IMAGE: "golang:1.24"
+        FROM_IMAGE: "golang:1.25"
     ports:
       - 8080
     depends_on:

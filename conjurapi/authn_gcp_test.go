@@ -22,7 +22,7 @@ var authnGcpPolicy = `
     privilege: [ read, authenticate ]
     resource: !webservice
 
-  # Give the host permission to authenticate using the IAM Authenticator
+  # Give the host permission to authenticate using the GCP Authenticator
   - !grant
     role: !group apps
     member: !host /data/test/gcp-apps/test-app

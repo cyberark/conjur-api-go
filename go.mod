@@ -1,8 +1,8 @@
 module github.com/cyberark/conjur-api-go
 
 // This version has to be the lowest of the versions that we run tests with. Currently
-// we test with 1.23 and 1.24 (See Jenkinsfile) so this needs to be 1.23.
-go 1.23.7
+// we test with 1.24 and 1.25 (See Jenkinsfile) so this needs to be 1.24.
+go 1.24.0
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
