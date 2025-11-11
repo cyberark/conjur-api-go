@@ -30,6 +30,14 @@ const (
 	DisableKeepAlivesDefaultValue = false
 
 	ConjurSourceHeader = "x-cybr-telemetry"
+	// DefaultIntegrationName is the default name for the integration
+	DefaultIntegrationName = "SecretsManagerGo SDK"
+	// DefaultIntegrationType is the default type for the integration
+	DefaultIntegrationType = "cybr-secretsmanager"
+	// DefaultIntegrationVersion is the default version when none is provided
+	DefaultIntegrationVersion = "0.0.0"
+	// DefaultVendorName is the default vendor name
+	DefaultVendorName = "CyberArk"
 )
 
 var supportedAuthnTypes = []string{"authn", "ldap", "oidc", "jwt", "iam", "azure", "gcp", "cloud"}
@@ -388,20 +396,20 @@ func (c *Config) SetIntegrationType(intype string) {
 }
 
 // SetIntegrationVersion sets the version of the integration. If the provided version is
-// an empty string, it tries to fetch the version from the "VERSION" file located in the parent
+// DefaultIntegrationVersion, it tries to fetch the version from the "VERSION" file located in the parent
 // directory of the current working directory.
 //
 // Parameters:
 //   - inversion (string): The version of the integration. If empty, the version is fetched from the VERSION file.
 func (c *Config) SetIntegrationVersion(inversion string) {
-	if inversion == "" {
+	if inversion == DefaultIntegrationVersion {
 		currentDir, err := filepath.Abs(".")
 		if err != nil {
 			fmt.Errorf("Error getting current directory: %v", err)
 		}
-		vserionPath := filepath.Join(currentDir, "..", "VERSION")
+		versionPath := filepath.Join(currentDir, "..", "VERSION")
 
-		latestVersion, err := GetReleaseVersion(vserionPath)
+		latestVersion, err := GetReleaseVersion(versionPath)
 		if err != nil {
 			fmt.Errorf("Error: %v", err)
 		}
@@ -429,7 +437,7 @@ func (c *Config) SetVendorVersion(vversion string) {
 }
 
 // GetReleaseVersion reads the version from a specified file located at versionPath.
-// It returns the version as a string or an error if the file cannot be read.
+// If the file cannot be read, it returns the DefaultIntegrationVersion along with an error.
 //
 // Parameters:
 //   - versionPath (string): The path to the VERSION file that contains the release version.
@@ -440,23 +448,23 @@ func (c *Config) SetVendorVersion(vversion string) {
 func GetReleaseVersion(versionPath string) (string, error) {
 	data, err := os.ReadFile(versionPath)
 	if err != nil {
-		return "", fmt.Errorf("error reading VERSION file: %v", err)
+		return DefaultIntegrationVersion, fmt.Errorf("error reading VERSION file: %v", err)
 	}
 	return string(data), nil
 }
 
 func (c *Config) setDefaultIntegrationMetadata() {
 	if c.IntegrationName == "" {
-		c.SetIntegrationName("SecretsManagerGo SDK")
+		c.SetIntegrationName(DefaultIntegrationName)
 	}
 	if c.IntegrationType == "" {
-		c.SetIntegrationType("cybr-secretsmanager")
+		c.SetIntegrationType(DefaultIntegrationType)
 	}
 	if c.IntegrationVersion == "" {
-		c.SetIntegrationVersion("")
+		c.SetIntegrationVersion(DefaultIntegrationVersion)
 	}
 	if c.VendorName == "" {
-		c.SetVendorName("CyberArk")
+		c.SetVendorName(DefaultVendorName)
 	}
 }
 
