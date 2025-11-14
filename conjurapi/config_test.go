@@ -726,11 +726,12 @@ func TestConfig_DisableKeepAlive(t *testing.T) {
 	})
 }
 
-func TestDefaultTelemetryHeader(t *testing.T) {
+func TestDefaultTelemetryHeaderWhenIVExplicitEmpty(t *testing.T) {
 	config := Config{}
-	config.SetIntegrationVersion("0.0.0")
+	config.SetIntegrationVersion("")
 	config.SetFinalTelemetryHeader()
-	expected := fmt.Sprintf("in=SecretsManagerGo SDK&iv=0.0.0&it=cybr-secretsmanager&vn=CyberArk")
+	updatedVersion := config.IntegrationVersion
+	expected := fmt.Sprintf("in=SecretsManagerGo SDK&iv=%s&it=cybr-secretsmanager&vn=CyberArk", updatedVersion)
 	encodedExpected := base64.RawURLEncoding.EncodeToString([]byte(expected))
 
 	if result := config.SetFinalTelemetryHeader(); result != encodedExpected {

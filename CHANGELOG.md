@@ -1,10 +1,15 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.13.10] - 2025-11-13
+
+### Fixed
+- Define default telemetry header values to ensure successful telemetry data processing.
 
 ## [0.13.9] - 2025-10-30
 
@@ -365,7 +370,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.13.9...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.13.10...HEAD
+[0.13.10]: https://github.com/cyberark/conjur-api-go/compare/v0.13.9...v0.13.10
 [0.13.9]: https://github.com/cyberark/conjur-api-go/compare/v0.13.8...v0.13.9
 [0.13.8]: https://github.com/cyberark/conjur-api-go/compare/v0.13.7...v0.13.8
 [0.13.7]: https://github.com/cyberark/conjur-api-go/compare/v0.13.6...v0.13.7
