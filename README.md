@@ -23,22 +23,20 @@ questions, please contact us on [Discourse](https://discuss.cyberarkcommons.org/
 
 The `conjur-api-go` has been tested against the following Go versions:
 
-    - 1.24
-    - 1.25
+- 1.24
+- 1.25
 
 ## Installation
 
+```sh
+go get github.com/cyberark/conjur-api-go/conjurapi
 ```
-$ go get github.com/cyberark/conjur-api-go/conjurapi
-```
 
-## Quick start
+## Quick Start
 
-Fetching a Secret, for example:
+This example demonstrates how to retrieve a secret from Conjur.
 
-Suppose there exists a variable `db/secret` with secret value `fde5c4a45ce573f9768987cd`
-
-Create a go program using `conjur-api-go` to fetch the secret value:
+Suppose there exists a variable `db/secret` with secret value `fde5c4a45ce573f9768987cd`. Create a Go program using `conjur-api-go` to fetch the secret value:
 
 ```go
 package main
@@ -101,84 +99,123 @@ $ export CONJUR_AUTHN_API_KEY=myapikey
 $ go run main.go
 The secret value is: fde5c4a45ce573f9768987cd
 ```
+
 ## Usage
 
-Connecting to CyberArk Secrets Manager is a two-step process:
+### Configuration and Authentication
 
-* **Configuration** Instruct the API where to find the CyberArk Secrets Manager endpoint and how to secure the connection.
-* **Authentication** Provide the API with credentials that it can use to authenticate.
+Connecting to CyberArk Secrets Manager requires two steps:
 
-### Authenticating with authn-jwt via Environment Variables
+1. **Configuration** - Specify the CyberArk Secrets Manager endpoint and connection security settings
+2. **Authentication** - Provide credentials for authentication
 
-#### Example Code
+### Credential Storage
+
+The Conjur Go API supports three credential storage options, configurable via the `CredentialStorage` field in the `Config` struct:
+
+#### Storage Options
+
+- **`conjurapi.CredentialStorageKeyring`** - Stores credentials in the system keyring (default when available). This is the most secure option for desktop environments.
+- **`conjurapi.CredentialStorageFile`** - Stores credentials in a `.netrc` file (default when keyring is not available). The `.netrc` file location can be customized using the `NetRCPath` config field.
+- **`conjurapi.CredentialStorageNone`** - Does not store credentials. **Use this option in environments where there are no file permissions to create a `.netrc` file**, such as restricted containers, read-only filesystems, or ephemeral compute instances.
+
+> **Note:** If no credential storage is specified, the API will automatically select `CredentialStorageKeyring` if available, otherwise it will default to `CredentialStorageFile`.
+
+#### Example: Disabling Credential Storage
+
+```go
+config := conjurapi.Config{
+    ApplianceURL:      "https://conjur.example.com",
+    Account:           "myorg",
+    CredentialStorage: conjurapi.CredentialStorageNone,
+}
+
+conjur, err := conjurapi.NewClientFromKey(config,
+    authn.LoginPair{
+        Login:  "mylogin",
+        APIKey: "myapikey",
+    },
+)
+```
+
+### Authentication Methods
+
+#### API Key Authentication
+
+The Quick Start example above demonstrates API key authentication using `NewClientFromKey()`. This is the most common authentication method for legacy applications.
+
+#### JWT Authentication
+
+You can authenticate using JWT tokens via environment variables. This method is useful for containerized environments and CI/CD pipelines and is more secure than using API keys.
+
+##### Environment Variables Required
+
+- `CONJUR_APPLIANCE_URL` - The URL of your Conjur instance
+- `CONJUR_ACCOUNT` - Your Conjur account name
+- `CONJUR_AUTHN_JWT_SERVICE_ID` - The JWT authenticator service ID
+- `CONJUR_AUTHN_JWT_TOKEN` - The JWT token
+- `CONJUR_SECRET_ID` - The identifier of the secret to retrieve
+
+##### Example Code
 
 ```go
 package main
 
 import (
-	"fmt"
-	"log"
-	"os"
+    "fmt"
+    "log"
+    "os"
 
-	"github.com/cyberark/conjur-api-go/conjurapi"
+    "github.com/cyberark/conjur-api-go/conjurapi"
 )
 
-// Environment variables to define:
-// CONJUR_APPLIANCE_URL, CONJUR_ACCOUNT, CONJUR_AUTHN_JWT_SERVICE_ID,
-// CONJUR_AUTHN_JWT_TOKEN, CONJUR_SECRET_ID
-
 func checkEnvironmentVariables() error {
-	// Check for environment variables and error if one is missing.
-	variables := []string{
-		"CONJUR_APPLIANCE_URL",
-		"CONJUR_ACCOUNT",
-		"CONJUR_AUTHN_JWT_SERVICE_ID",
-		"CONJUR_AUTHN_JWT_TOKEN",
-		"CONJUR_SECRET_ID",
-	}
+    variables := []string{
+        "CONJUR_APPLIANCE_URL",
+        "CONJUR_ACCOUNT",
+        "CONJUR_AUTHN_JWT_SERVICE_ID",
+        "CONJUR_AUTHN_JWT_TOKEN",
+        "CONJUR_SECRET_ID",
+    }
 
-	for _, variable := range variables {
-		if os.Getenv(variable) == "" {
-			return fmt.Errorf("Environment variable %s is not set", variable)
-		}
-	}
+    for _, variable := range variables {
+        if os.Getenv(variable) == "" {
+            return fmt.Errorf("environment variable %s is not set", variable)
+        }
+    }
 
-	return nil
+    return nil
 }
 
 func main() {
+    // Check for required environment variables
+    if err := checkEnvironmentVariables(); err != nil {
+        log.Fatalf("%v", err)
+    }
 
-	// Check for environment variables and error if one is missing.
-	err := checkEnvironmentVariables()
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
+    // Get the secret ID to retrieve
+    variableIdentifier := os.Getenv("CONJUR_SECRET_ID")
 
-	// Defining secret ID to retrieve, as per 12 factor
-	// this is being accomplished via env variables.
-	variableIdentifier := os.Getenv("CONJUR_SECRET_ID")
+    // Load configuration from environment variables
+    config, err := conjurapi.LoadConfig()
+    if err != nil {
+        log.Fatalf("Cannot load configuration: %s", err)
+    }
 
-	// Loading configuration via defined Env vars:
-	// CONJUR_APPLIANCE & CONJUR_ACCOUNT
-	config, err := conjurapi.LoadConfig()
-	if err != nil {
-		log.Fatalf("Cannot load configuration. %s", err)
-	}
+    // Create a new Conjur client using environment variables
+    conjur, err := conjurapi.NewClientFromEnvironment(config)
+    if err != nil {
+        log.Fatalf("Cannot create client: %s", err)
+    }
 
-	// Create a new Conjur client using environment variables
-	conjur, err := conjurapi.NewClientFromEnvironment(config)
-	if err != nil {
-		log.Fatalf("Cannot create new client from environment variables. %s", err)
-	}
+    // Retrieve the secret value from Conjur
+    secretValue, err := conjur.RetrieveSecret(variableIdentifier)
+    if err != nil {
+        log.Fatalf("Cannot retrieve secret %s: %s", variableIdentifier, err)
+    }
 
-	// Retrieve the secret value from Conjur
-	secretValue, err := conjur.RetrieveSecret(variableIdentifier)
-	if err != nil {
-		log.Fatalf("Cannot retrieve secret value for %s. %s", variableIdentifier, err)
-	}
-
-	// Print the secret value to stdout
-	fmt.Printf("%s", string(secretValue))
+    // Print the secret value to stdout
+    fmt.Printf("%s", string(secretValue))
 }
 ```
 
@@ -191,6 +228,6 @@ guide][contrib].
 
 ## License
 
-Copyright (c) 2022-2024 CyberArk Software Ltd. All rights reserved.
+Copyright (c) 2022-2025 CyberArk Software Ltd. All rights reserved.
 
 This repository is licensed under Apache License 2.0 - see [`LICENSE`](LICENSE) for more details.
