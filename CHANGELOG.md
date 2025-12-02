@@ -6,7 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.13.11] - 2025-11-26
+## [0.13.11] - 2025-12-02
+
+### Fixed
+- Add Content-Type header to V2 POST/PATCH requests
 
 ### Added
 - Improved documentation for credential storage options (CNJR-10891)

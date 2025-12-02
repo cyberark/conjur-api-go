@@ -52,17 +52,18 @@ func (c *ClientV2) CreateStaticSecretRequest(secret StaticSecret) (*http.Request
 		return nil, err
 	}
 
-	branchURL := makeRouterURL(c.config.ApplianceURL, "secrets/static").String()
+	secretURL := makeRouterURL(c.config.ApplianceURL, "secrets/static").String()
 
 	request, err := http.NewRequest(
 		http.MethodPost,
-		branchURL,
+		secretURL,
 		bytes.NewBuffer(branchJson),
 	)
 	if err != nil {
 		return nil, err
 	}
 
+	request.Header.Add("Content-Type", "application/json")
 	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
 
 	return request, nil
@@ -104,11 +105,11 @@ func (c *ClientV2) GetStaticSecretDetailsRequest(identifier string) (*http.Reque
 
 	path := fmt.Sprintf("secrets/static/%s", identifier)
 
-	branchURL := makeRouterURL(c.config.ApplianceURL, path).String()
+	secretURL := makeRouterURL(c.config.ApplianceURL, path).String()
 
 	request, err := http.NewRequest(
 		http.MethodGet,
-		branchURL,
+		secretURL,
 		nil,
 	)
 	if err != nil {
@@ -156,11 +157,11 @@ func (c *ClientV2) GetStaticSecretPermissionsRequest(identifier string) (*http.R
 
 	path := fmt.Sprintf("secrets/static/%s/permissions", identifier)
 
-	branchURL := makeRouterURL(c.config.ApplianceURL, path).String()
+	secretURL := makeRouterURL(c.config.ApplianceURL, path).String()
 
 	request, err := http.NewRequest(
 		http.MethodGet,
-		branchURL,
+		secretURL,
 		nil,
 	)
 	if err != nil {

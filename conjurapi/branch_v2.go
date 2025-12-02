@@ -159,6 +159,9 @@ func (c *ClientV2) CreateBranchRequest(branch Branch) (*http.Request, error) {
 	}
 
 	branchJson, err := json.Marshal(branch)
+	if err != nil {
+		return nil, err
+	}
 
 	request, err := http.NewRequest(
 		http.MethodPost,
@@ -169,6 +172,7 @@ func (c *ClientV2) CreateBranchRequest(branch Branch) (*http.Request, error) {
 		return nil, err
 	}
 
+	request.Header.Add("Content-Type", "application/json")
 	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeaderBeta)
 	return request, nil
 }
@@ -245,6 +249,7 @@ func (c *ClientV2) UpdateBranchRequest(branchName string, owner *Owner, annotati
 		return nil, err
 	}
 
+	request.Header.Add("Content-Type", "application/json")
 	request.Header.Add(v2APIOutgoingHeaderID, v2APIHeaderBeta)
 	return request, nil
 }
