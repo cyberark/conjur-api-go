@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const testAccount = "account"
@@ -257,48 +259,19 @@ func TestClientV2_CreateBranchRequest(t *testing.T) {
 	branch := Branch{}
 
 	_, err = client.V2().CreateBranchRequest(branch)
-	if err == nil {
-		return
-	}
-	if !strings.Contains(fmt.Sprint(err), "Branch attribute Branch") {
-		t.Errorf("Error string do not contain information about missing Branch")
-		return
-	}
-
-	if !strings.Contains(fmt.Sprint(err), "Branch attribute Name") {
-		t.Errorf("Error string do not contain information about missing Name")
-		return
-	}
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Branch attribute Branch")
+	assert.Contains(t, err.Error(), "Branch attribute Name")
 
 	branch.Name = "Name"
 	branch.Branch = "Branch"
 
-	request, err := client.V2().CreateBranchRequest(branch)
-	if err != nil {
-		t.Errorf("Error Test failed %s", err.Error())
-		return
-	}
-
-	if request.Header.Get(v2APIOutgoingHeaderID) != v2APIHeaderBeta {
-		t.Errorf("Error Header %s not found", v2APIHeaderBeta)
-		return
-	}
-
-	request, err = client.V2().CreateBranchRequest(branch)
-	if err != nil {
-		t.Errorf("Error Test failed %s", err.Error())
-		return
-	}
-
-	if request.URL.Path != "localhost/branches/account" {
-		t.Errorf("Error Url is not proper: %s, should be: %s", request.URL.Path, "localhost/branches/account")
-		return
-	}
-
-	if request.Method != http.MethodPost {
-		t.Errorf("Error wrong http method used")
-		return
-	}
+	req, err := client.V2().CreateBranchRequest(branch)
+	assert.NoError(t, err)
+	assert.Equal(t, v2APIHeaderBeta, req.Header.Get(v2APIOutgoingHeaderID))
+	assert.Equal(t, "application/json", req.Header.Get("Content-Type"))
+	assert.Equal(t, "localhost/branches/account", req.URL.Path)
+	assert.Equal(t, http.MethodPost, req.Method)
 }
 
 func TestClientV2_ReadBranchRequest(t *testing.T) {
@@ -442,10 +415,7 @@ func TestClientV2_UpdateBranchRequest(t *testing.T) {
 	branchName := testBranchName
 
 	_, err = client.V2().UpdateBranchRequest("", nil, nil)
-	if err != nil {
-		t.Errorf("Error Test failed %s", err.Error())
-		return
-	}
+	assert.NoError(t, err)
 
 	owner := &Owner{
 		Kind: "user",
@@ -457,67 +427,22 @@ func TestClientV2_UpdateBranchRequest(t *testing.T) {
 	}
 
 	request, err := client.V2().UpdateBranchRequest(branchName, owner, annotations)
-	if err != nil {
-		t.Errorf("Error Test failed %s", err.Error())
-		return
-	}
-
-	if request.Header.Get(v2APIOutgoingHeaderID) != v2APIHeaderBeta {
-		t.Errorf("Error Header %s not found", v2APIHeaderBeta)
-		return
-	}
-
-	reqUrl := "localhost/branches/" + account + "/" + branchName
-	if request.URL.Path != reqUrl {
-		t.Errorf("Error Url is not proper: %s, should be: %s", request.URL.Path, reqUrl)
-		return
-	}
-
-	if request.Method != http.MethodPatch {
-		t.Errorf("Error wrong http method used")
-		return
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, "application/json", request.Header.Get("Content-Type"))
+	assert.Equal(t, v2APIHeaderBeta, request.Header.Get(v2APIOutgoingHeaderID))
+	assert.Equal(t, "localhost/branches/"+account+"/"+branchName, request.URL.Path)
+	assert.Equal(t, http.MethodPatch, request.Method)
 }
 
 func TestClientV2_DeleteBranchRequest(t *testing.T) {
 	config := GetConfigForTest("localhost")
 	client, err := NewClientFromJwt(config)
-	client.config.Account = ""
-
 	ident := "super/hiper/test/id"
-
-	_, err = client.V2().DeleteBranchRequest("")
-	if err == nil {
-		return
-	}
-
 	client.config.Account = testAccount
 
 	request, err := client.V2().DeleteBranchRequest(ident)
-	if err != nil {
-		t.Errorf("Error Test failed %s", err.Error())
-		return
-	}
-
-	if request.Header.Get(v2APIOutgoingHeaderID) != v2APIHeaderBeta {
-		t.Errorf("Error Header %s not found", v2APIHeaderBeta)
-		return
-	}
-
-	request, err = client.V2().DeleteBranchRequest(ident)
-	if err != nil {
-		t.Errorf("Error Test failed %s", err.Error())
-		return
-	}
-
-	reqUrl := "localhost/branches/" + testAccount + "/" + ident
-	if request.URL.Path != reqUrl {
-		t.Errorf("Error Url is not proper: %s, should be: %s", request.URL.Path, reqUrl)
-		return
-	}
-
-	if request.Method != http.MethodDelete {
-		t.Errorf("Error wrong http method used")
-		return
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, v2APIHeaderBeta, request.Header.Get(v2APIOutgoingHeaderID))
+	assert.Equal(t, "localhost/branches/"+testAccount+"/"+ident, request.URL.Path)
+	assert.Equal(t, http.MethodDelete, request.Method)
 }

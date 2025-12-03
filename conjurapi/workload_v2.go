@@ -104,6 +104,7 @@ func (c *ClientV2) CreateWorkloadRequest(workload Workload) (*http.Request, erro
 		return nil, err
 	}
 
+	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add(v2APIOutgoingHeaderID, v2APIHeaderBeta)
 	return req, nil
 }

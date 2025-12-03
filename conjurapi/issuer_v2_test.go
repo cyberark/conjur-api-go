@@ -1,12 +1,13 @@
 package conjurapi
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const testIssuer = "testIssuer"
@@ -29,6 +30,7 @@ func TestClientV2_CertificateIssueRequest(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, request.Header.Get(v2APIOutgoingHeaderID), v2APIHeaderBeta)
+	assert.Equal(t, "application/json", request.Header.Get("Content-Type"))
 
 	request, err = client.V2().CertificateIssueRequest(issuerName, issue)
 	require.NoError(t, err)
@@ -55,6 +57,7 @@ func TestClientV2_CertificateSignRequest(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, request.Header.Get(v2APIOutgoingHeaderID), v2APIHeaderBeta)
+	assert.Equal(t, "application/json", request.Header.Get("Content-Type"))
 
 	request, err = client.V2().CertificateSignRequest(issuerName, sign)
 	require.NoError(t, err)

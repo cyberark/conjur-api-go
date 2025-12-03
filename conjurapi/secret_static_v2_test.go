@@ -21,6 +21,7 @@ func TestClientV2_CreateStaticSecretRequest(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, request.Header.Get(v2APIOutgoingHeaderID), v2APIHeader)
+	assert.Equal(t, "application/json", request.Header.Get("Content-Type"))
 
 	request, err = client.V2().CreateStaticSecretRequest(secret)
 	require.NoError(t, err)
