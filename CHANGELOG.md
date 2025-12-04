@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.13.12] - 2025-12-03
+
+### Changed
+- Migrate from unmaintained yaml.v2 to yaml/v3 [cyberark/conjur-api-go#185](https://github.com/cyberark/conjur-api-go/pull/185)
+
 ## [0.13.11] - 2025-12-02
 
 ### Fixed
