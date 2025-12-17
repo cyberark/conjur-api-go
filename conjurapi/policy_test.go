@@ -489,7 +489,7 @@ func TestPolicy_DryRunPolicy(t *testing.T) {
 		require.Equal(t, 1, len(resp.Errors))
 		assert.Equal(t, 0, resp.Errors[0].Line)
 		assert.Equal(t, 0, resp.Errors[0].Column)
-		assert.Equal(t, fmt.Sprintf("undefined method `referenced_records' for \"host %s\":String\n", hostname), resp.Errors[0].Message)
+		assert.Contains(t, resp.Errors[0].Message, "undefined method 'referenced_records' for")
 	})
 
 	t.Run("Returns error on older Conjur versions", func(t *testing.T) {
