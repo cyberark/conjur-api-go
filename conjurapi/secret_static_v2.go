@@ -30,7 +30,6 @@ type StaticSecret struct {
 	Branch      string            `json:"branch"`
 	Name        string            `json:"name"`
 	MimeType    string            `json:"mime_type,omitempty"`
-	Owner       *Owner            `json:"owner,omitempty"`
 	Value       string            `json:"value,omitempty"`
 	Annotations map[string]string `json:"annotations,omitempty"`
 	Permissions []Permission      `json:"permissions,omitempty"`
