@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.13.13] - 2025-12-17
+
+### Fixed
+- Removed unsupported `owner` field from Static Secret requests.
+
 ## [0.13.12] - 2025-12-03
 
 ### Changed
