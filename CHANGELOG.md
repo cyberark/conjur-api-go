@@ -6,10 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.13.13] - 2025-12-17
+## [0.13.13] - 2025-12-23
 
 ### Fixed
 - Removed unsupported `owner` field from Static Secret requests.
+- Don't add "host/" prefix when using JWTHostID if already present. (CNJR-11714)
 
 ## [0.13.12] - 2025-12-03
 
@@ -388,7 +389,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.13.10...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.13.13...HEAD
+[0.13.13]: https://github.com/cyberark/conjur-api-go/compare/v0.13.12...v0.13.13
+[0.13.12]: https://github.com/cyberark/conjur-api-go/compare/v0.13.11...v0.13.12
+[0.13.11]: https://github.com/cyberark/conjur-api-go/compare/v0.13.10...v0.13.10
 [0.13.10]: https://github.com/cyberark/conjur-api-go/compare/v0.13.9...v0.13.10
 [0.13.9]: https://github.com/cyberark/conjur-api-go/compare/v0.13.8...v0.13.9
 [0.13.8]: https://github.com/cyberark/conjur-api-go/compare/v0.13.7...v0.13.8
