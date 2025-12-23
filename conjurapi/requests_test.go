@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUnopinionatedParseID(t *testing.T) {
@@ -147,4 +148,61 @@ func TestMakeFullID(t *testing.T) {
 			assert.Equal(t, tc.want, got)
 		})
 	}
+}
+
+func TestClient_AzureAuthenticateRequest(t *testing.T) {
+	t.Run("Azure authenticate includes host ID in URL", func(t *testing.T) {
+		client := &Client{
+			config: Config{
+				Account:      "myaccount",
+				ApplianceURL: "https://conjur.example.com",
+				AuthnType:    "azure",
+				ServiceID:    "prod",
+				JWTHostID:    "test-host",
+			},
+		}
+
+		req, err := client.AzureAuthenticateRequest("mock-token")
+
+		assert.NoError(t, err)
+		require.NotNil(t, req)
+		assert.Contains(t, req.URL.String(), "host%2Ftest-host")
+	})
+
+	t.Run("Azure authenticate with host prefix already present", func(t *testing.T) {
+		client := &Client{
+			config: Config{
+				Account:      "myaccount",
+				ApplianceURL: "https://conjur.example.com",
+				AuthnType:    "azure",
+				ServiceID:    "prod",
+				JWTHostID:    "host/test-host",
+			},
+		}
+
+		req, err := client.AzureAuthenticateRequest("mock-token")
+
+		assert.NoError(t, err)
+		require.NotNil(t, req)
+		assert.Contains(t, req.URL.String(), "host%2Ftest-host")
+		assert.NotContains(t, req.URL.String(), "host%2Fhost%2Ftest-host", "should not double the host prefix")
+	})
+}
+
+func TestClient_GCPAuthenticateRequest(t *testing.T) {
+	t.Run("GCP authenticate does not include host ID in URL", func(t *testing.T) {
+		client := &Client{
+			config: Config{
+				Account:      "myaccount",
+				ApplianceURL: "https://conjur.example.com",
+				AuthnType:    "gcp",
+			},
+		}
+
+		req, err := client.GCPAuthenticateRequest("mock-token")
+
+		assert.NoError(t, err)
+		require.NotNil(t, req)
+		assert.Equal(t, "https://conjur.example.com/authn-gcp/myaccount/authenticate", req.URL.String())
+	})
 }

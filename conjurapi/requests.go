@@ -229,7 +229,7 @@ func (c *Client) OidcTokenAuthenticateRequest(token string) (*http.Request, erro
 }
 
 func (c *Client) IAMAuthenticateRequest(signedHeaders []byte) (*http.Request, error) {
-	authenticateURL := makeRouterURL(c.authnURL("iam", c.config.ServiceID), url.QueryEscape("host/"+c.config.JWTHostID), "authenticate").String()
+	authenticateURL := makeRouterURL(c.authnURL("iam", c.config.ServiceID), url.QueryEscape(ensureHostPrefix(c.config.JWTHostID)), "authenticate").String()
 
 	body, contentType := createJWTRequestBodyForAuthenticator(c.config.AuthnType, string(signedHeaders))
 	req, err := http.NewRequest("POST", authenticateURL, body)
@@ -243,7 +243,7 @@ func (c *Client) IAMAuthenticateRequest(signedHeaders []byte) (*http.Request, er
 }
 
 func (c *Client) AzureAuthenticateRequest(azureToken string) (*http.Request, error) {
-	return c.JWTAuthenticateRequest(azureToken, "host/"+c.config.JWTHostID)
+	return c.JWTAuthenticateRequest(azureToken, ensureHostPrefix(c.config.JWTHostID))
 }
 
 func (c *Client) GCPAuthenticateRequest(gcpToken string) (*http.Request, error) {
@@ -789,4 +789,11 @@ func (c *Client) globalSecretsURL() string {
 
 func (c *Client) policiesURL(account string) string {
 	return makeRouterURL(c.config.ApplianceURL, "policies", account).String()
+}
+
+func ensureHostPrefix(hostID string) string {
+	if strings.HasPrefix(hostID, "host/") {
+		return hostID
+	}
+	return "host/" + hostID
 }
