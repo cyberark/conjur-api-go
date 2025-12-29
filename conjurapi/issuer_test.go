@@ -70,7 +70,7 @@ func TestClient_CreateIssuer(t *testing.T) {
 				assert.Regexp(
 					t,
 					// Secrets Manager SaaS returns "Entity", Enterprise returns "Content"
-					"422 Unprocessable (Content|Entity). invalid 'access_key_id' parameter format",
+					"422 Unprocessable (Content|Entity). invalid '(access_key_id|secret_access_key)' parameter format",
 					err.Error(),
 				)
 			},
