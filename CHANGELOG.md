@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.13.14] - 2025-12-30
+
+### Fixed
+- Use the correct header for V2 group membership requests.
+
 ## [0.13.13] - 2025-12-23
 
 ### Fixed

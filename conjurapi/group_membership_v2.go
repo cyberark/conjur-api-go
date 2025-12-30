@@ -73,12 +73,9 @@ func (c *ClientV2) AddGroupMemberRequest(groupID string, member GroupMember) (*h
 		return nil, fmt.Errorf("Failed to create add group member request: %w", err)
 	}
 
-	req.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
+	req.Header.Add(v2APIOutgoingHeaderID, v2APIHeaderBeta)
 	req.Header.Add(v2APIIncomingHeaderID, "application/json")
 
-	if !isConjurCloudURL(c.config.ApplianceURL) {
-		req.Header.Add(v2APIOutgoingHeaderID, v2APIHeaderBeta)
-	}
 	return req, nil
 }
 
@@ -95,10 +92,8 @@ func (c *ClientV2) RemoveGroupMemberRequest(groupID string, member GroupMember) 
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create remove group member request: %v", err)
 	}
-	req.Header.Add(v2APIOutgoingHeaderID, v2APIHeader)
-	if !isConjurCloudURL(c.config.ApplianceURL) {
-		req.Header.Add(v2APIOutgoingHeaderID, v2APIHeaderBeta)
-	}
+	req.Header.Add(v2APIOutgoingHeaderID, v2APIHeaderBeta)
+
 	return req, nil
 }
 
