@@ -9,6 +9,10 @@ import (
 	"github.com/bgentry/go-netrc/netrc"
 )
 
+// OidcStorageMarker is used as a login identifier when storing OIDC tokens
+// to distinguish them from regular API key credentials
+const OidcStorageMarker = "[oidc]"
+
 type NetrcStorageProvider struct {
 	netRCPath   string
 	machineName string
@@ -92,7 +96,7 @@ func (s *NetrcStorageProvider) ReadAuthnToken() ([]byte, error) {
 func (s *NetrcStorageProvider) StoreAuthnToken(token []byte) error {
 	// We should be able to use an empty string for username, but unfortunately
 	// this causes panics later on. Instead use a dummy value.
-	return s.StoreCredentials("[oidc]", string(token))
+	return s.StoreCredentials(OidcStorageMarker, string(token))
 }
 
 // PurgeCredentials purges credentials from the specified .netrc file

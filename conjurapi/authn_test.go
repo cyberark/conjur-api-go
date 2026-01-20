@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
@@ -1075,5 +1077,118 @@ func TestClient_OidcTokenAuthenticate(t *testing.T) {
 			require.NoError(t, err)
 			assert.Contains(t, string(resp), fmt.Sprintf(`"username":"%s"`, os.Getenv("CONJUR_AUTHN_LOGIN")))
 		})
+	})
+}
+
+func TestClient_CloudHostLogin(t *testing.T) {
+	t.Run("Successful authentication via Authenticate endpoint", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.Path, "/authenticate") {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("mock-access-token"))
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		config := Config{
+			ApplianceURL: server.URL,
+			Account:      "conjur",
+		}
+
+		client, err := NewClient(config)
+		require.NoError(t, err)
+
+		mockStorage := &mockStorageProvider{}
+		client.storage = mockStorage
+
+		apiKey, err := client.CloudHostLogin("host/test-host", "test-api-key-12345")
+
+		assert.NoError(t, err)
+		assert.Equal(t, "test-api-key-12345", string(apiKey))
+		assert.Equal(t, "host/test-host", mockStorage.username)
+		assert.Equal(t, "test-api-key-12345", mockStorage.password)
+	})
+
+	t.Run("Returns error when authentication fails", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.Path, "/authenticate") {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(`{"error":"invalid credentials"}`))
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		config := Config{
+			ApplianceURL: server.URL,
+			Account:      "conjur",
+		}
+
+		client, err := NewClient(config)
+		require.NoError(t, err)
+
+		apiKey, err := client.CloudHostLogin("host/test-host", "invalid-api-key")
+
+		assert.Error(t, err)
+		assert.Nil(t, apiKey)
+		assert.Contains(t, err.Error(), "unable to authenticate with Secrets Manager")
+	})
+
+	t.Run("Handles storage errors gracefully", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.Path, "/authenticate") {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("mock-access-token"))
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		config := Config{
+			ApplianceURL: server.URL,
+			Account:      "conjur",
+		}
+
+		client, err := NewClient(config)
+		require.NoError(t, err)
+
+		mockStorage := &mockStorageProvider{injectError: assert.AnError}
+		client.storage = mockStorage
+
+		apiKey, err := client.CloudHostLogin("host/test-host", "api-key-123")
+
+		assert.Error(t, err)
+		assert.Nil(t, apiKey)
+		assert.Contains(t, err.Error(), "failed to store credentials")
+	})
+
+	t.Run("Works without storage provider", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.Path, "/authenticate") {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("mock-access-token"))
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		config := Config{
+			ApplianceURL: server.URL,
+			Account:      "conjur",
+		}
+
+		client, err := NewClient(config)
+		require.NoError(t, err)
+		client.storage = nil
+
+		apiKey, err := client.CloudHostLogin("host/test-host", "returned-api-key")
+
+		assert.NoError(t, err)
+		assert.Equal(t, "returned-api-key", string(apiKey))
 	})
 }
