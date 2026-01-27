@@ -187,7 +187,10 @@ func TestClient_AuthenticatorCRUD(t *testing.T) {
 			},
 			expectErr: false,
 			expectedResponse: &AuthenticatorResponse{
-				Branch: "conjur/authn-jwt",
+				// Branch field behavior varies between Secrets Manager SaaS and self-hosted.
+				// SaaS returns empty string, self-hosted returns "conjur/authn-jwt".
+				// We set to empty and ignore in test assertion.
+				Branch: "",
 				AuthenticatorBase: AuthenticatorBase{
 					Type:    "jwt",
 					Name:    "test-authenticator-default-vals",
@@ -236,7 +239,10 @@ func TestClient_AuthenticatorCRUD(t *testing.T) {
 			},
 			expectErr: false,
 			expectedResponse: &AuthenticatorResponse{
-				Branch: "conjur/authn-jwt",
+				// Branch field behavior varies between Secrets Manager SaaS and self-hosted.
+				// SaaS returns empty string, self-hosted returns "conjur/authn-jwt".
+				// We set to empty and ignore in test assertion.
+				Branch: "",
 				AuthenticatorBase: AuthenticatorBase{
 					Type:    "jwt",
 					Name:    "test-authenticator-optional-vals",
@@ -342,6 +348,11 @@ func normalize(resp *AuthenticatorResponse) NormalizedAuthenticatorResponse {
 	// 	}
 	// }
 
+	// Branch behavior is currently inconsistent between Secrets Manager SaaS and self-hosted
+	// SaaS returns empty string, self-hosted returns "conjur/authn-<type>"
+	// For now we set it to empty so it doesn't get compared in the response JSON
+	var branch string = ""
+
 	return NormalizedAuthenticatorResponse{
 		Type:        resp.Type,
 		Subtype:     subtype,
@@ -350,6 +361,6 @@ func normalize(resp *AuthenticatorResponse) NormalizedAuthenticatorResponse {
 		Owner:       nil,
 		Data:        resp.Data,
 		Annotations: resp.Annotations,
-		Branch:      resp.Branch,
+		Branch:      branch,
 	}
 }
