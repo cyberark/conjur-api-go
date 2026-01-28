@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.13.15] - 2026-01-22
+
+### Fixed
+- Improved Secrets Manager SaaS host authentication for Cloud environments.
+
 ## [0.13.14] - 2025-12-30
 
 ### Fixed

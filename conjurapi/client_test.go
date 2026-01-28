@@ -393,6 +393,121 @@ func Test_newClientFromStoredCredentials(t *testing.T) {
 		assert.Contains(t, err.Error(),
 			".netrc file was read, but credential for machine appliance-url/authn was not found.")
 	})
+
+	t.Run("Cloud auth: Returns client from stored host API key credentials", func(t *testing.T) {
+		cloudTempDir := t.TempDir()
+		cloudConfig := Config{
+			Account:           "account",
+			ApplianceURL:      "appliance-url",
+			AuthnType:         "cloud",
+			CredentialStorage: "file",
+			NetRCPath:         filepath.Join(cloudTempDir, ".netrc"),
+		}
+
+		// Store host API key credentials
+		storageProvider, err := createStorageProvider(cloudConfig)
+		require.NoError(t, err)
+		err = storageProvider.StoreCredentials("host/cloud-host", "host-api-key")
+		require.NoError(t, err)
+
+		client, err := newClientFromStoredCredentials(cloudConfig)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+		assert.IsType(t, &authn.APIKeyAuthenticator{}, client.authenticator)
+	})
+
+	t.Run("Cloud auth: Falls back to OIDC when no API key credentials found", func(t *testing.T) {
+		cloudTempDir := t.TempDir()
+		cloudConfig := Config{
+			Account:           "account",
+			ApplianceURL:      "appliance-url",
+			AuthnType:         "cloud",
+			ServiceID:         "cloud-service",
+			CredentialStorage: "file",
+			NetRCPath:         filepath.Join(cloudTempDir, ".netrc"),
+		}
+
+		// Store OIDC token (indicated by special [oidc] login)
+		storageProvider, err := createStorageProvider(cloudConfig)
+		require.NoError(t, err)
+		err = storageProvider.StoreAuthnToken([]byte(sample_token))
+		require.NoError(t, err)
+
+		client, err := newClientFromStoredCredentials(cloudConfig)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+		assert.IsType(t, &authn.OidcAuthenticator{}, client.authenticator)
+	})
+
+	t.Run("Cloud auth: Skips OIDC token and tries actual OIDC login when login is [oidc]", func(t *testing.T) {
+		cloudTempDir := t.TempDir()
+		cloudConfig := Config{
+			Account:           "account",
+			ApplianceURL:      "appliance-url",
+			AuthnType:         "cloud",
+			ServiceID:         "cloud-service",
+			CredentialStorage: "file",
+			NetRCPath:         filepath.Join(cloudTempDir, ".netrc"),
+		}
+
+		// Manually store credentials with [oidc] as login (shouldn't be used for host auth)
+		netrcContent := `
+machine appliance-url/authn-cloud/cloud-service
+	login [oidc]
+	password some-oidc-token-data
+`
+		err := os.WriteFile(cloudConfig.NetRCPath, []byte(netrcContent), 0600)
+		require.NoError(t, err)
+
+		// Should skip the [oidc] credentials and try OIDC flow
+		client, err := newClientFromStoredCredentials(cloudConfig)
+
+		// Will error because no valid OIDC token, but verifies it went to OIDC path
+		assert.Error(t, err)
+		assert.Nil(t, client)
+	})
+
+	t.Run("Cloud auth: Uses authn endpoint for host with ServiceID set to conjur", func(t *testing.T) {
+		cloudTempDir := t.TempDir()
+		cloudConfig := Config{
+			Account:           "account",
+			ApplianceURL:      "appliance-url",
+			AuthnType:         "cloud",
+			CredentialStorage: "file",
+			NetRCPath:         filepath.Join(cloudTempDir, ".netrc"),
+		}
+
+		// Store host credentials
+		storageProvider, err := createStorageProvider(cloudConfig)
+		require.NoError(t, err)
+		err = storageProvider.StoreCredentials("host/cloud-host", "api-key")
+		require.NoError(t, err)
+
+		client, err := newClientFromStoredCredentials(cloudConfig)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+		// Verify it's using authn, not authn-cloud
+		assert.Equal(t, "authn", client.config.AuthnType)
+	})
+
+	t.Run("Cloud auth: Returns error when no credentials found", func(t *testing.T) {
+		cloudTempDir := t.TempDir()
+		cloudConfig := Config{
+			Account:           "account",
+			ApplianceURL:      "appliance-url",
+			AuthnType:         "cloud",
+			CredentialStorage: "file",
+			NetRCPath:         filepath.Join(cloudTempDir, ".netrc"),
+		}
+
+		client, err := newClientFromStoredCredentials(cloudConfig)
+
+		assert.Error(t, err)
+		assert.Nil(t, client)
+	})
 }
 
 func Test_newClientFromStoredOidcCredentials(t *testing.T) {
@@ -618,5 +733,127 @@ func TestClient_DisableKeepAlive(t *testing.T) {
 		}
 		assert.NotNil(t, client)
 		assert.Equal(t, client.GetConfig().DisableKeepAlives, true)
+	})
+}
+
+func TestNewClientFromCloudHost(t *testing.T) {
+	t.Run("Creates authenticated client successfully", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.Path, "/authenticate") {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("auth-token"))
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		config := Config{
+			ApplianceURL:      server.URL,
+			Account:           "conjur",
+			AuthnType:         "cloud",
+			CredentialStorage: "none",
+		}
+
+		client, err := NewClientFromCloudHost(config, "host/cloud-host", "host-api-key")
+
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+		assert.Equal(t, "cloud", client.config.AuthnType)
+		assert.NotNil(t, client.authenticator)
+	})
+
+	t.Run("Returns error when authentication fails", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.Path, "/authenticate") {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		config := Config{
+			ApplianceURL:      server.URL,
+			Account:           "conjur",
+			AuthnType:         "cloud",
+			CredentialStorage: "none",
+		}
+
+		client, err := NewClientFromCloudHost(config, "host/cloud-host", "wrong-api-key")
+
+		assert.Error(t, err)
+		assert.Nil(t, client)
+	})
+
+	t.Run("Returns error with invalid config", func(t *testing.T) {
+		config := Config{
+			Account:   "conjur",
+			AuthnType: "cloud",
+		}
+
+		client, err := NewClientFromCloudHost(config, "host/cloud-host", "api-key")
+
+		assert.Error(t, err)
+		assert.Nil(t, client)
+		assert.Contains(t, err.Error(), "failed to create auth client")
+	})
+
+	t.Run("Stores credentials with file storage", func(t *testing.T) {
+		tempDir := t.TempDir()
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.Path, "/authenticate") {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("auth-token"))
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		config := Config{
+			ApplianceURL:      server.URL,
+			Account:           "conjur",
+			AuthnType:         "cloud",
+			CredentialStorage: "file",
+			NetRCPath:         filepath.Join(tempDir, ".netrc"),
+		}
+
+		client, err := NewClientFromCloudHost(config, "host/test-host", "test-api-key")
+
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+
+		storageProvider, err := createStorageProvider(config)
+		require.NoError(t, err)
+		login, password, err := storageProvider.ReadCredentials()
+		assert.NoError(t, err)
+		assert.Equal(t, "host/test-host", login)
+		assert.Equal(t, "test-api-key", password)
+	})
+
+	t.Run("Handles storage errors gracefully", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.Path, "/authenticate") {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("token"))
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		config := Config{
+			ApplianceURL:      server.URL,
+			Account:           "conjur",
+			AuthnType:         "cloud",
+			CredentialStorage: "invalid-storage",
+		}
+
+		client, err := NewClientFromCloudHost(config, "host/cloud-host", "api-key")
+
+		assert.Error(t, err)
+		assert.Nil(t, client)
+		assert.Contains(t, err.Error(), "failed to create")
 	})
 }

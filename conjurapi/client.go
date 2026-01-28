@@ -11,6 +11,16 @@ import (
 	"time"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
+	"github.com/cyberark/conjur-api-go/conjurapi/logging"
+	"github.com/cyberark/conjur-api-go/conjurapi/storage"
+)
+
+// Authentication type constants
+const (
+	// AuthnTypeCloud represents cloud-based OIDC authentication for users
+	AuthnTypeCloud = "cloud"
+	// AuthnTypeStandard represents standard username/password or API key authentication
+	AuthnTypeStandard = "authn"
 )
 
 // Authenticator defines the interface that all authenticators must implement.
@@ -51,6 +61,44 @@ func NewClientFromKey(config Config, loginPair authn.LoginPair) (*Client, error)
 	)
 	authenticator.Authenticate = client.Authenticate
 	return client, err
+}
+
+// NewClientFromCloudHost creates an authenticated client for a Secrets Manager SaaS host.
+// Uses the Authenticate endpoint to validate the API key. Returns error if authentication fails.
+// Config.AuthnType should be "cloud" for proper credential storage.
+func NewClientFromCloudHost(config Config, login string, password string) (*Client, error) {
+	storageProvider, err := createStorageProvider(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create storage provider: %w", err)
+	}
+
+	authClient, err := newCloudAuthClient(config, storageProvider)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create auth client: %w", err)
+	}
+
+	apiKey, err := authClient.CloudHostLogin(login, password)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewClientFromKey(config, authn.LoginPair{Login: login, APIKey: string(apiKey)})
+}
+
+// newCloudAuthClient creates a temporary client for cloud host authentication using standard authn endpoints.
+// Cloud hosts must use AuthnType="authn" (routes to /authn/{Account}/{login}) instead of AuthnType="cloud"
+// (routes to /authn-oidc/... for users). Storage uses original cloud config to ensure correct machine name.
+func newCloudAuthClient(config Config, storage CredentialStorageProvider) (*Client, error) {
+	authConfig := config
+	authConfig.AuthnType = AuthnTypeStandard
+
+	client, err := NewClient(authConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	client.storage = storage
+	return client, nil
 }
 
 func NewClientFromOidcCode(config Config, code, nonce, code_verifier string) (*Client, error) {
@@ -206,8 +254,30 @@ func NewClientFromJwt(config Config) (*Client, error) {
 	return client, err
 }
 
+// newClientFromStoredCredentials creates a client using credentials from storage.
+// Routes to appropriate credential retrieval based on config.AuthnType (oidc, cloud, iam, azure, gcp).
+// For cloud type, tries host API key credentials first, then falls back to OIDC for users.
+// Returns error if no valid credentials found in storage.
 func newClientFromStoredCredentials(config Config) (*Client, error) {
-	if config.AuthnType == "oidc" || config.AuthnType == "cloud" {
+	if config.AuthnType == "oidc" {
+		return newClientFromStoredOidcCredentials(config)
+	}
+
+	if config.AuthnType == AuthnTypeCloud {
+		storageProvider, err := createStorageProvider(config)
+		if err != nil {
+			return nil, err
+		}
+		if storageProvider != nil {
+			login, password, err := storageProvider.ReadCredentials()
+			if err != nil {
+				logging.ApiLog.Debugf("Failed to read credentials from storage: %v", err)
+			} else if login != "" && password != "" && login != storage.OidcStorageMarker {
+				hostConfig := config
+				hostConfig.AuthnType = AuthnTypeStandard
+				return NewClientFromKey(hostConfig, authn.LoginPair{Login: login, APIKey: password})
+			}
+		}
 		return newClientFromStoredOidcCredentials(config)
 	}
 

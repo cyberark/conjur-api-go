@@ -161,6 +161,34 @@ func (c *Client) Login(login string, password string) ([]byte, error) {
 	return apiKey, err
 }
 
+// storeCredentialsIfAvailable stores credentials to storage if available.
+// Returns error if storage operation fails. Returns nil if no storage is configured.
+func (c *Client) storeCredentialsIfAvailable(login, credential string) error {
+	if c.storage != nil {
+		if err := c.storage.StoreCredentials(login, credential); err != nil {
+			return fmt.Errorf("failed to store credentials: %w", err)
+		}
+	}
+	return nil
+}
+
+// CloudHostLogin authenticates a Secrets Manager SaaS host using the Authenticate endpoint.
+// Validates the API key and stores credentials automatically. Returns API key bytes or error.
+func (c *Client) CloudHostLogin(login string, password string) ([]byte, error) {
+	loginPair := authn.LoginPair{Login: login, APIKey: password}
+
+	_, err := c.Authenticate(loginPair)
+	if err != nil {
+		return nil, fmt.Errorf("unable to authenticate with Secrets Manager: %w", err)
+	}
+
+	if err := c.storeCredentialsIfAvailable(login, password); err != nil {
+		return nil, err
+	}
+
+	return []byte(password), nil
+}
+
 // PurgeCredentials purges credentials from the client's credential storage.
 func (c *Client) PurgeCredentials() error {
 	if c.storage == nil {
@@ -249,7 +277,12 @@ func (c *Client) authenticate(loginPair authn.LoginPair) (*http.Response, error)
 		return nil, err
 	}
 
-	return c.httpClient.Do(req)
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
 
 func (c *Client) OidcAuthenticate(code, nonce, code_verifier string) ([]byte, error) {
