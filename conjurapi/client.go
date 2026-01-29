@@ -480,6 +480,8 @@ func newHTTPTransport(cfg Config) *http.Transport {
 	}).DialContext
 	if cfg.ProxyURL() != nil {
 		tr.Proxy = http.ProxyURL(cfg.ProxyURL())
+	} else {
+		tr.Proxy = http.ProxyFromEnvironment
 	}
 	tr.DisableKeepAlives = cfg.DisableKeepAlives
 	return tr
