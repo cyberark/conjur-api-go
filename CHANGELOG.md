@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- Add Batch Fetch Secrets V2 API. (CNJR-12571)
+
 ## [0.13.15] - 2026-01-22
 
 ### Fixed
