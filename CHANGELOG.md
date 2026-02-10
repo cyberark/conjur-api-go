@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.13.16] - 2026-02-10
+
 ### Added
 - Add Batch Fetch Secrets V2 API. (CNJR-12571)
 
@@ -402,7 +404,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.13.13...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.13.16...HEAD
+[0.13.16]: https://github.com/cyberark/conjur-api-go/compare/v0.13.15...v0.13.16
+[0.13.15]: https://github.com/cyberark/conjur-api-go/compare/v0.13.14...v0.13.15
+[0.13.14]: https://github.com/cyberark/conjur-api-go/compare/v0.13.13...v0.13.14
 [0.13.13]: https://github.com/cyberark/conjur-api-go/compare/v0.13.12...v0.13.13
 [0.13.12]: https://github.com/cyberark/conjur-api-go/compare/v0.13.11...v0.13.12
 [0.13.11]: https://github.com/cyberark/conjur-api-go/compare/v0.13.10...v0.13.10
