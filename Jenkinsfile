@@ -121,18 +121,16 @@ pipeline {
               infrapool.agentSh "./bin/test.sh 1.25 $REGISTRY_URL"
               infrapool.agentStash name: '1.25-out', includes: 'output/1.25/*.xml'
               unstash '1.25-out'
-              cobertura autoUpdateHealth: false,
-                        autoUpdateStability: false,
-                        coberturaReportFile: 'output/1.25/coverage.xml',
-                        conditionalCoverageTargets: '30, 0, 0',
-                        failUnhealthy: true,
-                        failUnstable: false,
-                        lineCoverageTargets: '30, 0, 0',
-                        maxNumberOfBuilds: 0,
-                        methodCoverageTargets: '30, 0, 0',
-                        onlyStable: false,
-                        sourceEncoding: 'ASCII',
-                        zoomCoverageChart: false
+              recordCoverage(
+                tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']],
+                sourceCodeEncoding: 'ASCII',
+                qualityGates: [
+                    [threshold: 70.0, metric: 'LINE', baseline: 'PROJECT', unstable: true],
+                    [threshold: 70.0, metric: 'BRANCH', baseline: 'PROJECT', unstable: true],
+                    [threshold: 70.0, metric: 'METHOD', baseline: 'PROJECT', unstable: true]
+                ],
+                skipPublishingChecks: false
+              )
               infrapool.agentSh 'cp output/1.25/c.out .'
               codacy action: 'reportCoverage', filePath: "output/1.25/coverage.xml"
             }
@@ -242,18 +240,16 @@ pipeline {
               infrapool.agentSh "./bin/test.sh"
               infrapool.agentStash name: 'merged-out', includes: 'output/cloud/*.xml'
               unstash 'merged-out'
-              cobertura autoUpdateHealth: false,
-                        autoUpdateStability: false,
-                        coberturaReportFile: 'output/cloud/merged-coverage.xml',
-                        conditionalCoverageTargets: '30, 0, 0',
-                        failUnhealthy: true,
-                        failUnstable: false,
-                        lineCoverageTargets: '30, 0, 0',
-                        maxNumberOfBuilds: 0,
-                        methodCoverageTargets: '30, 0, 0',
-                        onlyStable: false,
-                        sourceEncoding: 'ASCII',
-                        zoomCoverageChart: false
+              recordCoverage(
+                tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']],
+                sourceCodeEncoding: 'ASCII',
+                qualityGates: [
+                    [threshold: 70.0, metric: 'LINE', baseline: 'PROJECT', unstable: true],
+                    [threshold: 70.0, metric: 'BRANCH', baseline: 'PROJECT', unstable: true],
+                    [threshold: 70.0, metric: 'METHOD', baseline: 'PROJECT', unstable: true]
+                ],
+                skipPublishingChecks: false
+              )
               infrapool.agentSh 'cp output/cloud/merged-coverage.out .'
               codacy action: 'reportCoverage', filePath: "output/cloud/merged-coverage.xml"
             }
@@ -303,10 +299,23 @@ pipeline {
 
   post {
     always {
-      releaseInfraPoolAgent(".infrapool/release_agents")
-      // Resolve ownership issue before running infra post hook
-      sh 'git config --global --add safe.directory ${PWD}'
-      infraPostHook()
+      script {
+        releaseInfraPoolAgent(".infrapool/release_agents")
+        // Resolve ownership issue before running infra post hook
+        sh 'git config --global --add safe.directory ${PWD}'
+        // TODO: Remove try-catch once the Slack plugin is fixed on the Jenkins
+        // controller. The Slack plugin currently crashes with:
+        //   java.lang.ClassNotFoundException: net.sf.json.groovy.JsonSlurper
+        // because it depends on json-lib which is no longer on the classpath
+        // after a recent plugin upgrade. Wrapping here prevents the Slack
+        // plugin bug from masking real build failures.
+        // See: CNJR-13102
+        try {
+          infraPostHook()
+        } catch (Throwable err) {
+          echo "WARNING: infraPostHook() failed — likely a Slack plugin issue: ${err}"
+        }
+      }
     }
   }
 }
