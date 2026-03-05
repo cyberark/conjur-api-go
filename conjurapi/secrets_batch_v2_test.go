@@ -29,6 +29,9 @@ func TestClientV2_BatchRetrieveSecrets(t *testing.T) {
 	_, err = utils.Setup(batchSecretsTestPolicy)
 	require.NoError(t, err)
 	conjur := utils.Client().V2()
+	if !isConjurCloudURL(conjur.config.ApplianceURL) {
+		t.Skip("Skipping V2 Batch Retrieve Secrets test for on-prem")
+	}
 
 	err = utils.Client().AddSecret(utils.IDWithPath("secret1"), "value1")
 	require.NoError(t, err)

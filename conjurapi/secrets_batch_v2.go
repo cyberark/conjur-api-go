@@ -23,11 +23,12 @@ type BatchSecretResponse struct {
 	Secrets []SecretValue `json:"secrets"`
 }
 
+// TODO: Bump this and re-implement version checks when we have the final verison for stable V2 APIs in on-prem
 const minVersion = "1.24.0"
 
 func (c *ClientV2) BatchRetrieveSecrets(identifiers []string) (*BatchSecretResponse, error) {
-	if !isConjurCloudURL(c.config.ApplianceURL) && c.VerifyMinServerVersion(minVersion) != nil {
-		return nil, fmt.Errorf(NotSupportedInOldVersions, "Batch Retrieve Secrets API", minVersion)
+	if !isConjurCloudURL(c.config.ApplianceURL) {
+		return nil, fmt.Errorf(NotSupportedInConjurEnterprise, "V2 Batch Retrieve Secrets API")
 	}
 
 	req, err := c.BatchRetrieveSecretsRequest(identifiers)

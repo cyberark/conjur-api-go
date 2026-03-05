@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.13.17] - 2026-03-05
+
+### Changed
+- Disable V2 Batch Retrieve Secrets API for on-prem.
+
 ## [0.13.16] - 2026-02-10
 
 ### Added
