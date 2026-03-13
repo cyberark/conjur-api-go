@@ -36,7 +36,7 @@ func initLogger() {
 	case "stderr":
 		out = os.Stderr
 	default:
-		out, err = os.OpenFile(dest, os.O_CREATE|os.O_WRONLY, 0644)
+		out, err = os.OpenFile(dest, os.O_CREATE|os.O_WRONLY, 0600)
 		if err != nil {
 			fatalFn("Failed to open %s: %v", dest, err.Error())
 		}

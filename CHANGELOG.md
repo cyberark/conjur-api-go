@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.13.18] - 2026-03-13
+
+### Changed
+- When using `CONJURAPI_LOG`, create log file with 0600 permissions to ensure logs are not readable by other users. (CNJR-13089)
+
 ## [0.13.17] - 2026-03-05
 
 ### Changed
