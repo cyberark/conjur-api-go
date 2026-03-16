@@ -25,11 +25,11 @@ services:
     depends_on:
       - postgres
 
-  test-1.24:
+  test-1.26:
     build:
       context: .
       args:
-        FROM_IMAGE: "golang:1.24"
+        FROM_IMAGE: "golang:1.26"
     ports:
       - 8080
     depends_on:
