@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -856,4 +857,55 @@ func TestNewClientFromCloudHost(t *testing.T) {
 		assert.Nil(t, client)
 		assert.Contains(t, err.Error(), "failed to create")
 	})
+}
+
+func TestHttpClient_RespectsNoProxyEnv(t *testing.T) {
+	// Set up a test server to act as the target
+	targetCalled := false
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		targetCalled = true
+		w.WriteHeader(200)
+	}))
+	defer target.Close()
+
+	// Set up a dummy proxy server
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("Proxy should not be used for NO_PROXY hosts")
+	}))
+	defer proxy.Close()
+
+	// Set environment variables
+	os.Setenv("HTTP_PROXY", proxy.URL)
+	// Extract hostname from target URL for NO_PROXY
+	targetURL, _ := url.Parse(target.URL)
+	os.Setenv("NO_PROXY", targetURL.Hostname())
+	defer os.Unsetenv("HTTP_PROXY")
+	defer os.Unsetenv("NO_PROXY")
+
+	// Create config with the test server's URL as ApplianceURL
+	cfg := Config{
+		ApplianceURL: target.URL,
+		Account:      "test",
+	}
+	client, err := NewClient(cfg)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	// Make a request to the target server (should not use proxy)
+	req, err := http.NewRequest("GET", target.URL, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+	resp, err := client.httpClient.Do(req)
+	if err != nil {
+		t.Fatalf("Request failed: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Errorf("Expected status 200, got %d", resp.StatusCode)
+	}
+	if !targetCalled {
+		t.Errorf("Target server was not called")
+	}
 }

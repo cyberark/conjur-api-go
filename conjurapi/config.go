@@ -244,7 +244,6 @@ func (c *Config) mergeEnv() {
 		HTTPTimeout:       httpTimoutFromEnv(),
 		DisableKeepAlives: disableKeepAlivesFromEnv(),
 		Environment:       EnvironmentType(os.Getenv("CONJUR_ENVIRONMENT")),
-		Proxy:             os.Getenv("HTTPS_PROXY"),
 		AzureClientID:     os.Getenv("CONJUR_AUTHN_AZURE_CLIENT_ID"),
 	}
 
