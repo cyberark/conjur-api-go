@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.13.19] - 2026-03-18
+
+### Changed
+- Changed handling of proxy config to assure NO_PROXY support.
+
 ## [0.13.18] - 2026-03-13
 
 ### Changed
