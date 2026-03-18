@@ -84,9 +84,12 @@ ClientCertFile    string `yaml:"client_cert_file,omitempty"`
 ClientCertKeyFile string `yaml:"client_cert_key_file,omitempty"`
 ClientCert        string `yaml:"-"` // inline PEM; never written to disk
 ClientCertKey     string `yaml:"-"` // inline PEM; never written to disk
+CertHostID        string `yaml:"cert_host_id,omitempty"`
 ```
 
 Pattern mirrors the existing `SSLCertPath`/`SSLCert` fields. `yaml:"-"` ensures secrets are never accidentally serialized.
+
+`CertHostID` is a dedicated field for the Conjur host path used in cert auth request mode (e.g. `"host/vm-workloads/vm-01"`). It is intentionally **not** reusing `JWTHostID` — cert auth is the first authenticator in this SDK that is not JWT-based, and continuing to overload `JWTHostID` would make the field name increasingly misleading.
 
 ### `supportedAuthnTypes`
 
@@ -98,7 +101,7 @@ Add `"cert"` to the slice.
 "cert" requires ServiceID
 "cert" requires ClientCertFile or ClientCert
 "cert" requires ClientCertKeyFile or ClientCertKey
-JWTHostID (HostID) is optional for "cert" (required only for request mode)
+CertHostID is optional (empty = SPIFFE mode; non-empty = request mode)
 "cert" combined with a detected Conjur Cloud URL returns an error early
 ```
 
@@ -120,7 +123,7 @@ Add a corresponding test asserting that debug output never contains the literal 
 
 ### `merge()` additions
 
-Include the four new fields.
+Include the five new fields (`ClientCertFile`, `ClientCertKeyFile`, `ClientCert`, `ClientCertKey`, `CertHostID`).
 
 ### `mergeEnv()` additions
 
@@ -130,6 +133,7 @@ Include the four new fields.
 |---|---|
 | `CONJUR_AUTHN_CERT_FILE` | `ClientCertFile` |
 | `CONJUR_AUTHN_CERT_KEY_FILE` | `ClientCertKeyFile` |
+| `CONJUR_AUTHN_CERT_HOST_ID` | `CertHostID` |
 
 Additionally, following the `CONJUR_AUTHN_JWT_SERVICE_ID` precedent, when `CONJUR_AUTHN_CERT_SERVICE_ID` is set it implicitly sets `AuthnType = "cert"` and overrides `ServiceID`. This allows zero-code-change adoption via environment variables alone.
 
@@ -271,7 +275,7 @@ The **SaaS guard** (`isConjurCloudURL`) mirrors the pattern in `ChangeUserPasswo
 ```go
 func NewClientFromCertificate(config Config) (*Client, error) {
     authenticator := &authn.CertAuthenticator{
-        HostID: config.JWTHostID,
+        HostID: config.CertHostID,
     }
     client, err := newClientWithAuthenticator(config, authenticator)
     if err == nil {
@@ -370,7 +374,7 @@ Follows the `authn_iam_test.go` / `authn_azure_test.go` pattern:
 - Uses `utils.SetupWithAuthenticator("cert", ...)` with policy templates for a cert authenticator and workload host
 - Sets the `ca-cert` variable on the authenticator
 - Calls `conjur.EnableAuthenticator("cert", serviceID, true)`
-- Constructs `Config` with `AuthnType: "cert"`, `ServiceID`, `JWTHostID`, `ClientCertFile`, `ClientCertKeyFile`
+- Constructs `Config` with `AuthnType: "cert"`, `ServiceID`, `CertHostID`, `ClientCertFile`, `ClientCertKeyFile`
 - Asserts `certConjur.GetAuthenticator().RefreshToken()` succeeds
 - Asserts `WhoAmI()` contains the expected host ID
 - Asserts a secret can be retrieved
@@ -388,6 +392,6 @@ Follows the `authn_iam_test.go` / `authn_azure_test.go` pattern:
 
 The following items are out of scope for this effort but should be tracked:
 
-1. **`JWTHostID` is semantically overloaded.** The field now applies to JWT, IAM, Azure, and cert auth, but its name implies JWT only. A future refactor should introduce a first-class `HostID` field and deprecate `JWTHostID`.
+1. **`JWTHostID` is semantically overloaded** for JWT, IAM, and Azure. This plan does not extend that overloading further — cert auth uses the new dedicated `CertHostID` field. A future refactor should introduce a generic `HostID` field and deprecate `JWTHostID` across all three existing authenticators.
 
 2. **No explicit `CertHostMode` config field.** The SDK cannot know whether the server is in `request` or `spiffe` mode. An empty `JWTHostID` silently enables SPIFFE mode. A future improvement could add a `CertHostMode` config field (`"request"` / `"spiffe"`) to make the intent explicit and allow earlier validation.
