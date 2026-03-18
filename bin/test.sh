@@ -27,7 +27,7 @@ if [ "$API_TESTS" != "" ]; then
 fi
 
 export COMPOSE_PROJECT_NAME="conjurapigo_${PROJECT_SUFFIX}"
-export GO_VERSION="${1:-"1.24"}"
+export GO_VERSION="${1:-"1.26"}"
 export REGISTRY_URL="${2:-docker.io}"
 export TEST_AWS="${INFRAPOOL_TEST_AWS:-false}"
 export TEST_AZURE="${INFRAPOOL_TEST_AZURE:-false}"
