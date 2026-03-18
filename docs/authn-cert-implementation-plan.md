@@ -113,13 +113,21 @@ The last point mirrors the pattern used in `Login()`, `ChangeUserPassword()` and
 
 ```go
 func (c Config) String() string {
-    c.ClientCert = "[REDACTED]"
-    c.ClientCertKey = "[REDACTED]"
+    if c.ClientCert != "" {
+        c.ClientCert = "[REDACTED]"
+    }
+    if c.ClientCertKey != "" {
+        c.ClientCertKey = "[REDACTED]"
+    }
     return fmt.Sprintf("%+v", c)
 }
 ```
 
-Add a corresponding test asserting that debug output never contains the literal PEM header `-----BEGIN`.
+Only redact when a value is actually present, so debug output for configurations that don't use cert auth is not polluted with `[REDACTED]` strings.
+
+Add corresponding tests:
+- When `ClientCert` and `ClientCertKey` are set, debug output contains `[REDACTED]` and never contains `-----BEGIN`
+- When `ClientCert` and `ClientCertKey` are empty (non-cert-auth config), the fields appear as empty strings in debug output, not `[REDACTED]`
 
 ### `merge()` additions
 
