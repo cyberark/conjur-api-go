@@ -343,7 +343,7 @@ Follows the table-driven pattern in `TestConfig_Validate`:
 - Valid cert config (with `ServiceID`, `ClientCertFile`, `ClientCertKeyFile`) passes
 - Missing `ServiceID` returns error containing `"Must specify a ServiceID when using cert"`
 - Missing cert material returns appropriate error
-- `"cert"` with `JWTHostID` empty passes (SPIFFE mode)
+- `"cert"` with `CertHostID` empty passes (SPIFFE mode)
 - `"cert"` with a Conjur Cloud `ApplianceURL` returns an error
 - Debug log output for a failing cert config never contains `-----BEGIN` (private key redaction)
 

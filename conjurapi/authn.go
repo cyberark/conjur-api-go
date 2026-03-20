@@ -237,6 +237,25 @@ func (c *Client) InternalAuthenticate() ([]byte, error) {
 	return c.authenticator.RefreshToken()
 }
 
+// CertAuthenticate obtains a Conjur access token using the authn-cert (mTLS) authenticator.
+// The client certificate is presented automatically during the TLS handshake; no credential
+// is included in the request body.
+func (c *Client) CertAuthenticate(hostID string) ([]byte, error) {
+	if isConjurCloudURL(c.config.ApplianceURL) {
+		return nil, errors.New("Certificate authentication is not supported in Secrets Manager SaaS")
+	}
+	req, err := c.CertAuthenticateRequest(hostID)
+	if err != nil {
+		return nil, err
+	}
+	logging.ApiLog.Debugf("Authenticating with authn-cert, service ID: %s", c.config.ServiceID)
+	res, err := c.submitRequestWithCustomAuth(req)
+	if err != nil {
+		return nil, err
+	}
+	return response.DataResponse(res)
+}
+
 // WhoAmI obtains information on the current user.
 func (c *Client) WhoAmI() ([]byte, error) {
 	req, err := c.WhoAmIRequest()

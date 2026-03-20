@@ -1,6 +1,8 @@
 package conjurapi
 
 import (
+	"crypto/tls"
+	"encoding/pem"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -603,6 +605,54 @@ func TestClient_createHttpClient(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
 	})
+
+	t.Run("Creates mTLS client for cert AuthnType without CA cert", func(t *testing.T) {
+		certPEM, keyPEM := generateTestCertPEM(t)
+		config := Config{
+			Account:       "account",
+			ApplianceURL:  "https://conjur.example.com",
+			AuthnType:     "cert",
+			ClientCert:    certPEM,
+			ClientCertKey: keyPEM,
+		}
+		client, err := createHttpClient(config)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+	})
+
+	t.Run("Creates mTLS client for cert AuthnType with custom CA cert", func(t *testing.T) {
+		certPEM, keyPEM := generateTestCertPEM(t)
+		config := Config{
+			Account:       "account",
+			ApplianceURL:  "https://conjur.example.com",
+			AuthnType:     "cert",
+			SSLCert:       sample_cert,
+			ClientCert:    certPEM,
+			ClientCertKey: keyPEM,
+		}
+		client, err := createHttpClient(config)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+	})
+
+	t.Run("Returns error for cert AuthnType with invalid CA cert", func(t *testing.T) {
+		certPEM, keyPEM := generateTestCertPEM(t)
+		config := Config{
+			Account:       "account",
+			ApplianceURL:  "https://conjur.example.com",
+			AuthnType:     "cert",
+			SSLCert:       "not-a-valid-cert",
+			ClientCert:    certPEM,
+			ClientCertKey: keyPEM,
+		}
+		client, err := createHttpClient(config)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "Can't append Secrets Manager SSL cert")
+		assert.Nil(t, client)
+	})
 }
 
 func TestClient_newHTTPSClient(t *testing.T) {
@@ -908,4 +958,342 @@ func TestHttpClient_RespectsNoProxyEnv(t *testing.T) {
 	if !targetCalled {
 		t.Errorf("Target server was not called")
 	}
+}
+
+// mockConjurServerWithCert creates a plain-HTTP test server that handles authn-cert
+// authenticate requests for service "test-cert-service" and account "myaccount".
+// On success it returns sample_token (a valid Conjur access token) so that
+// newClientFromCertConfig can call client.RefreshToken() without error.
+// It responds 401 when the URL path contains "unauthorized-host".
+func mockConjurServerWithCert() *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		basePath := "/authn-cert/test-cert-service/myaccount"
+		if r.Method != http.MethodPost || !strings.HasPrefix(r.URL.Path, basePath) {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		// Unauthorized host → 401
+		if strings.Contains(r.URL.Path, "unauthorized-host") {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		// All valid authn-cert requests return a well-formed Conjur token so that
+		// callers that invoke client.RefreshToken() can parse the response.
+		if strings.HasSuffix(r.URL.Path, "/authenticate") {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(sample_token))
+			return
+		}
+
+		w.WriteHeader(http.StatusNotFound)
+	}))
+}
+
+// mockConjurTLSServerWithCert creates an HTTPS test server with the same authn-cert
+// handler as mockConjurServerWithCert. It returns the server and the PEM-encoded
+// server certificate so callers can trust it via config.SSLCert.
+func mockConjurTLSServerWithCert() (*httptest.Server, string) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		basePath := "/authn-cert/test-cert-service/myaccount"
+		if r.Method != http.MethodPost || !strings.HasPrefix(r.URL.Path, basePath) {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if strings.Contains(r.URL.Path, "unauthorized-host") {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		if strings.HasSuffix(r.URL.Path, "/authenticate") {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(sample_token))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	})
+	server := httptest.NewTLSServer(handler)
+	certDER := server.TLS.Certificates[0].Certificate[0]
+	serverCertPEM := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER}))
+	return server, serverCertPEM
+}
+
+func TestNewClientFromCertificate(t *testing.T) {
+	t.Run("Has authenticator of type CertAuthenticator", func(t *testing.T) {
+		certPEM, keyPEM := generateTestCertPEM(t)
+		config := Config{
+			Account:       "myaccount",
+			ApplianceURL:  "https://conjur.example.com",
+			AuthnType:     "cert",
+			ServiceID:     "test-cert-service",
+			CertHostID:    "vm-workloads/vm-01",
+			ClientCert:    certPEM,
+			ClientCertKey: keyPEM,
+		}
+
+		client, err := NewClientFromCertificate(config)
+
+		require.NoError(t, err)
+		require.NotNil(t, client)
+		assert.IsType(t, &authn.CertAuthenticator{}, client.authenticator)
+	})
+
+	t.Run("CertHostID is stored on authenticator", func(t *testing.T) {
+		certPEM, keyPEM := generateTestCertPEM(t)
+		config := Config{
+			Account:       "myaccount",
+			ApplianceURL:  "https://conjur.example.com",
+			AuthnType:     "cert",
+			ServiceID:     "test-cert-service",
+			CertHostID:    "vm-workloads/vm-01",
+			ClientCert:    certPEM,
+			ClientCertKey: keyPEM,
+		}
+
+		client, err := NewClientFromCertificate(config)
+
+		require.NoError(t, err)
+		certAuth := client.authenticator.(*authn.CertAuthenticator)
+		assert.Equal(t, "vm-workloads/vm-01", certAuth.HostID)
+	})
+
+	t.Run("Empty CertHostID stored on authenticator (SPIFFE mode)", func(t *testing.T) {
+		certPEM, keyPEM := generateTestCertPEM(t)
+		config := Config{
+			Account:       "myaccount",
+			ApplianceURL:  "https://conjur.example.com",
+			AuthnType:     "cert",
+			ServiceID:     "test-cert-service",
+			CertHostID:    "",
+			ClientCert:    certPEM,
+			ClientCertKey: keyPEM,
+		}
+
+		client, err := NewClientFromCertificate(config)
+
+		require.NoError(t, err)
+		certAuth := client.authenticator.(*authn.CertAuthenticator)
+		assert.Equal(t, "", certAuth.HostID)
+	})
+
+	t.Run("Returns error when ClientCertFile does not exist", func(t *testing.T) {
+		config := Config{
+			Account:           "myaccount",
+			ApplianceURL:      "https://conjur.example.com",
+			AuthnType:         "cert",
+			ServiceID:         "test-cert-service",
+			CertHostID:        "vm-01",
+			ClientCertFile:    "/nonexistent/cert.pem",
+			ClientCertKeyFile: "/nonexistent/key.pem",
+		}
+
+		// Eager cert loading in NewClientFromCertificate returns a clear error.
+		client, err := NewClientFromCertificate(config)
+		require.Error(t, err)
+		assert.Nil(t, client)
+		assert.Contains(t, err.Error(), "cannot load client certificate")
+	})
+}
+
+func TestClient_CertAuthenticate(t *testing.T) {
+	t.Run("Returns error for Conjur Cloud URL (SaaS guard)", func(t *testing.T) {
+		certPEM, keyPEM := generateTestCertPEM(t)
+		client := &Client{
+			config: Config{
+				Account:       "conjur",
+				ApplianceURL:  "https://myorg.secretsmgr.cyberark.cloud",
+				AuthnType:     "cert",
+				ServiceID:     "acme-vm",
+				ClientCert:    certPEM,
+				ClientCertKey: keyPEM,
+			},
+			httpClient: &http.Client{},
+		}
+
+		token, err := client.CertAuthenticate("vm-workloads/vm-01")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "Certificate authentication is not supported in Secrets Manager SaaS")
+		assert.Nil(t, token)
+	})
+
+	t.Run("Returns error when server returns 401", func(t *testing.T) {
+		server := mockConjurServerWithCert()
+		defer server.Close()
+
+		certPEM, keyPEM := generateTestCertPEM(t)
+		client := &Client{
+			config: Config{
+				Account:       "myaccount",
+				ApplianceURL:  server.URL,
+				AuthnType:     "cert",
+				ServiceID:     "test-cert-service",
+				ClientCert:    certPEM,
+				ClientCertKey: keyPEM,
+			},
+			httpClient: &http.Client{},
+		}
+
+		token, err := client.CertAuthenticate("unauthorized-host")
+
+		require.Error(t, err)
+		assert.Nil(t, token)
+	})
+}
+
+func TestNewMTLSClient(t *testing.T) {
+	t.Run("GetClientCertificate callback returns cert for valid inline PEM", func(t *testing.T) {
+		certPEM, keyPEM := generateTestCertPEM(t)
+		config := Config{
+			ClientCert:    certPEM,
+			ClientCertKey: keyPEM,
+		}
+
+		client, err := newMTLSClient(nil, config)
+		require.NoError(t, err)
+
+		// Invoke the callback directly — no TLS server needed.
+		transport := client.Transport.(*http.Transport)
+		tlsCert, err := transport.TLSClientConfig.GetClientCertificate(nil)
+
+		require.NoError(t, err)
+		require.NotNil(t, tlsCert)
+		assert.NotEmpty(t, tlsCert.Certificate)
+	})
+
+	t.Run("GetClientCertificate callback returns error when cert file is missing", func(t *testing.T) {
+		config := Config{
+			ClientCertFile:    "/nonexistent/cert.pem",
+			ClientCertKeyFile: "/nonexistent/key.pem",
+		}
+
+		client, err := newMTLSClient(nil, config)
+		require.NoError(t, err) // client creation itself is lazy
+
+		transport := client.Transport.(*http.Transport)
+		tlsCert, err := transport.TLSClientConfig.GetClientCertificate(nil)
+
+		require.Error(t, err)
+		assert.Nil(t, tlsCert)
+		assert.Contains(t, err.Error(), "failed to read client certificate file")
+	})
+
+	t.Run("Returns error immediately for invalid inline PEM", func(t *testing.T) {
+		config := Config{
+			ClientCert:    "not-a-valid-pem",
+			ClientCertKey: "not-a-valid-key",
+		}
+
+		_, err := newMTLSClient(nil, config)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to parse client certificate and key")
+	})
+
+	t.Run("MinVersion is TLS 1.2", func(t *testing.T) {
+		certPEM, keyPEM := generateTestCertPEM(t)
+		config := Config{ClientCert: certPEM, ClientCertKey: keyPEM}
+
+		client, err := newMTLSClient(nil, config)
+		require.NoError(t, err)
+
+		transport := client.Transport.(*http.Transport)
+		assert.Equal(t, uint16(tls.VersionTLS12), transport.TLSClientConfig.MinVersion)
+	})
+}
+
+func TestNewClientFromCertConfig(t *testing.T) {
+	t.Run("Returns error when NewClientFromCertificate fails (invalid CA cert)", func(t *testing.T) {
+		// Trigger the NewClientFromCertificate error path by supplying an
+		// invalid SSLCert — createHttpClient will try to build an mTLS client
+		// with the bad CA bytes and fail.
+		certPEM, keyPEM := generateTestCertPEM(t)
+		config := Config{
+			Account:       "myaccount",
+			ApplianceURL:  "https://conjur.example.com",
+			AuthnType:     "cert",
+			ServiceID:     "test-cert-service",
+			SSLCert:       "not-valid-pem",
+			ClientCert:    certPEM,
+			ClientCertKey: keyPEM,
+		}
+
+		e := ClearEnv()
+		defer e.RestoreEnv()
+		os.Setenv("HOME", t.TempDir())
+
+		client, err := NewClientFromEnvironment(config)
+
+		require.Error(t, err)
+		assert.Nil(t, client)
+		assert.Contains(t, err.Error(), "Can't append Secrets Manager SSL cert")
+	})
+
+	t.Run("Returns error when RefreshToken fails (server returns 401)", func(t *testing.T) {
+		// newClientFromCertConfig is reached via NewClientFromEnvironment.
+		// Simulate: cert auth configured with HTTPS server that rejects with 401.
+		unauthorizedServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusUnauthorized)
+		}))
+		defer unauthorizedServer.Close()
+
+		// Trust the self-signed test server cert.
+		certDER := unauthorizedServer.TLS.Certificates[0].Certificate[0]
+		serverCertPEM := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER}))
+
+		certPEM, keyPEM := generateTestCertPEM(t)
+		config := Config{
+			Account:       "myaccount",
+			ApplianceURL:  unauthorizedServer.URL,
+			AuthnType:     "cert",
+			ServiceID:     "test-cert-service",
+			CertHostID:    "vm-01",
+			ClientCert:    certPEM,
+			ClientCertKey: keyPEM,
+			SSLCert:       serverCertPEM,
+		}
+
+		e := ClearEnv()
+		defer e.RestoreEnv()
+		os.Setenv("HOME", t.TempDir())
+
+		client, err := NewClientFromEnvironment(config)
+
+		require.Error(t, err)
+		assert.Nil(t, client)
+	})
+}
+
+func TestNewClientFromEnvironment_CertAuth(t *testing.T) {
+	// NewClientFromEnvironment routes to cert auth when config.AuthnType is "cert".
+	// The call to newClientFromCertConfig eagerly fetches a token via RefreshToken(),
+	// so the mock server must return a parseable Conjur access token.
+	t.Run("Uses CertAuthenticator when AuthnType is cert", func(t *testing.T) {
+		server, serverCertPEM := mockConjurTLSServerWithCert()
+		defer server.Close()
+
+		e := ClearEnv()
+		defer e.RestoreEnv()
+
+		certPEM, keyPEM := generateTestCertPEM(t)
+		certFile := writeTempFile(t, certPEM)
+		keyFile := writeTempFile(t, keyPEM)
+		os.Setenv("HOME", t.TempDir())
+
+		config := Config{
+			Account:           "myaccount",
+			ApplianceURL:      server.URL,
+			AuthnType:         "cert",
+			ServiceID:         "test-cert-service",
+			CertHostID:        "vm-workloads/vm-01",
+			ClientCertFile:    certFile,
+			ClientCertKeyFile: keyFile,
+			SSLCert:           serverCertPEM,
+		}
+
+		client, err := NewClientFromEnvironment(config)
+
+		require.NoError(t, err)
+		require.NotNil(t, client)
+		assert.IsType(t, &authn.CertAuthenticator{}, client.authenticator)
+	})
 }

@@ -1,15 +1,24 @@
 package conjurapi
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/pem"
 	"fmt"
+	"math/big"
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TempFileForTesting(prefix string, fileContents string, t *testing.T) (string, error) {
@@ -125,7 +134,7 @@ func TestConfig_Validate(t *testing.T) {
 
 		errString := err.Error()
 		assert.Contains(t, errString, "Must specify an ApplianceURL")
-		assert.Contains(t, errString, "config: &{Account:account ApplianceURL: ")
+		assert.Contains(t, errString, "config: {Account:account ApplianceURL: ")
 	})
 
 	t.Run("Validates HTTP timeout", func(t *testing.T) {
@@ -201,6 +210,194 @@ func TestConfig_Validate(t *testing.T) {
 
 		errString := err.Error()
 		assert.Contains(t, errString, "Must specify a HostID when using azure authentication")
+	})
+
+	t.Run("cert authentication", func(t *testing.T) {
+		certPEM, keyPEM := generateTestCertPEM(t)
+
+		t.Run("Valid cert config passes validation", func(t *testing.T) {
+			config := Config{
+				Account:       "account",
+				ApplianceURL:  "https://appliance-url",
+				AuthnType:     "cert",
+				ServiceID:     "acme-vm",
+				ClientCert:    certPEM,
+				ClientCertKey: keyPEM,
+				Environment:   EnvironmentSH,
+			}
+			err := config.Validate()
+			assert.NoError(t, err)
+		})
+
+		t.Run("Valid cert config with file paths passes validation", func(t *testing.T) {
+			certFile := writeTempFile(t, certPEM)
+			keyFile := writeTempFile(t, keyPEM)
+			config := Config{
+				Account:           "account",
+				ApplianceURL:      "https://appliance-url",
+				AuthnType:         "cert",
+				ServiceID:         "acme-vm",
+				ClientCertFile:    certFile,
+				ClientCertKeyFile: keyFile,
+				Environment:       EnvironmentSH,
+			}
+			err := config.Validate()
+			assert.NoError(t, err)
+		})
+
+		t.Run("Empty CertHostID passes validation (SPIFFE mode)", func(t *testing.T) {
+			config := Config{
+				Account:       "account",
+				ApplianceURL:  "https://appliance-url",
+				AuthnType:     "cert",
+				ServiceID:     "acme-vm",
+				ClientCert:    certPEM,
+				ClientCertKey: keyPEM,
+				CertHostID:    "",
+				Environment:   EnvironmentSH,
+			}
+			err := config.Validate()
+			assert.NoError(t, err)
+		})
+
+		t.Run("Returns error when ServiceID is missing", func(t *testing.T) {
+			config := Config{
+				Account:       "account",
+				ApplianceURL:  "https://appliance-url",
+				AuthnType:     "cert",
+				ClientCert:    certPEM,
+				ClientCertKey: keyPEM,
+				Environment:   EnvironmentSH,
+			}
+			err := config.Validate()
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "Must specify a ServiceID when using cert")
+		})
+
+		t.Run("Returns error when client certificate is missing", func(t *testing.T) {
+			config := Config{
+				Account:       "account",
+				ApplianceURL:  "https://appliance-url",
+				AuthnType:     "cert",
+				ServiceID:     "acme-vm",
+				ClientCertKey: keyPEM,
+				Environment:   EnvironmentSH,
+			}
+			err := config.Validate()
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "Must specify a client certificate")
+		})
+
+		t.Run("Returns error when client certificate key is missing", func(t *testing.T) {
+			config := Config{
+				Account:      "account",
+				ApplianceURL: "https://appliance-url",
+				AuthnType:    "cert",
+				ServiceID:    "acme-vm",
+				ClientCert:   certPEM,
+				Environment:  EnvironmentSH,
+			}
+			err := config.Validate()
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "Must specify a client certificate key")
+		})
+
+		t.Run("Returns error when used with Conjur Cloud URL", func(t *testing.T) {
+			config := Config{
+				Account:       "conjur",
+				ApplianceURL:  "https://myorg.secretsmgr.cyberark.cloud",
+				AuthnType:     "cert",
+				ServiceID:     "acme-vm",
+				ClientCert:    certPEM,
+				ClientCertKey: keyPEM,
+			}
+			err := config.Validate()
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "Certificate authentication is not supported in Secrets Manager SaaS")
+		})
+
+		t.Run("Returns error when used with HTTP URL", func(t *testing.T) {
+			config := Config{
+				Account:       "account",
+				ApplianceURL:  "http://conjur.example.com",
+				AuthnType:     "cert",
+				ServiceID:     "acme-vm",
+				ClientCert:    certPEM,
+				ClientCertKey: keyPEM,
+				Environment:   EnvironmentSH,
+			}
+			err := config.Validate()
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "Certificate authentication requires an HTTPS connection")
+		})
+
+		t.Run("Returns error when inline PEM is malformed", func(t *testing.T) {
+			config := Config{
+				Account:       "account",
+				ApplianceURL:  "https://conjur.example.com",
+				AuthnType:     "cert",
+				ServiceID:     "acme-vm",
+				ClientCert:    "not-a-valid-pem",
+				ClientCertKey: "not-a-valid-key",
+				Environment:   EnvironmentSH,
+			}
+			err := config.Validate()
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "invalid client certificate or key")
+		})
+
+		t.Run("Returns error when inline cert and key are mismatched", func(t *testing.T) {
+			_, keyPEM2 := generateTestCertPEM(t)
+			config := Config{
+				Account:       "account",
+				ApplianceURL:  "https://conjur.example.com",
+				AuthnType:     "cert",
+				ServiceID:     "acme-vm",
+				ClientCert:    certPEM,
+				ClientCertKey: keyPEM2,
+				Environment:   EnvironmentSH,
+			}
+			err := config.Validate()
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "invalid client certificate or key")
+		})
+	})
+
+	t.Run("Config.String() redacts private key material in debug logging", func(t *testing.T) {
+		certPEM, keyPEM := generateTestCertPEM(t)
+
+		t.Run("Redacts ClientCert and ClientCertKey when set", func(t *testing.T) {
+			config := Config{
+				Account:       "account",
+				ClientCert:    certPEM,
+				ClientCertKey: keyPEM,
+			}
+			result := config.String()
+			assert.Contains(t, result, "[REDACTED]")
+			assert.NotContains(t, result, "-----BEGIN")
+		})
+
+		t.Run("Does not produce REDACTED when cert fields are empty", func(t *testing.T) {
+			config := Config{
+				Account: "account",
+			}
+			result := config.String()
+			assert.NotContains(t, result, "[REDACTED]")
+		})
+
+		t.Run("Debug log output does not contain private key material", func(t *testing.T) {
+			config := Config{
+				Account:       "account",
+				ClientCertKey: keyPEM,
+			}
+			logLevel := logging.ApiLog.Level
+			logging.ApiLog.SetLevel(logrus.DebugLevel)
+			defer logging.ApiLog.SetLevel(logLevel)
+
+			err := config.Validate()
+			require.Error(t, err)
+			assert.NotContains(t, err.Error(), "-----BEGIN")
+		})
 	})
 
 	t.Run("Return no error for valid gcp configuration without JWT token or ServiceID", func(t *testing.T) {
@@ -281,6 +478,81 @@ func TestConfig_Validate(t *testing.T) {
 			err := config.Validate()
 			assert.NoError(t, err)
 		})
+	})
+}
+
+func TestConfig_ReadClientCert(t *testing.T) {
+	t.Run("Returns certificate from inline PEM", func(t *testing.T) {
+		certPEM, keyPEM := generateTestCertPEM(t)
+		config := Config{
+			ClientCert:    certPEM,
+			ClientCertKey: keyPEM,
+		}
+		cert, err := config.ReadClientCert()
+		require.NoError(t, err)
+		assert.NotEmpty(t, cert.Certificate)
+	})
+
+	t.Run("Returns certificate from file paths", func(t *testing.T) {
+		certPEM, keyPEM := generateTestCertPEM(t)
+		certFile := writeTempFile(t, certPEM)
+		keyFile := writeTempFile(t, keyPEM)
+		config := Config{
+			ClientCertFile:    certFile,
+			ClientCertKeyFile: keyFile,
+		}
+		cert, err := config.ReadClientCert()
+		require.NoError(t, err)
+		assert.NotEmpty(t, cert.Certificate)
+	})
+
+	t.Run("Inline PEM takes precedence over file paths", func(t *testing.T) {
+		certPEM, keyPEM := generateTestCertPEM(t)
+		config := Config{
+			ClientCert:        certPEM,
+			ClientCertKey:     keyPEM,
+			ClientCertFile:    "/nonexistent/cert.pem", // should be ignored
+			ClientCertKeyFile: "/nonexistent/key.pem",  // should be ignored
+		}
+		cert, err := config.ReadClientCert()
+		require.NoError(t, err)
+		assert.NotEmpty(t, cert.Certificate)
+	})
+
+	t.Run("Returns error when cert file does not exist", func(t *testing.T) {
+		_, keyPEM := generateTestCertPEM(t)
+		keyFile := writeTempFile(t, keyPEM)
+		config := Config{
+			ClientCertFile:    "/nonexistent/cert.pem",
+			ClientCertKeyFile: keyFile,
+		}
+		_, err := config.ReadClientCert()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to read client certificate file")
+	})
+
+	t.Run("Returns error when key file does not exist", func(t *testing.T) {
+		certPEM, _ := generateTestCertPEM(t)
+		certFile := writeTempFile(t, certPEM)
+		config := Config{
+			ClientCertFile:    certFile,
+			ClientCertKeyFile: "/nonexistent/key.pem",
+		}
+		_, err := config.ReadClientCert()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to read client certificate key file")
+	})
+
+	t.Run("Returns error when cert and key are mismatched", func(t *testing.T) {
+		certPEM1, _ := generateTestCertPEM(t)
+		_, keyPEM2 := generateTestCertPEM(t)
+		config := Config{
+			ClientCert:    certPEM1,
+			ClientCertKey: keyPEM2,
+		}
+		_, err := config.ReadClientCert()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to parse client certificate and key")
 	})
 }
 
@@ -377,6 +649,81 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 			})
 		})
 	})
+
+	t.Run("When CONJUR_AUTHN_CERT_SERVICE_ID is set", func(t *testing.T) {
+		e := ClearEnv()
+		defer e.RestoreEnv()
+
+		os.Setenv("CONJUR_ACCOUNT", "account")
+		os.Setenv("CONJUR_APPLIANCE_URL", "appliance-url")
+		os.Setenv("CONJUR_AUTHN_CERT_SERVICE_ID", "acme-vm")
+		os.Setenv("CONJUR_AUTHN_CERT_HOST_ID", "vm-workloads/vm-01")
+
+		t.Run("Defaults AuthnType to cert and sets ServiceID and CertHostID", func(t *testing.T) {
+			config := &Config{}
+			config.mergeEnv()
+
+			assert.EqualValues(t, *config, Config{
+				Account:      "account",
+				ApplianceURL: "appliance-url",
+				AuthnType:    "cert",
+				ServiceID:    "acme-vm",
+				CertHostID:   "vm-workloads/vm-01",
+			})
+		})
+	})
+
+	t.Run("When CONJUR_AUTHN_CERT_FILE and CONJUR_AUTHN_CERT_KEY_FILE are set", func(t *testing.T) {
+		e := ClearEnv()
+		defer e.RestoreEnv()
+
+		os.Setenv("CONJUR_ACCOUNT", "account")
+		os.Setenv("CONJUR_AUTHN_CERT_FILE", "/path/to/cert.pem")
+		os.Setenv("CONJUR_AUTHN_CERT_KEY_FILE", "/path/to/key.pem")
+
+		t.Run("Sets ClientCertFile and ClientCertKeyFile in config", func(t *testing.T) {
+			config := &Config{}
+			config.mergeEnv()
+
+			assert.Equal(t, "/path/to/cert.pem", config.ClientCertFile)
+			assert.Equal(t, "/path/to/key.pem", config.ClientCertKeyFile)
+		})
+	})
+}
+
+// generateTestCertPEM creates a self-signed ECDSA certificate and returns
+// the PEM-encoded certificate and private key as strings.
+func generateTestCertPEM(t *testing.T) (certPEM, keyPEM string) {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{CommonName: "test"},
+		NotBefore:    time.Now().Add(-time.Minute),
+		NotAfter:     time.Now().Add(time.Hour),
+	}
+	certDER, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	require.NoError(t, err)
+
+	certPEM = string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER}))
+
+	keyDER, err := x509.MarshalECPrivateKey(key)
+	require.NoError(t, err)
+	keyPEM = string(pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}))
+	return
+}
+
+// writeTempFile writes content to a temporary file and returns its path.
+func writeTempFile(t *testing.T, content string) string {
+	t.Helper()
+	f, err := os.CreateTemp(t.TempDir(), "conjur-test-*")
+	require.NoError(t, err)
+	_, err = f.WriteString(content)
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	return f.Name()
 }
 
 var versiontests = []struct {

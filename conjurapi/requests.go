@@ -250,6 +250,27 @@ func (c *Client) GCPAuthenticateRequest(gcpToken string) (*http.Request, error) 
 	return c.JWTAuthenticateRequest(gcpToken, "")
 }
 
+// CertAuthenticateRequest builds the POST request for authn-cert authentication.
+// For request mode, hostID must be the Conjur host path (e.g. "host/vm-workloads/vm-01").
+// For SPIFFE mode, pass an empty string — the server derives the host from the cert's SAN URI.
+func (c *Client) CertAuthenticateRequest(hostID string) (*http.Request, error) {
+	var authenticateURL string
+	if hostID != "" {
+		authenticateURL = makeRouterURL(
+			c.authnURL(c.config.AuthnType, c.config.ServiceID),
+			url.PathEscape(ensureHostPrefix(hostID)), "authenticate").String()
+	} else {
+		authenticateURL = makeRouterURL(
+			c.authnURL(c.config.AuthnType, c.config.ServiceID), "authenticate").String()
+	}
+	req, err := http.NewRequest(http.MethodPost, authenticateURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
+	return req, nil
+}
+
 // RotateAPIKeyRequest requires roleID argument to be at least partially-qualified
 // ID of from [<account>:]<kind>:<identifier>.
 func (c *Client) RotateAPIKeyRequest(roleID string) (*http.Request, error) {

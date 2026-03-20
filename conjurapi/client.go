@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
@@ -230,12 +231,35 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 		return NewClientFromJwt(config)
 	}
 
+	if config.AuthnType == "cert" {
+		return newClientFromCertConfig(config)
+	}
+
 	loginPair, err := LoginPairFromEnv()
 	if err == nil && loginPair.Login != "" && loginPair.APIKey != "" {
 		return NewClientFromKey(config, *loginPair)
 	}
 
 	return newClientFromStoredCredentials(config)
+}
+
+// NewClientFromCertificate creates a Client that authenticates using the authn-cert
+// (mutual TLS) authenticator. The mTLS transport is configured automatically from
+// config.ClientCertFile/ClientCertKeyFile or config.ClientCert/ClientCertKey.
+func NewClientFromCertificate(config Config) (*Client, error) {
+	// Eagerly verify the certificate can be loaded to surface config errors at
+	// construction time rather than at the first TLS handshake.
+	if _, err := config.ReadClientCert(); err != nil {
+		return nil, fmt.Errorf("cannot load client certificate: %w", err)
+	}
+	authenticator := &authn.CertAuthenticator{
+		HostID: config.CertHostID,
+	}
+	client, err := newClientWithAuthenticator(config, authenticator)
+	if err == nil {
+		authenticator.Authenticate = client.CertAuthenticate
+	}
+	return client, err
 }
 
 func NewClientFromJwt(config Config) (*Client, error) {
@@ -291,6 +315,10 @@ func newClientFromStoredCredentials(config Config) (*Client, error) {
 
 	if config.AuthnType == "gcp" {
 		return newClientFromStoredGCPConfig(config)
+	}
+
+	if config.AuthnType == "cert" {
+		return newClientFromCertConfig(config)
 	}
 
 	// Attempt to load credentials from whatever storage provider is configured
@@ -373,6 +401,20 @@ func newClientFromStoredGCPConfig(config Config) (*Client, error) {
 	return client, nil
 }
 
+func newClientFromCertConfig(config Config) (*Client, error) {
+	client, err := NewClientFromCertificate(config)
+	if err != nil {
+		return nil, err
+	}
+
+	err = client.RefreshToken()
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
 func (c *Client) GetAuthenticator() Authenticator {
 	return c.authenticator
 }
@@ -431,6 +473,21 @@ func (c *Client) V2() *ClientV2 {
 func createHttpClient(config Config) (*http.Client, error) {
 	var httpClient *http.Client
 
+	if config.AuthnType == "cert" {
+		if !strings.HasPrefix(strings.ToLower(config.BaseURL()), "https://") {
+			return nil, fmt.Errorf("certificate authentication requires an HTTPS connection")
+		}
+		var caCert []byte
+		if config.IsHttps() {
+			var err error
+			caCert, err = config.ReadSSLCert()
+			if err != nil {
+				return nil, err
+			}
+		}
+		return newMTLSClient(caCert, config)
+	}
+
 	if config.IsHttps() {
 		cert, err := config.ReadSSLCert()
 		if err != nil {
@@ -470,6 +527,50 @@ func newHTTPSClient(cert []byte, config Config) (*http.Client, error) {
 	//TODO: What if server cert is rotated
 	tr := newHTTPTransport(config)
 	tr.TLSClientConfig = &tls.Config{RootCAs: pool}
+	return &http.Client{Transport: tr, Timeout: time.Second * time.Duration(config.GetHttpTimeout())}, nil
+}
+
+// newMTLSClient builds an HTTP client for authn-cert mutual TLS.
+// When file paths are configured the certificate is re-read on every TLS handshake, enabling
+// transparent rotation for long-running workloads. When inline PEM is provided the certificate
+// is parsed once at construction time — inline content never changes so re-parsing is unnecessary.
+// If caCert is non-empty it is added to a custom RootCAs pool; otherwise the system trust store is used.
+func newMTLSClient(caCert []byte, config Config) (*http.Client, error) {
+	tr := newHTTPTransport(config)
+
+	var getCert func(*tls.CertificateRequestInfo) (*tls.Certificate, error)
+	if config.ClientCert != "" && config.ClientCertKey != "" {
+		// Inline PEM: parse once, return from closure on every handshake.
+		cert, err := config.ReadClientCert()
+		if err != nil {
+			return nil, err
+		}
+		getCert = func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			return &cert, nil
+		}
+	} else {
+		// File paths: re-read on every handshake to support transparent rotation.
+		getCert = func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			cert, err := config.ReadClientCert()
+			if err != nil {
+				return nil, err
+			}
+			return &cert, nil
+		}
+	}
+
+	tlsCfg := &tls.Config{
+		MinVersion:           tls.VersionTLS12,
+		GetClientCertificate: getCert,
+	}
+	if len(caCert) > 0 {
+		pool := x509.NewCertPool()
+		if !pool.AppendCertsFromPEM(caCert) {
+			return nil, fmt.Errorf("Can't append Secrets Manager SSL cert")
+		}
+		tlsCfg.RootCAs = pool
+	}
+	tr.TLSClientConfig = tlsCfg
 	return &http.Client{Transport: tr, Timeout: time.Second * time.Duration(config.GetHttpTimeout())}, nil
 }
 
