@@ -140,83 +140,93 @@ conjur, err := conjurapi.NewClientFromKey(config,
 
 ### Authentication Methods
 
-#### API Key Authentication
+All authentication methods require the following common configuration. Use `conjurapi.LoadConfig()` to load configuration from environment variables.
 
-The Quick Start example above demonstrates API key authentication using `NewClientFromKey()`. This is the most common authentication method for legacy applications.
+| Config Field | Environment Variable | Required | Description |
+|---|---|---|---|
+| `Account` | `CONJUR_ACCOUNT` | Yes | Conjur account name |
+| `ApplianceURL` | `CONJUR_APPLIANCE_URL` | Yes | Conjur server URL |
+| `SSLCertPath` | `CONJUR_CERT_FILE` | No | Path to Conjur SSL certificate |
+| `SSLCert` | `CONJUR_SSL_CERTIFICATE` | No | Conjur SSL certificate content |
 
-#### JWT Authentication
-
-You can authenticate using JWT tokens via environment variables. This method is useful for containerized environments and CI/CD pipelines and is more secure than using API keys.
-
-##### Environment Variables Required
-
-- `CONJUR_APPLIANCE_URL` - The URL of your Conjur instance
-- `CONJUR_ACCOUNT` - Your Conjur account name
-- `CONJUR_AUTHN_JWT_SERVICE_ID` - The JWT authenticator service ID
-- `CONJUR_AUTHN_JWT_TOKEN` - The JWT token
-- `CONJUR_SECRET_ID` - The identifier of the secret to retrieve
-
-##### Example Code
+#### API Key
 
 ```go
-package main
+conjur, err := conjurapi.NewClientFromKey(config, authn.LoginPair{Login: "mylogin", APIKey: "myapikey"})
+```
 
-import (
-    "fmt"
-    "log"
-    "os"
+See the [Quick Start](#quick-start) example for full usage.
 
-    "github.com/cyberark/conjur-api-go/conjurapi"
-)
+#### JWT
 
-func checkEnvironmentVariables() error {
-    variables := []string{
-        "CONJUR_APPLIANCE_URL",
-        "CONJUR_ACCOUNT",
-        "CONJUR_AUTHN_JWT_SERVICE_ID",
-        "CONJUR_AUTHN_JWT_TOKEN",
-        "CONJUR_SECRET_ID",
-    }
+Authenticate with a JWT token. Automatically selected by `NewClientFromEnvironment()` when `CONJUR_AUTHN_JWT_SERVICE_ID` is set. Falls back to reading the Kubernetes service account token at `/var/run/secrets/kubernetes.io/serviceaccount/token` if no token is provided.
 
-    for _, variable := range variables {
-        if os.Getenv(variable) == "" {
-            return fmt.Errorf("environment variable %s is not set", variable)
-        }
-    }
+| Config Field | Environment Variable | Required | Description |
+|---|---|---|---|
+| `AuthnType` | `CONJUR_AUTHN_TYPE` | Yes | Must be `"jwt"` (set automatically by `CONJUR_AUTHN_JWT_SERVICE_ID`) |
+| `ServiceID` | `CONJUR_AUTHN_JWT_SERVICE_ID` / `CONJUR_SERVICE_ID` | Yes | JWT authenticator service ID |
+| `JWTContent` | `CONJUR_AUTHN_JWT_TOKEN` | Yes* | JWT token content |
+| `JWTFilePath` | `JWT_TOKEN_PATH` | Yes* | Path to a file containing the JWT token |
+| `JWTHostID` | `CONJUR_AUTHN_JWT_HOST_ID` | No | Host identity for JWT authentication |
 
-    return nil
-}
+\* Provide either `JWTContent` or `JWTFilePath`. If `JWTFilePath` is set, the token is read from that file.
 
-func main() {
-    // Check for required environment variables
-    if err := checkEnvironmentVariables(); err != nil {
-        log.Fatalf("%v", err)
-    }
+```go
+conjur, err := conjurapi.NewClientFromJwt(config)
+// Or via NewClientFromEnvironment (auto-detected when CONJUR_AUTHN_JWT_SERVICE_ID is set):
+conjur, err := conjurapi.NewClientFromEnvironment(config)
+```
 
-    // Get the secret ID to retrieve
-    variableIdentifier := os.Getenv("CONJUR_SECRET_ID")
+#### AWS IAM
 
-    // Load configuration from environment variables
-    config, err := conjurapi.LoadConfig()
-    if err != nil {
-        log.Fatalf("Cannot load configuration: %s", err)
-    }
+Authenticate using AWS IAM credentials. The client signs an AWS STS `GetCallerIdentity` request and sends the signed headers to Conjur. Credentials are loaded via the AWS SDK default credential chain (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`, `AWS_REGION`). Defaults to region `us-east-1`.
 
-    // Create a new Conjur client using environment variables
-    conjur, err := conjurapi.NewClientFromEnvironment(config)
-    if err != nil {
-        log.Fatalf("Cannot create client: %s", err)
-    }
+| Config Field | Environment Variable | Required | Description |
+|---|---|---|---|
+| `AuthnType` | `CONJUR_AUTHN_TYPE` | Yes | Must be `"iam"` |
+| `ServiceID` | `CONJUR_SERVICE_ID` | Yes | IAM authenticator service ID |
+| `JWTHostID` | `CONJUR_AUTHN_JWT_HOST_ID` | Yes | Conjur host ID (AWS IAM role identifier) |
 
-    // Retrieve the secret value from Conjur
-    secretValue, err := conjur.RetrieveSecret(variableIdentifier)
-    if err != nil {
-        log.Fatalf("Cannot retrieve secret %s: %s", variableIdentifier, err)
-    }
+```go
+config.AuthnType = "iam"
+config.ServiceID = "prod"
+config.JWTHostID = "myapp/aws-role"
+conjur, err := conjurapi.NewClientFromAWSCredentials(config)
+```
 
-    // Print the secret value to stdout
-    fmt.Printf("%s", string(secretValue))
-}
+#### Azure
+
+Authenticate using an Azure managed identity token from the Instance Metadata Service (IMDS). Supports system-assigned and user-assigned identities.
+
+| Config Field | Environment Variable | Required | Description |
+|---|---|---|---|
+| `AuthnType` | `CONJUR_AUTHN_TYPE` | Yes | Must be `"azure"` |
+| `ServiceID` | `CONJUR_SERVICE_ID` | Yes | Azure authenticator service ID |
+| `JWTHostID` | `CONJUR_AUTHN_JWT_HOST_ID` | Yes | Conjur host ID for the Azure workload |
+| `JWTContent` | `CONJUR_AUTHN_JWT_TOKEN` | No | Pre-fetched Azure AD token (fetched from IMDS if empty) |
+| `AzureClientID` | `CONJUR_AUTHN_AZURE_CLIENT_ID` | No | Client ID for user-assigned identity |
+
+```go
+config.AuthnType = "azure"
+config.ServiceID = "prod"
+config.JWTHostID = "data/test/azure-apps/myVM"
+conjur, err := conjurapi.NewClientFromAzureCredentials(config)
+```
+
+#### GCP
+
+Authenticate using a GCP identity token from the metadata server. The token audience is constructed as `conjur/{account}/host/{hostID}`. Unlike AWS IAM and Azure, GCP does **not** require a `ServiceID`.
+
+| Config Field | Environment Variable | Required | Description |
+|---|---|---|---|
+| `AuthnType` | `CONJUR_AUTHN_TYPE` | Yes | Must be `"gcp"` |
+| `JWTHostID` | `CONJUR_AUTHN_JWT_HOST_ID` | Yes | Conjur host ID for the GCP workload |
+| `JWTContent` | `CONJUR_AUTHN_JWT_TOKEN` | No | Pre-fetched GCP identity token (fetched from metadata server if empty) |
+
+```go
+config.AuthnType = "gcp"
+config.JWTHostID = "myapp/gcp-instance"
+conjur, err := conjurapi.NewClientFromGCPCredentials(config, "") // "" uses default metadata URL
 ```
 
 ## Contributing
@@ -228,6 +238,6 @@ guide][contrib].
 
 ## License
 
-Copyright (c) 2022-2025 CyberArk Software Ltd. All rights reserved.
+Copyright (c) 2022-2026 CyberArk Software Ltd. All rights reserved.
 
 This repository is licensed under Apache License 2.0 - see [`LICENSE`](LICENSE) for more details.
