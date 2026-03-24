@@ -43,6 +43,12 @@ services:
       CONJUR_AUTHN_LOGIN: admin
       CONJUR_AUTHN_API_KEY:
       GO_VERSION:
+    # Joined to the 'conjur' network so the container can resolve
+    # conjur-leader-1.mycompany.local when cert tests are active.
+    # The 'default' network entry keeps connectivity to the OSS conjur service.
+    networks:
+      - default
+      - conjur
 
   test-1.25:
     build:
@@ -62,6 +68,10 @@ services:
       CONJUR_AUTHN_LOGIN: admin
       CONJUR_AUTHN_API_KEY:
       GO_VERSION:
+    # See note on test-1.26 networks above.
+    networks:
+      - default
+      - conjur
 
   dev:
     build:
@@ -92,3 +102,40 @@ services:
       AUDIENCE: "conjur"
       SUBJECT: "test-workload"
       EMAIL: "workload@example.com"
+
+  # Enterprise appliance — only started when the "cert" profile is active
+  # (i.e. when TEST_CERT=true and setup-cert-auth.sh is invoked from test.sh).
+  # The appliance image is self-contained (embedded postgres); no separate DB needed.
+  #
+  # registry.tld is the standard CyberArk private registry hostname. All developers
+  # are expected to have it mapped in /etc/hosts (or local DNS).
+  conjur-leader:
+    image: registry.tld/conjur-appliance:${APPLIANCE_TAG:-5.0-stable}
+    container_name: conjur-leader-1.mycompany.local
+    hostname: conjur-leader-1.mycompany.local
+    restart: unless-stopped
+    security_opt:
+      - seccomp:unconfined
+      - no-new-privileges:true
+    environment:
+      CONJUR_LOG_LEVEL: debug
+      CONJUR_HOSTNAME: conjur-leader-1.mycompany.local
+      CONJUR_ACCOUNT: conjur
+      # kics-scan ignore-line
+      CONJUR_ADMIN_PASSWORD: ${CONJUR_ADMIN_PASSWORD:-MySecretP@ss1}
+    networks:
+      conjur:
+        aliases:
+          - conjur-leader-1.mycompany.local
+    profiles:
+      - cert
+
+# The 'conjur' network exists solely for cert-auth (Enterprise appliance) tests.
+# conjur-leader uses a fixed FQDN hostname (conjur-leader-1.mycompany.local) that
+# must match the TLS cert baked in by 'evoke configure master'. Because that FQDN
+# won't resolve on the default network, conjur-leader is placed here with a
+# matching alias, and the test services join both networks.
+# Without TEST_CERT=true this network is created but no service uses it.
+networks:
+  conjur:
+    driver: bridge

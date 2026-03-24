@@ -70,6 +70,21 @@ func TestAuthnCert(t *testing.T) {
 		t.Skip("Skipping certificate authn test. Set TEST_CERT=true to enable.")
 	}
 
+	// When the CI bootstrap script provides a dedicated enterprise appliance for
+	// cert auth (CONJUR_CERT_APPLIANCE_URL), temporarily redirect CONJUR_APPLIANCE_URL
+	// so that NewTestUtils (admin setup) and the cert client both target the enterprise
+	// instance.  t.Setenv is automatically reverted after the test, so other tests in
+	// the same run are not affected.
+	if u := os.Getenv("CONJUR_CERT_APPLIANCE_URL"); u != "" {
+		t.Setenv("CONJUR_APPLIANCE_URL", u)
+	}
+	if k := os.Getenv("CONJUR_CERT_AUTHN_API_KEY"); k != "" {
+		t.Setenv("CONJUR_AUTHN_API_KEY", k)
+	}
+	if cert := os.Getenv("CONJUR_CERT_SSL_CERTIFICATE"); cert != "" {
+		t.Setenv("CONJUR_SSL_CERTIFICATE", cert)
+	}
+
 	serviceID := os.Getenv("TEST_CERT_SERVICE_ID")
 	if serviceID == "" {
 		serviceID = "acme-vm"
@@ -105,6 +120,8 @@ func TestAuthnCert(t *testing.T) {
 		config := Config{
 			ApplianceURL:      conjur.config.ApplianceURL,
 			Account:           conjur.config.Account,
+			SSLCert:           conjur.config.SSLCert,
+			SSLCertPath:       conjur.config.SSLCertPath,
 			AuthnType:         "cert",
 			ServiceID:         serviceID,
 			CertHostID:        "data/test/cert-apps/vm-01",

@@ -18,7 +18,11 @@ exec_on() {
 
 function teardown {
   docker compose logs conjur > "../output/$GO_VERSION/conjur-logs.txt" 2>&1 || true
-  docker compose down -v --remove-orphans
+  if [[ "${TEST_CERT:-false}" == "true" ]]; then
+    docker compose --profile cert down -v --remove-orphans
+  else
+    docker compose down -v --remove-orphans
+  fi
   unset API_PKGS
   unset API_TESTS
 }

@@ -489,7 +489,10 @@ func TestPolicy_DryRunPolicy(t *testing.T) {
 		require.Equal(t, 1, len(resp.Errors))
 		assert.Equal(t, 0, resp.Errors[0].Line)
 		assert.Equal(t, 0, resp.Errors[0].Column)
-		assert.Contains(t, resp.Errors[0].Message, "undefined method 'referenced_records' for")
+		// Ruby's method-error quoting changed across versions (backtick vs straight quote),
+		// so assert the two stable substrings rather than the full formatted string.
+		assert.Contains(t, resp.Errors[0].Message, "undefined method")
+		assert.Contains(t, resp.Errors[0].Message, "referenced_records")
 	})
 
 	t.Run("Returns error on older Conjur versions", func(t *testing.T) {

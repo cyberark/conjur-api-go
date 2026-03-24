@@ -960,10 +960,11 @@ func TestHttpClient_RespectsNoProxyEnv(t *testing.T) {
 	}
 }
 
-// mockConjurServerWithCert creates a plain-HTTP test server that handles authn-cert
-// authenticate requests for service "test-cert-service" and account "myaccount".
-// On success it returns sample_token (a valid Conjur access token) so that
-// newClientFromCertConfig can call client.RefreshToken() without error.
+// mockConjurServerWithCert creates a plain-HTTP (non-TLS) test server that handles
+// authn-cert authenticate requests for service "test-cert-service" and account "myaccount".
+// Plain HTTP is intentional: this helper is only used to test HTTP response-handling
+// logic (e.g. that a 401 is propagated as an error). It does NOT exercise the mTLS
+// transport. For tests that require a real TLS handshake, use mockConjurTLSServerWithCert.
 // It responds 401 when the URL path contains "unauthorized-host".
 func mockConjurServerWithCert() *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

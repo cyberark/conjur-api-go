@@ -45,6 +45,8 @@ pipeline {
     booleanParam(name: 'TEST_AZURE', defaultValue: false, description: 'Run integration tests against Azure')
 
     booleanParam(name: 'TEST_GCP', defaultValue: false, description: 'Run integration tests against GCP')
+
+    booleanParam(name: 'TEST_CERT', defaultValue: false, description: 'Run authn-cert (mTLS) integration tests against a Conjur Enterprise appliance')
   }
 
   stages {
@@ -167,6 +169,21 @@ pipeline {
       steps {
         script {
           INFRAPOOL_AZURE_EXECUTORV2_AGENT_0.agentSh "summon ./bin/test.sh 1.26 $REGISTRY_URL"
+        }
+      }
+    }
+
+    stage('Run Cert tests') {
+      when {
+        expression { params.TEST_CERT }
+      }
+      environment {
+        REGISTRY_URL = "registry.tld"
+        INFRAPOOL_TEST_CERT=true
+      }
+      steps {
+        script {
+          infrapool.agentSh "./bin/test.sh 1.26 $REGISTRY_URL"
         }
       }
     }
