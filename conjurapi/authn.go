@@ -228,7 +228,8 @@ func (c *Client) InternalAuthenticate() ([]byte, error) {
 		} else {
 			// We can't simply refresh the token because it'll require user input. Instead,
 			// we return an error and inform the client/user to login again.
-			return nil, errors.New("No valid OIDC token found. Please login again.")
+			return nil, errors.New("No valid OIDC token found. Please login again. " +
+				"If this error recurs shortly after logging in, verify your system clock is synchronized.")
 		}
 	}
 

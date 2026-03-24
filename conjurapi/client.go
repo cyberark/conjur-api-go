@@ -320,7 +320,8 @@ func newClientFromStoredOidcCredentials(config Config) (*Client, error) {
 	if token != nil && !token.ShouldRefresh() {
 		return client, nil
 	}
-	return nil, fmt.Errorf("No valid OIDC token found. Please login again.")
+	return nil, fmt.Errorf("No valid OIDC token found. Please login again. " +
+		"If this error recurs shortly after logging in, verify your system clock is synchronized.")
 }
 
 // TODO: Refactor to remove code duplication between authn-iam, authn-gcp, and authn-azure (and possibly authn-oidc and authn-jwt)

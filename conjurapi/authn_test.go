@@ -651,12 +651,12 @@ func TestClient_InternalAuthenticate(t *testing.T) {
 
 	t.Run("Returns re-login message when using OIDC and token is expired", func(t *testing.T) {
 		_, err := runOIDCInternalAuthenticateTest(t, expired_token, nil)
-		assert.EqualError(t, err, "No valid OIDC token found. Please login again.")
+		assert.EqualError(t, err, "No valid OIDC token found. Please login again. If this error recurs shortly after logging in, verify your system clock is synchronized.")
 	})
 
 	t.Run("Returns error if storage returns error", func(t *testing.T) {
 		_, err := runOIDCInternalAuthenticateTest(t, "", errors.New("error"))
-		assert.EqualError(t, err, "No valid OIDC token found. Please login again.")
+		assert.EqualError(t, err, "No valid OIDC token found. Please login again. If this error recurs shortly after logging in, verify your system clock is synchronized.")
 	})
 }
 

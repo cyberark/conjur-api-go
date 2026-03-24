@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - Changed handling of proxy config to assure NO_PROXY support.
+- Improved error message for OIDC token validation failures. CNJR-12880
 
 ## [0.13.18] - 2026-03-13
 
