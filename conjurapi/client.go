@@ -282,12 +282,15 @@ func NewClientFromJwt(config Config) (*Client, error) {
 // Routes to appropriate credential retrieval based on config.AuthnType (oidc, cloud, iam, azure, gcp).
 // For cloud type, tries host API key credentials first, then falls back to OIDC for users.
 // Returns error if no valid credentials found in storage.
+//
+// Auth types that do not use stored credentials (e.g. cert, jwt) must be handled by
+// the caller before reaching this function; passing them here returns an explicit error.
 func newClientFromStoredCredentials(config Config) (*Client, error) {
-	if config.AuthnType == "oidc" {
+	switch config.AuthnType {
+	case "oidc":
 		return newClientFromStoredOidcCredentials(config)
-	}
 
-	if config.AuthnType == AuthnTypeCloud {
+	case AuthnTypeCloud:
 		storageProvider, err := createStorageProvider(config)
 		if err != nil {
 			return nil, err
@@ -303,22 +306,21 @@ func newClientFromStoredCredentials(config Config) (*Client, error) {
 			}
 		}
 		return newClientFromStoredOidcCredentials(config)
-	}
 
-	if config.AuthnType == "iam" {
+	case "iam":
 		return newClientFromStoredAWSConfig(config)
-	}
 
-	if config.AuthnType == "azure" {
+	case "azure":
 		return newClientFromStoredAzureConfig(config)
-	}
 
-	if config.AuthnType == "gcp" {
+	case "gcp":
 		return newClientFromStoredGCPConfig(config)
-	}
 
-	if config.AuthnType == "cert" {
-		return newClientFromCertConfig(config)
+	case "", AuthnTypeStandard:
+		// Fall through to generic storage lookup below.
+
+	default:
+		return nil, fmt.Errorf("auth type %q does not use stored credentials", config.AuthnType)
 	}
 
 	// Attempt to load credentials from whatever storage provider is configured
