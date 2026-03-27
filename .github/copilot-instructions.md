@@ -42,7 +42,8 @@ Files ending in `_v2.go` / `_v2_test.go` implement newer Conjur Enterprise REST 
 # All tests (OSS Conjur in Docker)
 ./bin/test.sh
 
-# Cert auth integration tests (requires Enterprise appliance image)
+# Cert auth integration tests — run automatically in CI; also runnable locally
+# with an Enterprise appliance image
 TEST_CERT=true ./bin/test.sh
 
 # Single test during development
@@ -105,6 +106,6 @@ config := Config{
 | Profile | Services started | When used |
 |---|---|---|
 | _(default)_ | `postgres`, `conjur` | All standard tests |
-| `cert` | + `conjur-leader` (Enterprise appliance) | `TEST_CERT=true` |
+| `cert` | + `conjur-leader` (Enterprise appliance) | `TEST_CERT=true` — runs automatically in CI; opt-in locally |
 
 The `conjur-leader` container has a **fixed `container_name`** outside the Compose project namespace. It must be explicitly removed before re-running: `docker rm -f conjur-leader-1.mycompany.local`. The `cert` profile is managed by `bin/setup-cert-auth.sh`.

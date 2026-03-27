@@ -46,13 +46,13 @@ default being `1.26` if no argument is given.
 ### Running authn-cert (mTLS) integration tests
 
 The certificate authentication integration tests require a Conjur Enterprise
-appliance image, which is not publicly available. Internal CyberArk developers
-can enable these tests as follows.
+appliance image, which is not publicly available. These tests run automatically
+in CI on every build. Internal CyberArk developers can also run them locally.
 
 **Prerequisites:**
 - `openssl` available on the host machine (used to generate the test PKI)
 
-**Run with cert auth enabled:**
+**Run locally with cert auth enabled:**
 ```shell
 TEST_CERT=true ./bin/test.sh
 ```

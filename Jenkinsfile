@@ -45,8 +45,6 @@ pipeline {
     booleanParam(name: 'TEST_AZURE', defaultValue: false, description: 'Run integration tests against Azure')
 
     booleanParam(name: 'TEST_GCP', defaultValue: false, description: 'Run integration tests against GCP')
-
-    booleanParam(name: 'TEST_CERT', defaultValue: false, description: 'Run authn-cert (mTLS) integration tests against a Conjur Enterprise appliance')
   }
 
   stages {
@@ -148,6 +146,17 @@ pipeline {
             }
           }
         }
+
+        stage('Golang 1.26 + Cert auth') {
+          environment {
+            INFRAPOOL_TEST_CERT=true
+          }
+          steps {
+            script {
+              infrapool.agentSh "./bin/test.sh 1.26 $REGISTRY_URL"
+            }
+          }
+        }
       }
       post {
         always {
@@ -173,20 +182,6 @@ pipeline {
       }
     }
 
-    stage('Run Cert tests') {
-      when {
-        expression { params.TEST_CERT }
-      }
-      environment {
-        REGISTRY_URL = "registry.tld"
-        INFRAPOOL_TEST_CERT=true
-      }
-      steps {
-        script {
-          infrapool.agentSh "./bin/test.sh 1.26 $REGISTRY_URL"
-        }
-      }
-    }
 
     stage('Run GCP tests') {
       when {
