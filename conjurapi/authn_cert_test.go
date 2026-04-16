@@ -32,7 +32,34 @@ var authnCertPolicy = `
     member: !host /data/test/cert-apps/vm-01
 `
 
-// authCertRolesPolicy creates the host and variables used in the cert auth e2e test.
+// authnCertPolicy defines the authn-cert webservice and its access controls for SPIFFE mode.
+// The CA certificate must be loaded into the ca-cert variable,
+// and the host-mode, trust-domain and identity-path variables must be set with the correct values
+// before the authenticator can be used.
+var authnCertSpiffePolicy = `
+- !policy
+  id: acme-vm-spiffe
+  body:
+  - !webservice
+
+  - !group clients
+
+  - !permit
+    role: !group clients
+    privilege: [ read, authenticate ]
+    resource: !webservice
+
+  - !variable ca-cert
+  - !variable host-mode
+  - !variable trust-domain
+  - !variable identity-path
+
+  - !grant
+    role: !group clients
+    member: !host /data/test/cert-apps/vm-spiffe
+`
+
+// authCertRolesPolicy creates the hosts and variables used in the cert auth e2e tests.
 var authCertRolesPolicy = `
 - !policy
   id: cert-apps
@@ -55,9 +82,18 @@ var authCertRolesPolicy = `
     annotations:
       authn-cert/cn: vm-01
 
+  - !host
+    id: vm-spiffe
+    annotations:
+      authn-cert/acme-vm-spiffe/san-uri: spiffe://conjur.test/vm-spiffe
+
   - !grant
     role: !layer
     member: !host vm-01
+
+  - !grant
+    role: !layer
+    member: !host vm-spiffe
 
   - !grant
     member: !layer
@@ -85,10 +121,6 @@ func TestAuthnCert(t *testing.T) {
 		t.Setenv("CONJUR_SSL_CERTIFICATE", cert)
 	}
 
-	serviceID := os.Getenv("TEST_CERT_SERVICE_ID")
-	if serviceID == "" {
-		serviceID = "acme-vm"
-	}
 	certFile := os.Getenv("CONJUR_AUTHN_CERT_FILE")
 	keyFile := os.Getenv("CONJUR_AUTHN_CERT_KEY_FILE")
 	caCertContent := os.Getenv("TEST_CERT_CA_CERT")
@@ -97,6 +129,11 @@ func TestAuthnCert(t *testing.T) {
 	}
 
 	t.Run("authn-cert request mode e2e happy path", func(t *testing.T) {
+		serviceID := os.Getenv("TEST_CERT_SERVICE_ID")
+		if serviceID == "" {
+			serviceID = "acme-vm"
+		}
+
 		utils, err := NewTestUtils(&Config{})
 		require.NoError(t, err)
 
@@ -149,24 +186,45 @@ func TestAuthnCert(t *testing.T) {
 	})
 
 	t.Run("authn-cert SPIFFE mode (empty CertHostID)", func(t *testing.T) {
-		// SPIFFE mode: the server derives the host identity from the SPIFFE URI SAN
-		// in the client certificate. Only run if explicitly enabled because it
-		// requires a cert whose SAN matches a Conjur host.
-		if strings.ToLower(os.Getenv("TEST_CERT_SPIFFE")) != "true" {
-			t.Skip("Skipping SPIFFE mode test. Set TEST_CERT_SPIFFE=true to enable.")
+		serviceID := os.Getenv("TEST_CERT_SPIFFE_SERVICE_ID")
+		if serviceID == "" {
+			serviceID = "acme-vm-spiffe"
 		}
-
 		utils, err := NewTestUtils(&Config{})
 		require.NoError(t, err)
 
+		err = utils.SetupWithAuthenticator("cert", authnCertSpiffePolicy, authCertRolesPolicy)
+		require.NoError(t, err)
+
 		conjur := utils.Client()
+		err = conjur.EnableAuthenticator("cert", serviceID, true)
+		require.NoError(t, err)
+
+		// Reuse the same issuer CA cert loaded for request mode.
+		err = conjur.AddSecret("conjur/authn-cert/"+serviceID+"/ca-cert", caCertContent)
+		require.NoError(t, err)
+
+		// Set host-mode, trust-domain and identity-path to use the 'spiffe' mode
+		err = conjur.AddSecret("conjur/authn-cert/"+serviceID+"/host-mode", "spiffe")
+		require.NoError(t, err)
+		err = conjur.AddSecret("conjur/authn-cert/"+serviceID+"/trust-domain", "conjur.test")
+		require.NoError(t, err)
+		err = conjur.AddSecret("conjur/authn-cert/"+serviceID+"/identity-path", "data/test/cert-apps")
+		require.NoError(t, err)
+
+		err = conjur.AddSecret("data/test/cert-apps/database/username", "cert-secret")
+		require.NoError(t, err)
+		err = conjur.AddSecret("data/test/cert-apps/database/password", "P@ssw0rd!")
+		require.NoError(t, err)
 
 		config := Config{
 			ApplianceURL:      conjur.config.ApplianceURL,
 			Account:           conjur.config.Account,
+			SSLCert:           conjur.config.SSLCert,
+			SSLCertPath:       conjur.config.SSLCertPath,
 			AuthnType:         "cert",
 			ServiceID:         serviceID,
-			CertHostID:        "", // empty → SPIFFE mode; host inferred from cert SAN URI
+			CertHostID:        "", // empty => SPIFFE mode; host inferred from cert SAN URI
 			ClientCertFile:    certFile,
 			ClientCertKeyFile: keyFile,
 		}
@@ -176,5 +234,17 @@ func TestAuthnCert(t *testing.T) {
 
 		_, err = certConjur.GetAuthenticator().RefreshToken()
 		require.NoError(t, err)
+
+		whoami, err := certConjur.WhoAmI()
+		assert.NoError(t, err)
+		assert.Contains(t, string(whoami), "vm-spiffe")
+
+		secret, err := certConjur.RetrieveSecret("data/test/cert-apps/database/username")
+		assert.NoError(t, err)
+		assert.Equal(t, "cert-secret", string(secret))
+
+		secret, err = certConjur.RetrieveSecret("data/test/cert-apps/database/password")
+		assert.NoError(t, err)
+		assert.Equal(t, "P@ssw0rd!", string(secret))
 	})
 }
