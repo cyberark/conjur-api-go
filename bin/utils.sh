@@ -17,8 +17,14 @@ exec_on() {
 }
 
 function teardown {
-  docker compose logs conjur > "../output/$GO_VERSION/conjur-logs.txt" 2>&1 || true
+  output_dir="../output/${GO_VERSION}"
+
+  # Always capture OSS Conjur logs when available.
+  docker compose logs conjur > "$output_dir/conjur-logs.txt" 2>&1 || true
+
   if [[ "${TEST_CERT:-false}" == "true" ]]; then
+    # In cert profile runs, authn-cert traffic goes to the Enterprise appliance
+    docker compose --profile cert logs conjur-leader > "$output_dir/conjur-leader-logs.txt" 2>&1 || true
     docker compose --profile cert down -v --remove-orphans
   else
     docker compose down -v --remove-orphans
@@ -30,7 +36,6 @@ function teardown {
 failed() {
   announce "TESTS FAILED"
   # docker compose logs conjur || true
-  teardown
   exit 1
 }
 
