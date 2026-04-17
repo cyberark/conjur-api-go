@@ -10,7 +10,6 @@ Rather than exchanging a credential in the request body (as with API key, JWT, e
 
 ```
 POST /authn-cert/<service-id>/<account>[/<url-encoded-host-id>]/authenticate
-Accept-Encoding: base64
 ```
 
 There are two server-side host resolution modes:
@@ -240,7 +239,6 @@ func (c *Client) CertAuthenticateRequest(hostID string) (*http.Request, error) {
     if err != nil {
         return nil, err
     }
-    req.Header.Set("Accept-Encoding", "base64")
     req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
     return req, nil
 }
@@ -351,7 +349,6 @@ Follows the table-driven pattern in `TestConfig_Validate`:
 
 - `CertAuthenticateRequest` with host ID produces `authn-cert/<service-id>/<account>/host%2F<id>/authenticate`
 - `CertAuthenticateRequest` without host ID produces `authn-cert/<service-id>/<account>/authenticate`
-- Request has `Accept-Encoding: base64` header
 
 ### `conjurapi/client_test.go` additions
 
