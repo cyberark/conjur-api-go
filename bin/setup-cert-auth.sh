@@ -8,7 +8,7 @@
 #   3. Generates a CA key+cert and a single client cert/key pair signed by that CA.
 #      The client cert includes:
 #      - CN=vm-01 for request mode tests
-#      - URI SAN spiffe://conjur.test/host/data/test/cert-apps/vm-spiffe for SPIFFE mode tests
+#      - URI SAN=spiffe://conjur.test/vm-spiffe for SPIFFE mode tests
 #   4. Exports the following environment variables consumed by authn_cert_test.go:
 #        CONJUR_CERT_APPLIANCE_URL   - HTTPS URL of the enterprise appliance
 #        CONJUR_CERT_AUTHN_API_KEY   - admin API key for that appliance

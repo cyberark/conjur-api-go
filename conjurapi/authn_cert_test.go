@@ -84,8 +84,6 @@ var authCertRolesPolicy = `
 
   - !host
     id: vm-spiffe
-    annotations:
-      authn-cert/acme-vm-spiffe/san-uri: spiffe://conjur.test/vm-spiffe
 
   - !grant
     role: !layer
