@@ -69,9 +69,9 @@ TEST_CERT=true ./bin/test.sh
 5. `authn_cert_test.go` loads the CA cert into the Conjur webservice variable,
    then authenticates using the generated client certificate.
 
-You can override the appliance version and service IDs for host and spiffe mode services separately:
+You can override the appliance version:
 ```shell
-APPLIANCE_TAG=13.8.0 TEST_CERT_SERVICE_ID=my-svc TEST_CERT_SPIFFE_SERVICE_ID=my-spiffe-svc TEST_CERT=true ./bin/test.sh
+APPLIANCE_TAG=13.8.0 TEST_CERT=true ./bin/test.sh
 ```
 
 ### Setting up a development environment

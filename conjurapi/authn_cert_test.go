@@ -127,10 +127,7 @@ func TestAuthnCert(t *testing.T) {
 	}
 
 	t.Run("authn-cert request mode e2e happy path", func(t *testing.T) {
-		serviceID := os.Getenv("TEST_CERT_SERVICE_ID")
-		if serviceID == "" {
-			serviceID = "acme-vm"
-		}
+		serviceID := "acme-vm"
 
 		utils, err := NewTestUtils(&Config{})
 		require.NoError(t, err)
@@ -184,10 +181,8 @@ func TestAuthnCert(t *testing.T) {
 	})
 
 	t.Run("authn-cert SPIFFE mode (empty CertHostID)", func(t *testing.T) {
-		serviceID := os.Getenv("TEST_CERT_SPIFFE_SERVICE_ID")
-		if serviceID == "" {
-			serviceID = "acme-vm-spiffe"
-		}
+		serviceID := "acme-vm-spiffe"
+
 		utils, err := NewTestUtils(&Config{})
 		require.NoError(t, err)
 

@@ -16,8 +16,6 @@
 #        CONJUR_AUTHN_CERT_FILE      - path to client cert inside test container (/certs/...)
 #        CONJUR_AUTHN_CERT_KEY_FILE  - path to client key  inside test container (/certs/...)
 #        TEST_CERT_CA_CERT           - PEM content of the issuing CA cert
-#        TEST_CERT_SERVICE_ID        - authn-cert service ID (default: acme-vm)
-#        TEST_CERT_SPIFFE_SERVICE_ID - authn-cert service ID for SPIFFE mode (default: acme-vm-spiffe)
 #        CERT_TMPDIR                 - host-side tmpdir mounted at /certs in the test container
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
@@ -128,12 +126,8 @@ EOF
 start_conjur_appliance
 generate_cert_auth_pki
 
-export TEST_CERT_SERVICE_ID="${TEST_CERT_SERVICE_ID:-acme-vm}"
-export TEST_CERT_SPIFFE_SERVICE_ID="${TEST_CERT_SPIFFE_SERVICE_ID:-acme-vm-spiffe}"
 export CONJUR_CERT_APPLIANCE_URL="https://conjur-leader-1.mycompany.local"
 
 announce "Certificate auth test environment ready."
 echo "  Appliance URL : $CONJUR_CERT_APPLIANCE_URL"
-echo "  Service ID    : $TEST_CERT_SERVICE_ID"
-echo "  Spiffe Service ID    : $TEST_CERT_SPIFFE_SERVICE_ID"
 echo "  Cert dir      : $CERT_TMPDIR"
