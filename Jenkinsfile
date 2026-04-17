@@ -113,6 +113,7 @@ pipeline {
         // Tests default to using DockerHub images. In our internal Jenkins setup, this is overridden to pull from our internal registry instead.
         REGISTRY_URL = "registry.tld"
         INFRAPOOL_TEST_AWS=true
+        INFRAPOOL_TEST_CERT=true
       }
       parallel {
         stage('Golang 1.26') {
@@ -143,17 +144,6 @@ pipeline {
               infrapool.agentSh "./bin/test.sh 1.25 $REGISTRY_URL"
               infrapool.agentStash name: '1.25-out', includes: 'output/1.25/*.xml'
               unstash '1.25-out'
-            }
-          }
-        }
-
-        stage('Golang 1.26 + Cert auth') {
-          environment {
-            INFRAPOOL_TEST_CERT=true
-          }
-          steps {
-            script {
-              infrapool.agentSh "./bin/test.sh 1.26 $REGISTRY_URL"
             }
           }
         }
