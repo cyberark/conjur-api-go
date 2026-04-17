@@ -99,7 +99,7 @@ config := Config{
 - **No credential logging**: Inline PEM/key fields must be redacted in `Config.String()` — see the `[REDACTED]` pattern there.
 - **SaaS guard**: Any feature unavailable on Conjur Cloud must call `isConjurCloudURL` early and return a descriptive error.
 - **`evoke` vs `conjurctl`**: `evoke` is the Enterprise appliance CLI. `conjurctl` is OSS-only. Never use `conjurctl` in scripts targeting the Enterprise appliance.
-- **`exec_on` helper**: Defined in `bin/utils.sh`; uses `docker compose ps -q <service>`. For the Enterprise appliance (fixed `container_name: conjur-leader-1.mycompany.local`), use `docker exec conjur-leader-1.mycompany.local` directly.
+- **`exec_on` helper**: Defined in `bin/utils.sh`; uses `docker compose ps -q <service>`. For the Enterprise appliance use `docker compose --profile cert exec conjur-leader`.
 
 ## Docker Compose profiles
 
@@ -108,4 +108,4 @@ config := Config{
 | _(default)_ | `postgres`, `conjur` | All standard tests |
 | `cert` | + `conjur-leader` (Enterprise appliance) | `TEST_CERT=true` — runs automatically in CI; opt-in locally |
 
-The `conjur-leader` container has a **fixed `container_name`** outside the Compose project namespace. It must be explicitly removed before re-running: `docker rm -f conjur-leader-1.mycompany.local`. The `cert` profile is managed by `bin/setup-cert-auth.sh`.
+The `conjur-leader` service uses a Compose-managed container name (project-scoped), allowing parallel test runs. The hostname `conjur-leader-1.mycompany.local` is set via network alias for DNS resolution. The `cert` profile is managed by `bin/setup-cert-auth.sh`.

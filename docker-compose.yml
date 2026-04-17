@@ -111,7 +111,6 @@ services:
   # are expected to have it mapped in /etc/hosts (or local DNS).
   conjur-leader:
     image: registry.tld/conjur-appliance:${APPLIANCE_TAG:-5.0-stable}
-    container_name: conjur-leader-1.mycompany.local
     hostname: conjur-leader-1.mycompany.local
     restart: unless-stopped
     security_opt:

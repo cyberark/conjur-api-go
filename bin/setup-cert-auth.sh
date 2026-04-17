@@ -36,15 +36,13 @@ function start_conjur_appliance() {
 
   announce "Starting Conjur Enterprise appliance..."
   # The appliance image is self-contained (embedded postgres); no separate DB needed.
-  # Force-remove any leftover container with the fixed name from a previous run.
-  docker rm -f conjur-leader-1.mycompany.local 2>/dev/null || true
   docker compose --profile cert up --no-deps -d conjur-leader
 
   # Wait for the container process to be exec-able before running evoke.
   announce "Waiting for enterprise appliance container to start..."
   local timeout=60
   local elapsed=0
-  until docker compose exec -T conjur-leader true 2>/dev/null; do
+  until docker compose --profile cert exec -T conjur-leader true 2>/dev/null; do
     if (( elapsed >= timeout )); then
       echo "Timed out waiting for conjur-leader container to be exec-able"
       exit 1
@@ -56,7 +54,7 @@ function start_conjur_appliance() {
   announce "Configuring Conjur Enterprise master..."
   # evoke configure master initialises the account and generates the self-signed
   # TLS certificate for the appliance hostname.
-  exec_on conjur-leader evoke configure master \
+  docker compose --profile cert exec -T conjur-leader evoke configure master \
     --hostname=conjur-leader-1.mycompany.local \
     --master-altnames="conjur-leader.mycompany.local,conjur-leader-1.mycompany.local" \
     --accept-eula \
@@ -68,13 +66,13 @@ function start_conjur_appliance() {
   # Retrieve the admin API key via the REST /authn/login endpoint using the admin
   # password. conjurctl role retrieve-key is OSS-only and not present on the
   # enterprise appliance image.
-  CONJUR_CERT_AUTHN_API_KEY="$(docker exec conjur-leader-1.mycompany.local \
+  CONJUR_CERT_AUTHN_API_KEY="$(docker compose --profile cert exec -T conjur-leader \
     curl -sk --user "admin:${CONJUR_ADMIN_PASSWORD}" \
     https://localhost/authn/conjur/login | tr -d '\r\n')"
   export CONJUR_CERT_AUTHN_API_KEY
 
   # The self-signed TLS cert is written by evoke at this path inside the container.
-  CONJUR_CERT_SSL_CERTIFICATE="$(docker exec conjur-leader-1.mycompany.local \
+  CONJUR_CERT_SSL_CERTIFICATE="$(docker compose --profile cert exec -T conjur-leader \
     cat /opt/conjur/etc/ssl/conjur.pem)"
   export CONJUR_CERT_SSL_CERTIFICATE
 }

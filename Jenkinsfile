@@ -136,6 +136,13 @@ pipeline {
               codacy action: 'reportCoverage', filePath: "output/1.26/coverage.xml"
             }
           }
+          post {
+            always {
+              script { infrapool.agentArchiveArtifacts artifacts: 'output/1.26/conjur-logs.txt' }
+              script { infrapool.agentArchiveArtifacts artifacts: 'output/1.26/conjur-leader-logs.txt', allowEmptyArchive: true }
+              junit 'output/1.26/junit.xml'
+            }
+          }
         }
 
         stage('Golang 1.25') {
@@ -146,15 +153,12 @@ pipeline {
               unstash '1.25-out'
             }
           }
-        }
-      }
-      post {
-        always {
-          script { infrapool.agentArchiveArtifacts artifacts: 'output/1.25/conjur-logs.txt' }
-          script { infrapool.agentArchiveArtifacts artifacts: 'output/1.25/conjur-leader-logs.txt', allowEmptyArchive: true }
-          script { infrapool.agentArchiveArtifacts artifacts: 'output/1.26/conjur-logs.txt' }
-          script { infrapool.agentArchiveArtifacts artifacts: 'output/1.26/conjur-leader-logs.txt', allowEmptyArchive: true }
-          junit 'output/1.26/junit.xml'
+          post {
+            always {
+              script { infrapool.agentArchiveArtifacts artifacts: 'output/1.25/conjur-logs.txt' }
+              script { infrapool.agentArchiveArtifacts artifacts: 'output/1.25/conjur-leader-logs.txt', allowEmptyArchive: true }
+            }
+          }
         }
       }
     }
