@@ -125,7 +125,7 @@ func TestClientV2_CreateStaticSecret(t *testing.T) {
 				}
 			} else {
 				require.Error(t, err)
-				require.Contains(t, err.Error(), "is not supported in Conjur Enterprise/OSS")
+				require.Contains(t, err.Error(), "is not supported in Idira Secrets Manager/Conjur OSS")
 				return
 			}
 		})
@@ -171,7 +171,7 @@ func TestClientV2_GetStaticSecretDetails(t *testing.T) {
 				}
 			} else {
 				require.Error(t, err)
-				require.Contains(t, err.Error(), "is not supported in Conjur Enterprise/OSS")
+				require.Contains(t, err.Error(), "is not supported in Idira Secrets Manager/Conjur OSS")
 				return
 			}
 		})
@@ -214,7 +214,7 @@ func TestClientV2_GetStaticSecretPermissions(t *testing.T) {
 				}
 			} else {
 				require.Error(t, err)
-				require.Contains(t, err.Error(), "is not supported in Conjur Enterprise/OSS")
+				require.Contains(t, err.Error(), "is not supported in Idira Secrets Manager/Conjur OSS")
 				return
 			}
 		})

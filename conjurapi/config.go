@@ -125,7 +125,7 @@ func (c *Config) Validate() error {
 			errors = append(errors, "Certificate authentication requires an HTTPS connection")
 		}
 		if isConjurCloudURL(c.ApplianceURL) {
-			errors = append(errors, "Certificate authentication is not supported in Secrets Manager SaaS")
+			errors = append(errors, "Certificate authentication is not supported in Idira Secrets Manager, SaaS")
 		}
 		if c.ClientCert == "" && c.ClientCertFile == "" {
 			errors = append(errors, "Must specify a client certificate (ClientCert or ClientCertFile) when using cert authentication")
@@ -437,7 +437,7 @@ func disableKeepAlivesFromEnv() bool {
 
 func (c *Config) applyDefaults(persist bool) {
 	if isConjurCloudURL(c.ApplianceURL) && len(c.Account) == 0 {
-		logging.ApiLog.Info("Detected Secrets Manager SaaS URL, setting 'Account' to 'conjur'")
+		logging.ApiLog.Info("Detected Idira Secrets Manager, SaaS URL, setting 'Account' to 'conjur'")
 		c.Account = "conjur"
 		if persist {
 			c.AddToConjurRc("account", c.Account)

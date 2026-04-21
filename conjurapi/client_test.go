@@ -650,7 +650,7 @@ func TestClient_createHttpClient(t *testing.T) {
 		client, err := createHttpClient(config)
 
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "Can't append Secrets Manager SSL cert")
+		assert.Contains(t, err.Error(), "Can't append Idira Secrets Manager SSL cert")
 		assert.Nil(t, client)
 	})
 }
@@ -660,7 +660,7 @@ func TestClient_newHTTPSClient(t *testing.T) {
 		config := Config{}
 		client, err := newHTTPSClient([]byte("invalid cert"), config)
 
-		assert.EqualError(t, err, "Can't append Secrets Manager SSL cert")
+		assert.EqualError(t, err, "Can't append Idira Secrets Manager SSL cert")
 		assert.Nil(t, client)
 	})
 	t.Run("New HTTPS client with valid cert", func(t *testing.T) {
@@ -1124,7 +1124,7 @@ func TestClient_CertAuthenticate(t *testing.T) {
 		token, err := client.CertAuthenticate("vm-workloads/vm-01")
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "Certificate authentication is not supported in Secrets Manager SaaS")
+		assert.Contains(t, err.Error(), "Certificate authentication is not supported in Idira Secrets Manager, SaaS")
 		assert.Nil(t, token)
 	})
 
@@ -1236,7 +1236,7 @@ func TestNewClientFromCertConfig(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Nil(t, client)
-		assert.Contains(t, err.Error(), "Can't append Secrets Manager SSL cert")
+		assert.Contains(t, err.Error(), "Can't append Idira Secrets Manager SSL cert")
 	})
 
 	t.Run("Returns error when RefreshToken fails (server returns 401)", func(t *testing.T) {

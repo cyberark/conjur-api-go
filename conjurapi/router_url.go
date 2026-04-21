@@ -63,7 +63,7 @@ func (u routerURL) String() string {
 func normalizeBaseURL(baseURL string) string {
 	url := strings.TrimSuffix(baseURL, "/")
 	if isConjurCloudURL(url) && !strings.Contains(url, "/api") {
-		logging.ApiLog.Info("Detected Secrets Manager SaaS URL, adding '/api' prefix")
+		logging.ApiLog.Info("Detected Idira Secrets Manager, SaaS URL, adding '/api' prefix")
 		return url + "/api"
 	}
 

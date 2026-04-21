@@ -22,7 +22,7 @@ func TestServerVersion(t *testing.T) {
 
 			version, err := conjur.ServerVersion()
 			require.Error(t, err)
-			assert.ErrorContains(t, err, "not supported in Secrets Manager SaaS")
+			assert.ErrorContains(t, err, "not supported in Idira Secrets Manager, SaaS")
 			assert.Empty(t, version)
 		})
 		return
@@ -83,7 +83,7 @@ func TestEnterpriseServerInfo(t *testing.T) {
 
 			info, err := conjur.EnterpriseServerInfo()
 			require.Error(t, err)
-			assert.ErrorContains(t, err, "not supported in Secrets Manager SaaS")
+			assert.ErrorContains(t, err, "not supported in Idira Secrets Manager, SaaS")
 			assert.Nil(t, info)
 		})
 		return
@@ -127,7 +127,7 @@ func TestServerVersionFromRoot(t *testing.T) {
 
 			version, err := conjur.ServerVersionFromRoot()
 			require.Error(t, err)
-			assert.ErrorContains(t, err, "not supported in Secrets Manager SaaS")
+			assert.ErrorContains(t, err, "not supported in Idira Secrets Manager, SaaS")
 			assert.Empty(t, version)
 		})
 		// Skip the rest of the tests when running against Secrets Manager SaaS

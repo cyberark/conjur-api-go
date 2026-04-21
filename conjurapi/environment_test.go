@@ -152,11 +152,11 @@ func TestEnvironmentType_FullName(t *testing.T) {
 	}, {
 		name: "Cloud",
 		e:    EnvironmentSaaS,
-		want: "Secrets Manager SaaS",
+		want: "Idira Secrets Manager, SaaS",
 	}, {
 		name: "Enterprise",
 		e:    EnvironmentSH,
-		want: "Secrets Manager Self-Hosted",
+		want: "Idira Secrets Manager, Self-Hosted",
 	}, {
 		name: "OSS",
 		e:    EnvironmentOSS,
@@ -164,11 +164,11 @@ func TestEnvironmentType_FullName(t *testing.T) {
 	}, {
 		name: "SaaS",
 		e:    EnvironmentSaaS,
-		want: "Secrets Manager SaaS",
+		want: "Idira Secrets Manager, SaaS",
 	}, {
 		name: "Self-Hosted",
 		e:    EnvironmentSH,
-		want: "Secrets Manager Self-Hosted",
+		want: "Idira Secrets Manager, Self-Hosted",
 	}, {
 		name: "Unknown",
 		e:    EnvironmentType("unknown"),
