@@ -6,20 +6,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-04-21
+
+### Added
+- Support for certificate authentication (`authn-cert`) via mutual TLS (mTLS).
+    - New `NewClientFromCertificate(config Config)` constructor.
+    - New `Config` fields: `ClientCertFile`, `ClientCertKeyFile`, `ClientCert`, `ClientCertKey`, `CertHostID`.
+    - New environment variables: `CONJUR_AUTHN_CERT_SERVICE_ID`, `CONJUR_AUTHN_CERT_FILE`, `CONJUR_AUTHN_CERT_KEY_FILE`, `CONJUR_AUTHN_CERT_HOST_ID`.
+    - Transparent certificate rotation via `GetClientCertificate` callback (no restart required when cert files are updated).
+    - Both request mode (explicit `CertHostID`) and SPIFFE mode (empty `CertHostID`, host derived from certificate SAN URI) are supported.
+    - Private key material is automatically redacted from debug log output.
+
+### Changed
+- Improved error message for OIDC token validation failures. CNJR-12880
+
 ## [0.13.19] - 2026-03-18
 
 ### Changed
 - Changed handling of proxy config to assure NO_PROXY support.
-- Improved error message for OIDC token validation failures. CNJR-12880
-
-### Added
-- Support for certificate authentication (`authn-cert`) via mutual TLS (mTLS).
-  - New `NewClientFromCertificate(config Config)` constructor.
-  - New `Config` fields: `ClientCertFile`, `ClientCertKeyFile`, `ClientCert`, `ClientCertKey`, `CertHostID`.
-  - New environment variables: `CONJUR_AUTHN_CERT_SERVICE_ID`, `CONJUR_AUTHN_CERT_FILE`, `CONJUR_AUTHN_CERT_KEY_FILE`, `CONJUR_AUTHN_CERT_HOST_ID`.
-  - Transparent certificate rotation via `GetClientCertificate` callback (no restart required when cert files are updated).
-  - Both request mode (explicit `CertHostID`) and SPIFFE mode (empty `CertHostID`, host derived from certificate SAN URI) are supported.
-  - Private key material is automatically redacted from debug log output.
 
 ## [0.13.18] - 2026-03-13
 
@@ -430,7 +434,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.13.16...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/cyberark/conjur-api-go/compare/v0.13.19...v0.14.0
+[0.13.19]: https://github.com/cyberark/conjur-api-go/compare/v0.13.18...v0.13.19
+[0.13.18]: https://github.com/cyberark/conjur-api-go/compare/v0.13.16...v0.13.18
 [0.13.16]: https://github.com/cyberark/conjur-api-go/compare/v0.13.15...v0.13.16
 [0.13.15]: https://github.com/cyberark/conjur-api-go/compare/v0.13.14...v0.13.15
 [0.13.14]: https://github.com/cyberark/conjur-api-go/compare/v0.13.13...v0.13.14
