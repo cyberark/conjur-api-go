@@ -32,6 +32,7 @@ export REGISTRY_URL="${2:-docker.io}"
 export TEST_AWS="${INFRAPOOL_TEST_AWS:-false}"
 export TEST_AZURE="${INFRAPOOL_TEST_AZURE:-false}"
 export TEST_GCP="${INFRAPOOL_TEST_GCP:-false}"
+export TEST_CERT="${TEST_CERT:-${INFRAPOOL_TEST_CERT:-false}}"
 
 if [[ "$TEST_GCP" == "true" ]]; then
   export GCP_CTX_DIR="${3:-gcp}"
@@ -59,6 +60,10 @@ if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
   # Spin up Conjur environment
   source ./start-conjur.sh
 
+  if [[ "$TEST_CERT" == "true" ]]; then
+    source ./setup-cert-auth.sh
+  fi
+
   announce "Building test containers..."
   docker compose build "test-$GO_VERSION"
   echo "Done!"
@@ -74,9 +79,20 @@ if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
   announce "Running tests for Go version: $GO_VERSION...";
   echo "Package and test selection: $TEST_PKGS"
 
+  # When TEST_CERT is true:
+  #   - mount CERT_TMPDIR (host path) read-only at /certs so the test binary
+  #     can read the generated client cert and key
+  #   - connect to the named "conjur" bridge network so the test container
+  #     can resolve conjur-leader-1.mycompany.local (the enterprise appliance)
+  CERT_EXTRA_ARGS=()
+  if [[ "$TEST_CERT" == "true" && -n "$CERT_TMPDIR" ]]; then
+    CERT_EXTRA_ARGS+=("-v" "$CERT_TMPDIR:/certs:ro")
+  fi
+
   docker compose run \
   --rm \
   --no-deps \
+  "${CERT_EXTRA_ARGS[@]}" \
   -e CONJUR_AUTHN_API_KEY \
   -e TEST_AWS \
   -e TEST_AZURE \
@@ -87,6 +103,13 @@ if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
   -e TEST_GCP \
   -e GCP_PROJECT_ID \
   -e GCP_ID_TOKEN \
+  -e TEST_CERT \
+  -e CONJUR_CERT_APPLIANCE_URL \
+  -e CONJUR_CERT_AUTHN_API_KEY \
+  -e CONJUR_CERT_SSL_CERTIFICATE \
+  -e CONJUR_AUTHN_CERT_FILE \
+  -e CONJUR_AUTHN_CERT_KEY_FILE \
+  -e TEST_CERT_CA_CERT \
   -e GO_VERSION \
   -e PUBLIC_KEYS \
   -e JWT \
@@ -114,7 +137,7 @@ else
   docker build \
     --build-arg FROM_IMAGE="golang:$GO_VERSION" \
     -t "test-$GO_VERSION" ..
-  
+
   announce "Running Secrets Manager SaaS tests for Go version: $GO_VERSION...";
   # NOTE: Skipping hostfactory token tests as hostfactory endpoints seem to be disabled by default now
   docker run \

@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Changed handling of proxy config to assure NO_PROXY support.
 - Improved error message for OIDC token validation failures. CNJR-12880
 
+### Added
+- Support for certificate authentication (`authn-cert`) via mutual TLS (mTLS).
+  - New `NewClientFromCertificate(config Config)` constructor.
+  - New `Config` fields: `ClientCertFile`, `ClientCertKeyFile`, `ClientCert`, `ClientCertKey`, `CertHostID`.
+  - New environment variables: `CONJUR_AUTHN_CERT_SERVICE_ID`, `CONJUR_AUTHN_CERT_FILE`, `CONJUR_AUTHN_CERT_KEY_FILE`, `CONJUR_AUTHN_CERT_HOST_ID`.
+  - Transparent certificate rotation via `GetClientCertificate` callback (no restart required when cert files are updated).
+  - Both request mode (explicit `CertHostID`) and SPIFFE mode (empty `CertHostID`, host derived from certificate SAN URI) are supported.
+  - Private key material is automatically redacted from debug log output.
+
 ## [0.13.18] - 2026-03-13
 
 ### Changed

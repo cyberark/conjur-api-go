@@ -113,6 +113,7 @@ pipeline {
         // Tests default to using DockerHub images. In our internal Jenkins setup, this is overridden to pull from our internal registry instead.
         REGISTRY_URL = "registry.tld"
         INFRAPOOL_TEST_AWS=true
+        INFRAPOOL_TEST_CERT=true
       }
       parallel {
         stage('Golang 1.26') {
@@ -135,6 +136,13 @@ pipeline {
               codacy action: 'reportCoverage', filePath: "output/1.26/coverage.xml"
             }
           }
+          post {
+            always {
+              script { infrapool.agentArchiveArtifacts artifacts: 'output/1.26/conjur-logs.txt' }
+              script { infrapool.agentArchiveArtifacts artifacts: 'output/1.26/conjur-leader-logs.txt', allowEmptyArchive: true }
+              junit 'output/1.26/junit.xml'
+            }
+          }
         }
 
         stage('Golang 1.25') {
@@ -145,13 +153,12 @@ pipeline {
               unstash '1.25-out'
             }
           }
-        }
-      }
-      post {
-        always {
-          script { infrapool.agentArchiveArtifacts artifacts: 'output/1.25/conjur-logs.txt' }
-          script { infrapool.agentArchiveArtifacts artifacts: 'output/1.26/conjur-logs.txt' }
-          junit 'output/1.26/junit.xml'
+          post {
+            always {
+              script { infrapool.agentArchiveArtifacts artifacts: 'output/1.25/conjur-logs.txt' }
+              script { infrapool.agentArchiveArtifacts artifacts: 'output/1.25/conjur-leader-logs.txt', allowEmptyArchive: true }
+            }
+          }
         }
       }
     }
@@ -170,6 +177,7 @@ pipeline {
         }
       }
     }
+
 
     stage('Run GCP tests') {
       when {

@@ -229,6 +229,74 @@ config.JWTHostID = "myapp/gcp-instance"
 conjur, err := conjurapi.NewClientFromGCPCredentials(config, "") // "" uses default metadata URL
 ```
 
+#### Certificate Authentication (authn-cert / mTLS)
+
+You can authenticate using a client certificate and private key via mutual TLS (mTLS).
+This method is suitable for workloads that already possess a machine certificate issued
+by a trusted CA (e.g., enterprise PKI, SPIFFE/SPIRE).
+
+> **Note:** Certificate authentication is not supported for Conjur Cloud (Secrets Manager SaaS) directly. It is supported for Conjur Cloud Edge deployments and all self-hosted Conjur Enterprise instances.
+
+##### Environment Variables
+
+| Variable | Description |
+|---|---|
+| `CONJUR_APPLIANCE_URL` | URL of your Conjur self-hosted instance |
+| `CONJUR_ACCOUNT` | Conjur account name |
+| `CONJUR_AUTHN_CERT_SERVICE_ID` | Service ID of the `authn-cert` authenticator |
+| `CONJUR_AUTHN_CERT_FILE` | Path to the PEM-encoded client certificate file |
+| `CONJUR_AUTHN_CERT_KEY_FILE` | Path to the PEM-encoded private key file |
+| `CONJUR_AUTHN_CERT_HOST_ID` | Conjur host ID (omit for SPIFFE mode) |
+
+##### Two operating modes
+
+| Mode | `CertHostID` | How the host is identified |
+|---|---|---|
+| **Request mode** | Set to the Conjur host path, e.g. `vm-workloads/vm-01` | Included as a path segment in the authenticate URL |
+| **SPIFFE mode** | Empty string `""` | Derived by Conjur from the SPIFFE URI SAN in the certificate |
+
+##### Example: Certificate Authentication
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+
+    "github.com/cyberark/conjur-api-go/conjurapi"
+)
+
+func main() {
+    // Certificate and key can be provided as file paths or as inline PEM strings.
+    // File paths support transparent rotation: the SDK re-reads the files on each
+    // TLS handshake, so replacing the files on disk takes effect without restart.
+    config := conjurapi.Config{
+        ApplianceURL:      "https://conjur.example.com",
+        Account:           "myorg",
+        AuthnType:         "cert",
+        ServiceID:         "acme-vm",               // authn-cert service ID
+        CertHostID:        "vm-workloads/vm-01",    // omit for SPIFFE mode
+        ClientCertFile:    "/etc/ssl/client.pem",   // PEM certificate file
+        ClientCertKeyFile: "/etc/ssl/client-key.pem", // PEM private key file
+    }
+
+    // Or use environment variables with LoadConfig() + NewClientFromEnvironment().
+
+    conjur, err := conjurapi.NewClientFromCertificate(config)
+    if err != nil {
+        log.Fatalf("Cannot create cert client: %s", err)
+    }
+
+    secretValue, err := conjur.RetrieveSecret("prod/database/password")
+    if err != nil {
+        log.Fatalf("Cannot retrieve secret: %s", err)
+    }
+
+    fmt.Printf("%s", string(secretValue))
+}
+```
+
 ## Contributing
 
 We welcome contributions of all kinds to this repository. For instructions on how to get started and descriptions of our development workflows, please see our [contributing

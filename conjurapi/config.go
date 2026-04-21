@@ -1,6 +1,8 @@
 package conjurapi
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"net/url"
@@ -9,6 +11,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"go.yaml.in/yaml/v3"
@@ -40,7 +43,7 @@ const (
 	DefaultVendorName = "CyberArk"
 )
 
-var supportedAuthnTypes = []string{"authn", "ldap", "oidc", "jwt", "iam", "azure", "gcp", "cloud"}
+var supportedAuthnTypes = []string{"authn", "ldap", "oidc", "jwt", "iam", "azure", "gcp", "cloud", "cert"}
 
 type Config struct {
 	Account              string          `yaml:"account,omitempty"`
@@ -66,6 +69,17 @@ type Config struct {
 	Proxy                string          `yaml:"proxy,omitempty"`
 	ConjurCloudTimeout   int             `yaml:"cc_timeout,omitempty"`
 	AzureClientID        string          `yaml:"azure_client_id,omitempty"`
+	// ClientCertFile is the path to a PEM-encoded client certificate for authn-cert (mTLS).
+	ClientCertFile string `yaml:"client_cert_file,omitempty"`
+	// ClientCertKeyFile is the path to the PEM-encoded private key for the client certificate.
+	ClientCertKeyFile string `yaml:"client_cert_key_file,omitempty"`
+	// ClientCert holds an inline PEM-encoded client certificate. Never written to disk.
+	ClientCert string `yaml:"-"`
+	// ClientCertKey holds the inline PEM-encoded private key. Never written to disk.
+	ClientCertKey string `yaml:"-"`
+	// CertHostID is the Conjur host path for authn-cert request mode
+	// (e.g. "host/vm-workloads/vm-01"). Leave empty for SPIFFE mode.
+	CertHostID string `yaml:"cert_host_id,omitempty"`
 }
 
 func (c *Config) IsHttps() bool {
@@ -93,7 +107,7 @@ func (c *Config) Validate() error {
 		errors = append(errors, fmt.Sprintf("AuthnType must be one of %v", supportedAuthnTypes))
 	}
 
-	if (c.AuthnType == "ldap" || c.AuthnType == "oidc" || c.AuthnType == "jwt" || c.AuthnType == "iam" || c.AuthnType == "azure") && c.ServiceID == "" {
+	if (c.AuthnType == "ldap" || c.AuthnType == "oidc" || c.AuthnType == "jwt" || c.AuthnType == "iam" || c.AuthnType == "azure" || c.AuthnType == "cert") && c.ServiceID == "" {
 		errors = append(errors, fmt.Sprintf("Must specify a ServiceID when using %s", c.AuthnType))
 	}
 
@@ -103,6 +117,34 @@ func (c *Config) Validate() error {
 
 	if (c.AuthnType == "iam" || c.AuthnType == "azure") && c.JWTHostID == "" {
 		errors = append(errors, fmt.Sprintf("Must specify a HostID when using %s authentication", c.AuthnType))
+	}
+
+	if c.AuthnType == "cert" {
+		if !strings.HasPrefix(strings.ToLower(c.BaseURL()), "https://") {
+			errors = append(errors, "Certificate authentication requires an HTTPS connection")
+		}
+		if isConjurCloudURL(c.ApplianceURL) {
+			errors = append(errors, "Certificate authentication is not supported in Secrets Manager SaaS")
+		}
+		if c.ClientCert == "" && c.ClientCertFile == "" {
+			errors = append(errors, "Must specify a client certificate (ClientCert or ClientCertFile) when using cert authentication")
+		}
+		if c.ClientCertKey == "" && c.ClientCertKeyFile == "" {
+			errors = append(errors, "Must specify a client certificate key (ClientCertKey or ClientCertKeyFile) when using cert authentication")
+		}
+		// When inline PEM is provided, parse it now so misconfiguration is caught
+		// at construction time rather than at the first TLS handshake.
+		if c.ClientCert != "" && c.ClientCertKey != "" {
+			if cert, err := tls.X509KeyPair([]byte(c.ClientCert), []byte(c.ClientCertKey)); err != nil {
+				errors = append(errors, fmt.Sprintf("invalid client certificate or key: %s", err))
+			} else if len(cert.Certificate) > 0 {
+				if parsed, err := x509.ParseCertificate(cert.Certificate[0]); err == nil {
+					if time.Now().After(parsed.NotAfter) {
+						logging.ApiLog.Warnf("client certificate expired at %s", parsed.NotAfter)
+					}
+				}
+			}
+		}
 	}
 
 	if c.HTTPTimeout < 0 || c.HTTPTimeout > HTTPTimeoutMaxValue {
@@ -116,7 +158,7 @@ func (c *Config) Validate() error {
 	if len(errors) == 0 {
 		return nil
 	} else if logging.ApiLog.Level == logrus.DebugLevel {
-		errors = append(errors, fmt.Sprintf("config: %+v", c))
+		errors = append(errors, fmt.Sprintf("config: %s", c))
 	}
 	return fmt.Errorf("%s", strings.Join(errors, " -- "))
 }
@@ -126,6 +168,51 @@ func (c *Config) ReadSSLCert() ([]byte, error) {
 		return []byte(c.SSLCert), nil
 	}
 	return os.ReadFile(c.SSLCertPath)
+}
+
+// ReadClientCert loads the mTLS client certificate and key for authn-cert.
+// Inline PEM content (ClientCert/ClientCertKey) takes precedence over file paths.
+func (c *Config) ReadClientCert() (tls.Certificate, error) {
+	var certPEM, keyPEM []byte
+	var err error
+
+	if c.ClientCert != "" {
+		certPEM = []byte(c.ClientCert)
+	} else {
+		certPEM, err = os.ReadFile(c.ClientCertFile)
+		if err != nil {
+			return tls.Certificate{}, fmt.Errorf("failed to read client certificate file: %w", err)
+		}
+	}
+
+	if c.ClientCertKey != "" {
+		keyPEM = []byte(c.ClientCertKey)
+	} else {
+		keyPEM, err = os.ReadFile(c.ClientCertKeyFile)
+		if err != nil {
+			return tls.Certificate{}, fmt.Errorf("failed to read client certificate key file: %w", err)
+		}
+	}
+
+	cert, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("failed to parse client certificate and key: %w", err)
+	}
+	return cert, nil
+}
+
+// String returns a redacted representation of the Config suitable for debug logging.
+// ClientCert and ClientCertKey are redacted when non-empty to prevent private key leakage.
+func (c Config) String() string {
+	if c.ClientCert != "" {
+		c.ClientCert = "[REDACTED]"
+	}
+	if c.ClientCertKey != "" {
+		c.ClientCertKey = "[REDACTED]"
+	}
+	// Use a local alias so fmt does not call String() recursively.
+	type configAlias Config
+	return fmt.Sprintf("%+v", configAlias(c))
 }
 
 func (c *Config) BaseURL() string {
@@ -181,6 +268,11 @@ func (c *Config) merge(o *Config) {
 	c.Environment = EnvironmentType(mergeValue(string(c.Environment), string(o.Environment)))
 	c.Proxy = mergeValue(c.Proxy, o.Proxy)
 	c.AzureClientID = mergeValue(c.AzureClientID, o.AzureClientID)
+	c.ClientCertFile = mergeValue(c.ClientCertFile, o.ClientCertFile)
+	c.ClientCertKeyFile = mergeValue(c.ClientCertKeyFile, o.ClientCertKeyFile)
+	c.ClientCert = mergeValue(c.ClientCert, o.ClientCert)
+	c.ClientCertKey = mergeValue(c.ClientCertKey, o.ClientCertKey)
+	c.CertHostID = mergeValue(c.CertHostID, o.CertHostID)
 }
 
 func (c *Config) mergeYAML(filename string) error {
@@ -245,6 +337,9 @@ func (c *Config) mergeEnv() {
 		DisableKeepAlives: disableKeepAlivesFromEnv(),
 		Environment:       EnvironmentType(os.Getenv("CONJUR_ENVIRONMENT")),
 		AzureClientID:     os.Getenv("CONJUR_AUTHN_AZURE_CLIENT_ID"),
+		ClientCertFile:    os.Getenv("CONJUR_AUTHN_CERT_FILE"),
+		ClientCertKeyFile: os.Getenv("CONJUR_AUTHN_CERT_KEY_FILE"),
+		CertHostID:        os.Getenv("CONJUR_AUTHN_CERT_HOST_ID"),
 	}
 
 	if os.Getenv("CONJUR_AUTHN_JWT_SERVICE_ID") != "" {
@@ -254,7 +349,14 @@ func (c *Config) mergeEnv() {
 		env.ServiceID = mergeValue(env.ServiceID, os.Getenv("CONJUR_AUTHN_JWT_SERVICE_ID"))
 	}
 
-	logging.ApiLog.Debugf("Config from environment: %+v\n", env)
+	if os.Getenv("CONJUR_AUTHN_CERT_SERVICE_ID") != "" {
+		// If the CONJUR_AUTHN_CERT_SERVICE_ID env var is set, we are implicitly using authn-cert
+		env.AuthnType = "cert"
+		// CONJUR_AUTHN_CERT_SERVICE_ID overrides CONJUR_SERVICE_ID
+		env.ServiceID = mergeValue(env.ServiceID, os.Getenv("CONJUR_AUTHN_CERT_SERVICE_ID"))
+	}
+
+	logging.ApiLog.Debugf("Config from environment: %s\n", env)
 	c.merge(&env)
 }
 

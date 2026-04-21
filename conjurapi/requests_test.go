@@ -1,6 +1,7 @@
 package conjurapi
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -204,5 +205,74 @@ func TestClient_GCPAuthenticateRequest(t *testing.T) {
 		assert.NoError(t, err)
 		require.NotNil(t, req)
 		assert.Equal(t, "https://conjur.example.com/authn-gcp/myaccount/authenticate", req.URL.String())
+	})
+}
+
+func TestClient_CertAuthenticateRequest(t *testing.T) {
+	newCertClient := func(hostID string) *Client {
+		return &Client{
+			config: Config{
+				Account:      "myaccount",
+				ApplianceURL: "https://conjur.example.com",
+				AuthnType:    "cert",
+				ServiceID:    "acme-vm",
+				CertHostID:   hostID,
+			},
+		}
+	}
+
+	t.Run("Request mode includes URL-encoded host segment", func(t *testing.T) {
+		client := newCertClient("vm-workloads/vm-01")
+		req, err := client.CertAuthenticateRequest("vm-workloads/vm-01")
+
+		require.NoError(t, err)
+		require.NotNil(t, req)
+		assert.Equal(t, http.MethodPost, req.Method)
+		// host/ prefix is added by ensureHostPrefix, then the whole token is path-escaped
+		assert.Equal(t,
+			"https://conjur.example.com/authn-cert/acme-vm/myaccount/host%2Fvm-workloads%2Fvm-01/authenticate",
+			req.URL.String())
+	})
+
+	t.Run("Host prefix not doubled when already present", func(t *testing.T) {
+		client := newCertClient("host/vm-workloads/vm-01")
+		req, err := client.CertAuthenticateRequest("host/vm-workloads/vm-01")
+
+		require.NoError(t, err)
+		require.NotNil(t, req)
+		assert.Equal(t,
+			"https://conjur.example.com/authn-cert/acme-vm/myaccount/host%2Fvm-workloads%2Fvm-01/authenticate",
+			req.URL.String())
+		assert.NotContains(t, req.URL.String(), "host%2Fhost%2F",
+			"host prefix must not be duplicated")
+	})
+
+	t.Run("SPIFFE mode omits host segment when hostID is empty", func(t *testing.T) {
+		client := newCertClient("")
+		req, err := client.CertAuthenticateRequest("")
+
+		require.NoError(t, err)
+		require.NotNil(t, req)
+		assert.Equal(t,
+			"https://conjur.example.com/authn-cert/acme-vm/myaccount/authenticate",
+			req.URL.String())
+	})
+
+	t.Run("Request carries no Accept-Encoding header", func(t *testing.T) {
+		client := newCertClient("vm-01")
+		req, err := client.CertAuthenticateRequest("vm-01")
+
+		require.NoError(t, err)
+		require.NotNil(t, req)
+		assert.Empty(t, req.Header.Get("Accept-Encoding"))
+	})
+
+	t.Run("SPIFFE mode also carries no Accept-Encoding header", func(t *testing.T) {
+		client := newCertClient("")
+		req, err := client.CertAuthenticateRequest("")
+
+		require.NoError(t, err)
+		require.NotNil(t, req)
+		assert.Empty(t, req.Header.Get("Accept-Encoding"))
 	})
 }

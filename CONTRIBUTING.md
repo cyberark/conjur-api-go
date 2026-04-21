@@ -43,6 +43,37 @@ and will run the tests in a `golang:1.25` container
 Supported arguments are `1.25` and `1.26`, with the
 default being `1.26` if no argument is given.
 
+### Running authn-cert (mTLS) integration tests
+
+The certificate authentication integration tests require a Conjur Enterprise
+appliance image, which is not publicly available. These tests run automatically
+in CI on every build. Internal CyberArk developers can also run them locally.
+
+**Prerequisites:**
+- `openssl` available on the host machine (used to generate the test PKI)
+
+**Run locally with cert auth enabled:**
+```shell
+TEST_CERT=true ./bin/test.sh
+```
+
+**What happens under the hood (`TEST_CERT=true`):**
+1. `setup-cert-auth.sh` pulls and starts the `conjur-leader` Enterprise container
+   (Docker Compose profile `cert`).
+2. The appliance is initialised via `evoke configure master`.
+3. A test CA and a client certificate signed by that CA are generated on the
+   host with `openssl`. The files land in a temporary directory (`$CERT_TMPDIR`).
+4. The test container is started with `$CERT_TMPDIR` mounted at `/certs` and
+   connected to the `conjur` Docker network so it can resolve
+   `conjur-leader-1.mycompany.local`.
+5. `authn_cert_test.go` loads the CA cert into the Conjur webservice variable,
+   then authenticates using the generated client certificate.
+
+You can override the appliance version:
+```shell
+APPLIANCE_TAG=13.8.0 TEST_CERT=true ./bin/test.sh
+```
+
 ### Setting up a development environment
 To start a container with terminal access, and the necessary
 test running dependencies installed, run:
@@ -105,10 +136,10 @@ follow the instructions in this section.
 
 1. Review the git log and ensure the [changelog](CHANGELOG.md) contains all
    relevant recent changes with references to GitHub issues or PRs, if possible.
-   Also ensure the latest unreleased version is accurate - our pipeline generates 
+   Also ensure the latest unreleased version is accurate - our pipeline generates
    a VERSION file based on the changelog, which is then used to assign the version
    of the release and any release artifacts.
-1. Ensure that all documentation that needs to be written has been 
+1. Ensure that all documentation that needs to be written has been
    written by TW, approved by PO/Engineer, and pushed to the forward-facing documentation.
 1. Scan the project for vulnerabilities
 
