@@ -363,7 +363,7 @@ func TestConfig_Validate(t *testing.T) {
 		})
 	})
 
-	t.Run("Config.String() redacts private key material in debug logging", func(t *testing.T) {
+	t.Run("Config.String() redacts sensitive credential fields", func(t *testing.T) {
 		certPEM, keyPEM := generateTestCertPEM(t)
 
 		t.Run("Redacts ClientCert and ClientCertKey when set", func(t *testing.T) {
@@ -377,7 +377,18 @@ func TestConfig_Validate(t *testing.T) {
 			assert.NotContains(t, result, "-----BEGIN")
 		})
 
-		t.Run("Does not produce REDACTED when cert fields are empty", func(t *testing.T) {
+		t.Run("Redacts JWTContent when set", func(t *testing.T) {
+			sensitiveJWT := "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJob3N0L215LWhvc3QifQ.SIGNATURE"
+			config := Config{
+				Account:    "account",
+				JWTContent: sensitiveJWT,
+			}
+			result := config.String()
+			assert.Contains(t, result, "[REDACTED]")
+			assert.NotContains(t, result, sensitiveJWT)
+		})
+
+		t.Run("Does not produce REDACTED when sensitive fields are empty", func(t *testing.T) {
 			config := Config{
 				Account: "account",
 			}

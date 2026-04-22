@@ -45,6 +45,7 @@ const (
 
 var supportedAuthnTypes = []string{"authn", "ldap", "oidc", "jwt", "iam", "azure", "gcp", "cloud", "cert"}
 
+// Config holds all connection and authentication settings for a Conjur client.
 type Config struct {
 	Account              string          `yaml:"account,omitempty"`
 	ApplianceURL         string          `yaml:"appliance_url,omitempty"`
@@ -202,7 +203,8 @@ func (c *Config) ReadClientCert() (tls.Certificate, error) {
 }
 
 // String returns a redacted representation of the Config suitable for debug logging.
-// ClientCert and ClientCertKey are redacted when non-empty to prevent private key leakage.
+// Sensitive fields containing inline credentials are replaced with "[REDACTED]"
+// to prevent accidental leakage in log output.
 func (c Config) String() string {
 	if c.ClientCert != "" {
 		c.ClientCert = "[REDACTED]"
@@ -210,6 +212,10 @@ func (c Config) String() string {
 	if c.ClientCertKey != "" {
 		c.ClientCertKey = "[REDACTED]"
 	}
+	if c.JWTContent != "" {
+		c.JWTContent = "[REDACTED]"
+	}
+
 	// Use a local alias so fmt does not call String() recursively.
 	type configAlias Config
 	return fmt.Sprintf("%+v", configAlias(c))
