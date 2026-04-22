@@ -677,6 +677,16 @@ func TestClient_newHTTPSClient(t *testing.T) {
 			assert.ObjectsAreEqual(http.ProxyFromEnvironment, transport.Proxy)
 		})
 	})
+	t.Run("MinVersion is TLS 1.2", func(t *testing.T) {
+		config := Config{}
+		client, err := newHTTPSClient([]byte(sample_cert), config)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+
+		transport := client.Transport.(*http.Transport)
+		assert.Equal(t, uint16(tls.VersionTLS12), transport.TLSClientConfig.MinVersion)
+	})
 }
 
 func TestClient_HttpClientTimeoutValue(t *testing.T) {

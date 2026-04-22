@@ -528,7 +528,10 @@ func newHTTPSClient(cert []byte, config Config) (*http.Client, error) {
 	//TODO: Test what happens if this cert is expired
 	//TODO: What if server cert is rotated
 	tr := newHTTPTransport(config)
-	tr.TLSClientConfig = &tls.Config{RootCAs: pool}
+	tr.TLSClientConfig = &tls.Config{
+		RootCAs:    pool,
+		MinVersion: tls.VersionTLS12,
+	}
 	return &http.Client{Transport: tr, Timeout: time.Second * time.Duration(config.GetHttpTimeout())}, nil
 }
 
