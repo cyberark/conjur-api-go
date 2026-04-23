@@ -1308,3 +1308,133 @@ func TestNewClientFromEnvironment_CertAuth(t *testing.T) {
 		assert.IsType(t, &authn.CertAuthenticator{}, client.authenticator)
 	})
 }
+
+func TestNewClientFromEnvironment_Overwrite(t *testing.T) {
+	server, serverCertPEM := mockConjurTLSServerWithCert()
+	defer server.Close()
+
+	certPEM, keyPEM := generateTestCertPEM(t)
+	certFile := writeTempFile(t, certPEM)
+	keyFile := writeTempFile(t, keyPEM)
+
+	testCases := []struct {
+		name   string
+		env    map[string]string
+		config Config
+		assert func(*testing.T, *Client, error)
+	}{
+		{
+			name: "token file envvar overwrites config-based authentication",
+			env: map[string]string{
+				"CONJUR_AUTHN_TOKEN_FILE": "/path/to/access-token",
+			},
+			config: Config{
+				Account:      "account",
+				ApplianceURL: "appliance-url",
+				AuthnType:    "jwt",
+				ServiceID:    "service-id",
+				JWTFilePath:  "/my/jwt",
+			},
+			assert: func(t *testing.T, c *Client, err error) {
+				assert.NoError(t, err)
+				assert.Equal(t, "jwt", c.config.AuthnType)
+				assert.IsType(t, &authn.TokenFileAuthenticator{}, c.authenticator)
+			},
+		},
+		{
+			name: "token envvar overwrites config-based authentication",
+			env: map[string]string{
+				"CONJUR_AUTHN_TOKEN": "my-access-token",
+			},
+			config: Config{
+				Account:      "account",
+				ApplianceURL: "appliance-url",
+				AuthnType:    "jwt",
+				ServiceID:    "service-id",
+				JWTContent:   "myjwt",
+			},
+			assert: func(t *testing.T, c *Client, err error) {
+				assert.NoError(t, err)
+				assert.Equal(t, "jwt", c.config.AuthnType)
+				assert.IsType(t, &authn.TokenAuthenticator{}, c.authenticator)
+			},
+		},
+		{
+			name: "JWT service ID envvar overwrites config-based authentication",
+			env: map[string]string{
+				"CONJUR_AUTHN_JWT_SERVICE_ID": "jwt-service-id",
+			},
+			config: Config{
+				Account:       "account",
+				ApplianceURL:  "https://appliance-url",
+				AuthnType:     "azure",
+				ServiceID:     "service-id",
+				JWTContent:    "myjwt",
+				AzureClientID: "my-client-id",
+				JWTHostID:     "my-host-id",
+			},
+			assert: func(t *testing.T, c *Client, err error) {
+				assert.NoError(t, err)
+				assert.Equal(t, "azure", c.config.AuthnType)
+				assert.IsType(t, &authn.JWTAuthenticator{}, c.authenticator)
+			},
+		},
+		{
+			name: "Config-based cert authentication is prioritized over login and API key",
+			env: map[string]string{
+				"CONJUR_AUTHN_LOGIN":   "user",
+				"CONJUR_AUTHN_API_KEY": "password",
+			},
+			config: Config{
+				Account:           "myaccount",
+				ApplianceURL:      server.URL,
+				AuthnType:         "cert",
+				ServiceID:         "test-cert-service",
+				CertHostID:        "vm-workloads/vm-01",
+				ClientCertFile:    certFile,
+				ClientCertKeyFile: keyFile,
+				SSLCert:           serverCertPEM,
+			},
+			assert: func(t *testing.T, c *Client, err error) {
+				assert.NoError(t, err)
+				assert.Equal(t, "cert", c.config.AuthnType)
+				assert.IsType(t, &authn.CertAuthenticator{}, c.authenticator)
+			},
+		},
+		{
+			name: "login and API key envvars overwrite other config-based authentication",
+			env: map[string]string{
+				"CONJUR_AUTHN_LOGIN":   "user",
+				"CONJUR_AUTHN_API_KEY": "password",
+			},
+			config: Config{
+				Account:      "account",
+				ApplianceURL: "https://appliance-url",
+				AuthnType:    "jwt",
+				ServiceID:    "service-id",
+				JWTContent:   "myjwt",
+			},
+			assert: func(t *testing.T, c *Client, err error) {
+				assert.NoError(t, err)
+				assert.Equal(t, "jwt", c.config.AuthnType)
+				assert.IsType(t, &authn.APIKeyAuthenticator{}, c.authenticator)
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			e := ClearEnv()
+			defer e.RestoreEnv()
+
+			// Set environment variables for the test case
+			os.Setenv("HOME", t.TempDir())
+			for key, value := range tt.env {
+				os.Setenv(key, value)
+			}
+
+			client, err := NewClientFromEnvironment(tt.config)
+			tt.assert(t, client, err)
+		})
+	}
+}
