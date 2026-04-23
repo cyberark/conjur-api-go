@@ -235,7 +235,14 @@ You can authenticate using a client certificate and private key via mutual TLS (
 This method is suitable for workloads that already possess a machine certificate issued
 by a trusted CA (e.g., enterprise PKI, SPIFFE/SPIRE).
 
-> **Note:** Certificate authentication is not supported for Conjur Cloud (Secrets Manager SaaS) directly. It is supported for Conjur Cloud Edge deployments and all self-hosted Conjur Enterprise instances.
+> [!NOTE]
+> Certificate authentication is not supported for Conjur Cloud (Secrets Manager
+> SaaS) directly. It is supported for Conjur Cloud Edge deployments and all
+> self-hosted Conjur Enterprise instances.
+
+> [!WARNING]
+> Client certificate files should be created with `0644` permissions, and their
+> respective private key files should be created with `0600` permissions.
 
 ##### Environment Variables
 
