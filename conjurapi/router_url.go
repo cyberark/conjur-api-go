@@ -2,6 +2,7 @@ package conjurapi
 
 import (
 	"fmt"
+	"net/url"
 	"path"
 	"regexp"
 	"strings"
@@ -22,7 +23,20 @@ var ConjurCloudSuffixes = []string{
 }
 
 // ConjurCloudRegexp is a regex pattern that matches all possible Secrets Manager SaaS URLs.
-var ConjurCloudRegexp = regexp.MustCompile("(\\.secretsmgr|-secretsmanager)" + strings.Join(ConjurCloudSuffixes, "|"))
+//
+// Note:
+//   - Each suffix is quoted so literal dots are not treated as wildcards.
+//   - Suffixes are wrapped in a group so the prefix applies to all possible suffixes.
+//   - Pattern is end anchored, but not start anchored. The prefix and suffix match
+//     must be at the end of the hostname, but there may be additional subdomains
+//     before the prefix.
+var ConjurCloudRegexp = func() *regexp.Regexp {
+	quoted := make([]string, len(ConjurCloudSuffixes))
+	for i, s := range ConjurCloudSuffixes {
+		quoted[i] = regexp.QuoteMeta(s)
+	}
+	return regexp.MustCompile(`(\.secretsmgr|-secretsmanager)(` + strings.Join(quoted, "|") + `)$`)
+}()
 
 type routerURL string
 
@@ -57,5 +71,12 @@ func normalizeBaseURL(baseURL string) string {
 }
 
 func isConjurCloudURL(baseURL string) bool {
-	return ConjurCloudRegexp.MatchString(baseURL)
+	parsed, err := url.Parse(baseURL)
+	if err != nil {
+		return false
+	}
+	if parsed.Scheme != "https" {
+		return false
+	}
+	return ConjurCloudRegexp.MatchString(strings.ToLower(parsed.Hostname()))
 }

@@ -464,7 +464,7 @@ func TestConfig_Validate(t *testing.T) {
 		t.Run("Return no error for missing Environment. Defaults to saas", func(t *testing.T) {
 			config := Config{
 				Account:      "account",
-				ApplianceURL: "appliance-url.secretsmgr.cyberark.cloud",
+				ApplianceURL: "https://appliance-url.secretsmgr.cyberark.cloud",
 			}
 
 			err := config.Validate()
