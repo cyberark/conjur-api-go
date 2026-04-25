@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -372,9 +373,22 @@ func TestConfig_Validate(t *testing.T) {
 				ClientCert:    certPEM,
 				ClientCertKey: keyPEM,
 			}
-			result := config.String()
-			assert.Contains(t, result, "[REDACTED]")
-			assert.NotContains(t, result, "-----BEGIN")
+
+			formatters := []string{"%s", "%q", "%v", "%+v", "%#v"}
+			for _, formatter := range formatters {
+				s := fmt.Sprintf(formatter, config)
+				assert.Contains(t, s, "[REDACTED]")
+				assert.NotContains(t, s, "-----BEGIN")
+			}
+
+			hexFormatters := []string{"%x", "%X"}
+			for _, formatter := range hexFormatters {
+				s := fmt.Sprintf(formatter, config)
+				bytes, err := hex.DecodeString(s)
+				require.NoError(t, err)
+				assert.Contains(t, string(bytes), "[REDACTED]")
+				assert.NotContains(t, string(bytes), "-----BEGIN")
+			}
 		})
 
 		t.Run("Redacts JWTContent when set", func(t *testing.T) {
@@ -392,8 +406,20 @@ func TestConfig_Validate(t *testing.T) {
 			config := Config{
 				Account: "account",
 			}
-			result := config.String()
-			assert.NotContains(t, result, "[REDACTED]")
+
+			formatters := []string{"%s", "%q", "%v", "%+v", "%#v"}
+			for _, formatter := range formatters {
+				s := fmt.Sprintf(formatter, config)
+				assert.NotContains(t, s, "[REDACTED]")
+			}
+
+			hexFormatters := []string{"%x", "%X"}
+			for _, formatter := range hexFormatters {
+				s := fmt.Sprintf(formatter, config)
+				bytes, err := hex.DecodeString(s)
+				require.NoError(t, err)
+				assert.NotContains(t, string(bytes), "[REDACTED]")
+			}
 		})
 
 		t.Run("Debug log output does not contain private key material", func(t *testing.T) {
@@ -438,7 +464,7 @@ func TestConfig_Validate(t *testing.T) {
 		t.Run("Return no error for missing Environment. Defaults to saas", func(t *testing.T) {
 			config := Config{
 				Account:      "account",
-				ApplianceURL: "appliance-url.secretsmgr.cyberark.cloud",
+				ApplianceURL: "https://appliance-url.secretsmgr.cyberark.cloud",
 			}
 
 			err := config.Validate()

@@ -205,7 +205,7 @@ func (c *Config) ReadClientCert() (tls.Certificate, error) {
 // String returns a redacted representation of the Config suitable for debug logging.
 // Sensitive fields containing inline credentials are replaced with "[REDACTED]"
 // to prevent accidental leakage in log output.
-func (c Config) String() string {
+func (c Config) redacted() Config {
 	if c.ClientCert != "" {
 		c.ClientCert = "[REDACTED]"
 	}
@@ -216,9 +216,44 @@ func (c Config) String() string {
 		c.JWTContent = "[REDACTED]"
 	}
 
+	return c
+}
+
+func (c Config) String() string {
 	// Use a local alias so fmt does not call String() recursively.
 	type configAlias Config
-	return fmt.Sprintf("%+v", configAlias(c))
+	return fmt.Sprintf("%+v", configAlias(c.redacted()))
+}
+
+// Format implements fmt.Formatter, extending credential redaction to all
+// applicable formatting verbs.
+func (c Config) Format(state fmt.State, verb rune) {
+	r := c.redacted()
+	// configAlias breaks the Formatter interface so fmt uses its default
+	// struct formatting (field names for %+v, Go syntax for %#v, etc.)
+	// rather than recursing into this method.
+	type configAlias Config
+	switch verb {
+	case 's':
+		fmt.Fprint(state, r.String())
+	case 'q':
+		fmt.Fprintf(state, "%q", r.String())
+	case 'x':
+		fmt.Fprintf(state, "%x", r.String())
+	case 'X':
+		fmt.Fprintf(state, "%X", r.String())
+	case 'v':
+		format := ""
+		if state.Flag('+') {
+			format += "+"
+		}
+		if state.Flag('#') {
+			format += "#"
+		}
+		format += "v"
+
+		fmt.Fprintf(state, "%"+format, configAlias(r))
+	}
 }
 
 func (c *Config) BaseURL() string {

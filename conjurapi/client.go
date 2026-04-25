@@ -209,6 +209,19 @@ func LoginPairFromEnv() (*authn.LoginPair, error) {
 	}, nil
 }
 
+// NewClientFromEnvironment constructs a new Client instance from a given Config
+// instance, but prioritizes environment variables for authenticator
+// configuration. Authenticator configuration is prioritized as follows:
+//  1. CONJUR_AUTHN_TOKEN_FILE                           -> TokenFileAuthenticator
+//  2. CONJUR_AUTHN_TOKEN                                -> TokenAuthenticator
+//  3. config.AuthnType "cert"                           -> CertAuthenticator
+//     (which heavily implies CONJUR_AUTHN_CERT_SERVICE_ID, especially is the
+//     Config instance is created with the LoadConfig function, which
+//     prioritizes CONJUR_AUTHN_CERT_SERVICE_ID over CONJUR_AUTHN_JWT_SERVICE_ID)
+//  4. CONJUR_AUTHN_JWT_SERVICE_ID or config.JWTFilePath -> JWTAuthenticator
+//  5. CONJUR_AUTHN_LOGIN and CONJUR_AUTHN_API_KEY       -> APIKeyAuthenticator
+//  6. Other config.AuthnType values
+//
 // TODO: Create a version of this function for creating an authenticator from environment
 func NewClientFromEnvironment(config Config) (*Client, error) {
 	err := config.Validate()
@@ -217,29 +230,48 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 		return nil, err
 	}
 
+	maybeLogOverwrite := func() {
+		if config.AuthnType != "" {
+			logging.ApiLog.Debugf("Config instance with AuthnType '%s' detected, it is being ignored", config.AuthnType)
+		}
+	}
+
 	authnTokenFile := os.Getenv("CONJUR_AUTHN_TOKEN_FILE")
 	if authnTokenFile != "" {
+		logging.ApiLog.Debug("CONJUR_AUTHN_TOKEN_FILE environment variable detected, initializing client with token file authenticator")
+		maybeLogOverwrite()
 		return NewClientFromTokenFile(config, authnTokenFile)
 	}
 
 	authnToken := os.Getenv("CONJUR_AUTHN_TOKEN")
 	if authnToken != "" {
+		logging.ApiLog.Debug("CONJUR_AUTHN_TOKEN environment variable detected, initializing client with token authenticator")
+		maybeLogOverwrite()
 		return NewClientFromToken(config, authnToken)
 	}
 
-	if config.JWTFilePath != "" || os.Getenv("CONJUR_AUTHN_JWT_SERVICE_ID") != "" {
-		return NewClientFromJwt(config)
+	if config.AuthnType == "cert" {
+		logging.ApiLog.Debug("Config instance with authn type 'cert' detected, initializing client with certificate authenticator")
+		if os.Getenv("CONJUR_AUTHN_API_KEY") != "" {
+			logging.ApiLog.Warn("CONJUR_AUTHN_API_KEY environment variable detected, it is being ignored")
+		}
+		return newClientFromCertConfig(config)
 	}
 
-	if config.AuthnType == "cert" {
-		return newClientFromCertConfig(config)
+	if config.JWTFilePath != "" || os.Getenv("CONJUR_AUTHN_JWT_SERVICE_ID") != "" {
+		logging.ApiLog.Debug("CONJUR_AUTHN_JWT_SERVICE_ID environment variable detected, initializing client with JWT authenticator")
+		maybeLogOverwrite()
+		return NewClientFromJwt(config)
 	}
 
 	loginPair, err := LoginPairFromEnv()
 	if err == nil && loginPair.Login != "" && loginPair.APIKey != "" {
+		logging.ApiLog.Debug("CONJUR_AUTHN_LOGIN and CONJUR_AUTHN_API_KEY environment variables detected, initializing client with API key authenticator")
+		maybeLogOverwrite()
 		return NewClientFromKey(config, *loginPair)
 	}
 
+	logging.ApiLog.Debug("No environment variables detected for authentication, falling back to stored credentials")
 	return newClientFromStoredCredentials(config)
 }
 
@@ -302,18 +334,24 @@ func newClientFromStoredCredentials(config Config) (*Client, error) {
 			} else if login != "" && password != "" && login != storage.OidcStorageMarker {
 				hostConfig := config
 				hostConfig.AuthnType = AuthnTypeStandard
+
+				logging.ApiLog.Debug("Host credentials found in storage, initializing client with API key authenticator")
 				return NewClientFromKey(hostConfig, authn.LoginPair{Login: login, APIKey: password})
 			}
 		}
+		logging.ApiLog.Debug("No host credentials found in storage, attempting to authenticate using OIDC credentials")
 		return newClientFromStoredOidcCredentials(config)
 
 	case "iam":
+		logging.ApiLog.Debug("Config instance with authn type 'iam' detected, initializing client with IAM authenticator")
 		return newClientFromStoredAWSConfig(config)
 
 	case "azure":
+		logging.ApiLog.Debug("Config instance with authn type 'azure' detected, initializing client with Azure authenticator")
 		return newClientFromStoredAzureConfig(config)
 
 	case "gcp":
+		logging.ApiLog.Debug("Config instance with authn type 'gcp' detected, initializing client with GCP authenticator")
 		return newClientFromStoredGCPConfig(config)
 
 	case "", AuthnTypeStandard:
@@ -334,6 +372,7 @@ func newClientFromStoredCredentials(config Config) (*Client, error) {
 			return nil, err
 		}
 		if login != "" && password != "" {
+			logging.ApiLog.Debug("Credentials found in storage, initializing client with API key authenticator")
 			return NewClientFromKey(config, authn.LoginPair{Login: login, APIKey: password})
 		}
 	}
@@ -528,7 +567,10 @@ func newHTTPSClient(cert []byte, config Config) (*http.Client, error) {
 	//TODO: Test what happens if this cert is expired
 	//TODO: What if server cert is rotated
 	tr := newHTTPTransport(config)
-	tr.TLSClientConfig = &tls.Config{RootCAs: pool}
+	tr.TLSClientConfig = &tls.Config{
+		RootCAs:    pool,
+		MinVersion: tls.VersionTLS12,
+	}
 	return &http.Client{Transport: tr, Timeout: time.Second * time.Duration(config.GetHttpTimeout())}, nil
 }
 
