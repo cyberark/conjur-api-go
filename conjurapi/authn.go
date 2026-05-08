@@ -503,7 +503,17 @@ func (c *Client) PublicKeys(kind string, identifier string) ([]byte, error) {
 		return nil, err
 	}
 
-	return response.DataResponse(res)
+	data, err := response.DataResponse(res)
+	if err != nil {
+		// Conjur OSS versions that do not expose the public_keys endpoint return
+		// a Rails routing error (404 with HTML body). Surface a clear message
+		// instead of leaking the raw HTML to the caller.
+		if res.StatusCode == 404 || strings.Contains(err.Error(), "No route matches") {
+			return nil, fmt.Errorf("public keys endpoint is not available on this server (got %d): the server may not support this feature", res.StatusCode)
+		}
+		return nil, err
+	}
+	return data, nil
 }
 
 // authenticateWithTokenStorage is a helper function that handles the common authentication flow

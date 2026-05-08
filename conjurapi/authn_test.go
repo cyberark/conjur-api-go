@@ -947,10 +947,10 @@ func TestClient_PublicKeys(t *testing.T) {
 				CredentialStorage: "none",
 			}
 			utils, err := NewTestUtils(config)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = utils.Setup(publicKeysTestPolicy)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			conjur := utils.Client()
 
 			// EXERCISE
@@ -960,17 +960,13 @@ func TestClient_PublicKeys(t *testing.T) {
 }
 
 func runPublicKeysAssertions(t *testing.T, tc publicKeysTestCase, conjur *Client) {
-	var publicKeys []byte
-	var err error
+	publicKeys, err := conjur.PublicKeys(tc.kind, tc.identifier)
+	if err != nil && strings.Contains(err.Error(), "public keys endpoint is not available on this server") {
+		t.Skip("Conjur server does not support the public_keys endpoint")
+	}
+	require.NoError(t, err)
 
-	publicKeys, err = conjur.PublicKeys(tc.kind, tc.identifier)
-
-	assert.NoError(t, err)
-
-	expectedOutput := `ssh-rsa test-key-1 laptop
-ssh-rsa test-key-2 workstation
-`
-
+	expectedOutput := "ssh-rsa test-key-1 laptop\nssh-rsa test-key-2 workstation\n"
 	assert.Equal(t, expectedOutput, string(publicKeys))
 }
 
