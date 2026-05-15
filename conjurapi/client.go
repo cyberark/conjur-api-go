@@ -52,14 +52,11 @@ type Client struct {
 	v2 *ClientV2
 }
 
-func NewClientFromKey(config Config, loginPair authn.LoginPair) (*Client, error) {
+func NewClientFromKey(config Config, loginPair authn.LoginPair, telemetry ...Telemetry) (*Client, error) {
 	authenticator := &authn.APIKeyAuthenticator{
 		LoginPair: loginPair,
 	}
-	client, err := newClientWithAuthenticator(
-		config,
-		authenticator,
-	)
+	client, err := newClientWithAuthenticator(config, authenticator, telemetry...)
 	authenticator.Authenticate = client.Authenticate
 	return client, err
 }
@@ -67,13 +64,13 @@ func NewClientFromKey(config Config, loginPair authn.LoginPair) (*Client, error)
 // NewClientFromCloudHost creates an authenticated client for a Secrets Manager SaaS host.
 // Uses the Authenticate endpoint to validate the API key. Returns error if authentication fails.
 // Config.AuthnType should be "cloud" for proper credential storage.
-func NewClientFromCloudHost(config Config, login string, password string) (*Client, error) {
+func NewClientFromCloudHost(config Config, login string, password string, telemetry ...Telemetry) (*Client, error) {
 	storageProvider, err := createStorageProvider(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create storage provider: %w", err)
 	}
 
-	authClient, err := newCloudAuthClient(config, storageProvider)
+	authClient, err := newCloudAuthClient(config, storageProvider, telemetry...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create auth client: %w", err)
 	}
@@ -83,17 +80,17 @@ func NewClientFromCloudHost(config Config, login string, password string) (*Clie
 		return nil, err
 	}
 
-	return NewClientFromKey(config, authn.LoginPair{Login: login, APIKey: string(apiKey)})
+	return NewClientFromKey(config, authn.LoginPair{Login: login, APIKey: string(apiKey)}, telemetry...)
 }
 
 // newCloudAuthClient creates a temporary client for cloud host authentication using standard authn endpoints.
 // Cloud hosts must use AuthnType="authn" (routes to /authn/{Account}/{login}) instead of AuthnType="cloud"
 // (routes to /authn-oidc/... for users). Storage uses original cloud config to ensure correct machine name.
-func newCloudAuthClient(config Config, storage CredentialStorageProvider) (*Client, error) {
+func newCloudAuthClient(config Config, storage CredentialStorageProvider, telemetry ...Telemetry) (*Client, error) {
 	authConfig := config
 	authConfig.AuthnType = AuthnTypeStandard
 
-	client, err := NewClient(authConfig)
+	client, err := NewClient(authConfig, telemetry...)
 	if err != nil {
 		return nil, err
 	}
@@ -102,35 +99,29 @@ func newCloudAuthClient(config Config, storage CredentialStorageProvider) (*Clie
 	return client, nil
 }
 
-func NewClientFromOidcCode(config Config, code, nonce, code_verifier string) (*Client, error) {
+func NewClientFromOidcCode(config Config, code, nonce, code_verifier string, telemetry ...Telemetry) (*Client, error) {
 	authenticator := &authn.OidcAuthenticator{
 		Code:         code,
 		Nonce:        nonce,
 		CodeVerifier: code_verifier,
 	}
-	client, err := newClientWithAuthenticator(
-		config,
-		authenticator,
-	)
+	client, err := newClientWithAuthenticator(config, authenticator, telemetry...)
 	if err == nil {
 		authenticator.Authenticate = client.OidcAuthenticate
 	}
 	return client, err
 }
 
-func NewClientFromAWSCredentials(config Config) (*Client, error) {
+func NewClientFromAWSCredentials(config Config, telemetry ...Telemetry) (*Client, error) {
 	authenticator := &authn.IAMAuthenticator{}
-	client, err := newClientWithAuthenticator(
-		config,
-		authenticator,
-	)
+	client, err := newClientWithAuthenticator(config, authenticator, telemetry...)
 	if err == nil {
 		authenticator.Authenticate = client.IAMAuthenticate
 	}
 	return client, err
 }
 
-func NewClientFromGCPCredentials(config Config, identityUrl string) (*Client, error) {
+func NewClientFromGCPCredentials(config Config, identityUrl string, telemetry ...Telemetry) (*Client, error) {
 	if identityUrl == "" {
 		identityUrl = authn.GcpIdentityURL
 	}
@@ -140,39 +131,30 @@ func NewClientFromGCPCredentials(config Config, identityUrl string) (*Client, er
 		JWT:            config.JWTContent,
 		GCPIdentityUrl: identityUrl,
 	}
-	client, err := newClientWithAuthenticator(
-		config,
-		authenticator,
-	)
+	client, err := newClientWithAuthenticator(config, authenticator, telemetry...)
 	if err == nil {
 		authenticator.Authenticate = client.GCPAuthenticate
 	}
 	return client, err
 }
 
-func NewClientFromAzureCredentials(config Config) (*Client, error) {
+func NewClientFromAzureCredentials(config Config, telemetry ...Telemetry) (*Client, error) {
 	authenticator := &authn.AzureAuthenticator{
 		JWT:      config.JWTContent,
 		ClientID: config.AzureClientID,
 	}
-	client, err := newClientWithAuthenticator(
-		config,
-		authenticator,
-	)
+	client, err := newClientWithAuthenticator(config, authenticator, telemetry...)
 	if err == nil {
 		authenticator.Authenticate = client.AzureAuthenticate
 	}
 	return client, err
 }
 
-func NewClientFromOidcToken(config Config, token string) (*Client, error) {
+func NewClientFromOidcToken(config Config, token string, telemetry ...Telemetry) (*Client, error) {
 	authenticator := &authn.OidcTokenAuthenticator{
 		Token: token,
 	}
-	client, err := newClientWithAuthenticator(
-		config,
-		authenticator,
-	)
+	client, err := newClientWithAuthenticator(config, authenticator, telemetry...)
 	if err == nil {
 		authenticator.Authenticate = client.OidcTokenAuthenticate
 	}
@@ -185,20 +167,15 @@ func ReadResponseBody(response io.ReadCloser) ([]byte, error) {
 	return io.ReadAll(response)
 }
 
-func NewClientFromToken(config Config, token string) (*Client, error) {
-	return newClientWithAuthenticator(
-		config,
-		&authn.TokenAuthenticator{Token: token},
-	)
+func NewClientFromToken(config Config, token string, telemetry ...Telemetry) (*Client, error) {
+	return newClientWithAuthenticator(config, &authn.TokenAuthenticator{Token: token}, telemetry...)
 }
 
-func NewClientFromTokenFile(config Config, tokenFile string) (*Client, error) {
+func NewClientFromTokenFile(config Config, tokenFile string, telemetry ...Telemetry) (*Client, error) {
 	return newClientWithAuthenticator(
 		config,
-		&authn.TokenFileAuthenticator{
-			TokenFile:   tokenFile,
-			MaxWaitTime: -1,
-		},
+		&authn.TokenFileAuthenticator{TokenFile: tokenFile, MaxWaitTime: -1},
+		telemetry...,
 	)
 }
 
@@ -223,7 +200,7 @@ func LoginPairFromEnv() (*authn.LoginPair, error) {
 //  6. Other config.AuthnType values
 //
 // TODO: Create a version of this function for creating an authenticator from environment
-func NewClientFromEnvironment(config Config) (*Client, error) {
+func NewClientFromEnvironment(config Config, telemetry ...Telemetry) (*Client, error) {
 	err := config.Validate()
 
 	if err != nil {
@@ -240,14 +217,14 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 	if authnTokenFile != "" {
 		logging.ApiLog.Debug("CONJUR_AUTHN_TOKEN_FILE environment variable detected, initializing client with token file authenticator")
 		maybeLogOverwrite()
-		return NewClientFromTokenFile(config, authnTokenFile)
+		return NewClientFromTokenFile(config, authnTokenFile, telemetry...)
 	}
 
 	authnToken := os.Getenv("CONJUR_AUTHN_TOKEN")
 	if authnToken != "" {
 		logging.ApiLog.Debug("CONJUR_AUTHN_TOKEN environment variable detected, initializing client with token authenticator")
 		maybeLogOverwrite()
-		return NewClientFromToken(config, authnToken)
+		return NewClientFromToken(config, authnToken, telemetry...)
 	}
 
 	if config.AuthnType == "cert" {
@@ -255,30 +232,30 @@ func NewClientFromEnvironment(config Config) (*Client, error) {
 		if os.Getenv("CONJUR_AUTHN_API_KEY") != "" {
 			logging.ApiLog.Warn("CONJUR_AUTHN_API_KEY environment variable detected, it is being ignored")
 		}
-		return newClientFromCertConfig(config)
+		return newClientFromCertConfig(config, telemetry...)
 	}
 
 	if config.JWTFilePath != "" || os.Getenv("CONJUR_AUTHN_JWT_SERVICE_ID") != "" {
 		logging.ApiLog.Debug("CONJUR_AUTHN_JWT_SERVICE_ID environment variable detected, initializing client with JWT authenticator")
 		maybeLogOverwrite()
-		return NewClientFromJwt(config)
+		return NewClientFromJwt(config, telemetry...)
 	}
 
 	loginPair, err := LoginPairFromEnv()
 	if err == nil && loginPair.Login != "" && loginPair.APIKey != "" {
 		logging.ApiLog.Debug("CONJUR_AUTHN_LOGIN and CONJUR_AUTHN_API_KEY environment variables detected, initializing client with API key authenticator")
 		maybeLogOverwrite()
-		return NewClientFromKey(config, *loginPair)
+		return NewClientFromKey(config, *loginPair, telemetry...)
 	}
 
 	logging.ApiLog.Debug("No environment variables detected for authentication, falling back to stored credentials")
-	return newClientFromStoredCredentials(config)
+	return newClientFromStoredCredentials(config, telemetry...)
 }
 
 // NewClientFromCertificate creates a Client that authenticates using the authn-cert
 // (mutual TLS) authenticator. The mTLS transport is configured automatically from
 // config.ClientCertFile/ClientCertKeyFile or config.ClientCert/ClientCertKey.
-func NewClientFromCertificate(config Config) (*Client, error) {
+func NewClientFromCertificate(config Config, telemetry ...Telemetry) (*Client, error) {
 	// Eagerly verify the certificate can be loaded to surface config errors at
 	// construction time rather than at the first TLS handshake.
 	if _, err := config.ReadClientCert(); err != nil {
@@ -287,23 +264,20 @@ func NewClientFromCertificate(config Config) (*Client, error) {
 	authenticator := &authn.CertAuthenticator{
 		HostID: config.CertHostID,
 	}
-	client, err := newClientWithAuthenticator(config, authenticator)
+	client, err := newClientWithAuthenticator(config, authenticator, telemetry...)
 	if err == nil {
 		authenticator.Authenticate = client.CertAuthenticate
 	}
 	return client, err
 }
 
-func NewClientFromJwt(config Config) (*Client, error) {
+func NewClientFromJwt(config Config, telemetry ...Telemetry) (*Client, error) {
 	authenticator := &authn.JWTAuthenticator{
 		JWT:         config.JWTContent,
 		JWTFilePath: config.JWTFilePath,
 		HostID:      config.JWTHostID,
 	}
-	client, err := newClientWithAuthenticator(
-		config,
-		authenticator,
-	)
+	client, err := newClientWithAuthenticator(config, authenticator, telemetry...)
 	if err == nil {
 		authenticator.Authenticate = client.JWTAuthenticate
 	}
@@ -317,10 +291,10 @@ func NewClientFromJwt(config Config) (*Client, error) {
 //
 // Auth types that do not use stored credentials (e.g. cert, jwt) must be handled by
 // the caller before reaching this function; passing them here returns an explicit error.
-func newClientFromStoredCredentials(config Config) (*Client, error) {
+func newClientFromStoredCredentials(config Config, telemetry ...Telemetry) (*Client, error) {
 	switch config.AuthnType {
 	case "oidc":
-		return newClientFromStoredOidcCredentials(config)
+		return newClientFromStoredOidcCredentials(config, telemetry...)
 
 	case AuthnTypeCloud:
 		storageProvider, err := createStorageProvider(config)
@@ -336,23 +310,23 @@ func newClientFromStoredCredentials(config Config) (*Client, error) {
 				hostConfig.AuthnType = AuthnTypeStandard
 
 				logging.ApiLog.Debug("Host credentials found in storage, initializing client with API key authenticator")
-				return NewClientFromKey(hostConfig, authn.LoginPair{Login: login, APIKey: password})
+				return NewClientFromKey(hostConfig, authn.LoginPair{Login: login, APIKey: password}, telemetry...)
 			}
 		}
 		logging.ApiLog.Debug("No host credentials found in storage, attempting to authenticate using OIDC credentials")
-		return newClientFromStoredOidcCredentials(config)
+		return newClientFromStoredOidcCredentials(config, telemetry...)
 
 	case "iam":
 		logging.ApiLog.Debug("Config instance with authn type 'iam' detected, initializing client with IAM authenticator")
-		return newClientFromStoredAWSConfig(config)
+		return newClientFromStoredAWSConfig(config, telemetry...)
 
 	case "azure":
 		logging.ApiLog.Debug("Config instance with authn type 'azure' detected, initializing client with Azure authenticator")
-		return newClientFromStoredAzureConfig(config)
+		return newClientFromStoredAzureConfig(config, telemetry...)
 
 	case "gcp":
 		logging.ApiLog.Debug("Config instance with authn type 'gcp' detected, initializing client with GCP authenticator")
-		return newClientFromStoredGCPConfig(config)
+		return newClientFromStoredGCPConfig(config, telemetry...)
 
 	case "", AuthnTypeStandard:
 		// Fall through to generic storage lookup below.
@@ -373,15 +347,15 @@ func newClientFromStoredCredentials(config Config) (*Client, error) {
 		}
 		if login != "" && password != "" {
 			logging.ApiLog.Debug("Credentials found in storage, initializing client with API key authenticator")
-			return NewClientFromKey(config, authn.LoginPair{Login: login, APIKey: password})
+			return NewClientFromKey(config, authn.LoginPair{Login: login, APIKey: password}, telemetry...)
 		}
 	}
 
 	return nil, fmt.Errorf("No valid credentials found. Please login again.")
 }
 
-func newClientFromStoredOidcCredentials(config Config) (*Client, error) {
-	client, err := NewClientFromOidcCode(config, "", "", "")
+func newClientFromStoredOidcCredentials(config Config, telemetry ...Telemetry) (*Client, error) {
+	client, err := NewClientFromOidcCode(config, "", "", "", telemetry...)
 	if err != nil {
 		return nil, err
 	}
@@ -394,8 +368,8 @@ func newClientFromStoredOidcCredentials(config Config) (*Client, error) {
 }
 
 // TODO: Refactor to remove code duplication between authn-iam, authn-gcp, and authn-azure (and possibly authn-oidc and authn-jwt)
-func newClientFromStoredAWSConfig(config Config) (*Client, error) {
-	client, err := NewClientFromAWSCredentials(config)
+func newClientFromStoredAWSConfig(config Config, telemetry ...Telemetry) (*Client, error) {
+	client, err := NewClientFromAWSCredentials(config, telemetry...)
 	if err != nil {
 		return nil, err
 	}
@@ -410,8 +384,8 @@ func newClientFromStoredAWSConfig(config Config) (*Client, error) {
 	return client, nil
 }
 
-func newClientFromStoredAzureConfig(config Config) (*Client, error) {
-	client, err := NewClientFromAzureCredentials(config)
+func newClientFromStoredAzureConfig(config Config, telemetry ...Telemetry) (*Client, error) {
+	client, err := NewClientFromAzureCredentials(config, telemetry...)
 	if err != nil {
 		return nil, err
 	}
@@ -426,8 +400,8 @@ func newClientFromStoredAzureConfig(config Config) (*Client, error) {
 	return client, nil
 }
 
-func newClientFromStoredGCPConfig(config Config) (*Client, error) {
-	client, err := NewClientFromGCPCredentials(config, authn.GcpIdentityURL)
+func newClientFromStoredGCPConfig(config Config, telemetry ...Telemetry) (*Client, error) {
+	client, err := NewClientFromGCPCredentials(config, authn.GcpIdentityURL, telemetry...)
 	if err != nil {
 		return nil, err
 	}
@@ -442,8 +416,8 @@ func newClientFromStoredGCPConfig(config Config) (*Client, error) {
 	return client, nil
 }
 
-func newClientFromCertConfig(config Config) (*Client, error) {
-	client, err := NewClientFromCertificate(config)
+func newClientFromCertConfig(config Config, telemetry ...Telemetry) (*Client, error) {
+	client, err := NewClientFromCertificate(config, telemetry...)
 	if err != nil {
 		return nil, err
 	}
@@ -476,7 +450,15 @@ func (c *Client) GetConfig() Config {
 	return c.config
 }
 
-func NewClient(config Config) (*Client, error) {
+// NewClient creates a new Client with the given Config.
+// An optional Telemetry struct can be passed to override integration metadata.
+// If telemetry is not provided, defaults from constants are used.
+//
+// Usage:
+//
+//	client, err := NewClient(config)  // Uses default telemetry
+//	client, err := NewClient(config, telemetry)  // Uses custom telemetry
+func NewClient(config Config, telemetry ...Telemetry) (*Client, error) {
 	var err error
 
 	err = config.Validate()
@@ -484,6 +466,14 @@ func NewClient(config Config) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	t := resolveTelemetry(telemetry...)
+	config.IntegrationName = t.IntegrationName
+	config.IntegrationType = t.IntegrationType
+	config.IntegrationVersion = t.IntegrationVersion
+	config.VendorName = t.VendorName
+	config.VendorVersion = t.VendorVersion
+	config.SetFinalTelemetryHeader()
 
 	httpClient, err := createHttpClient(config)
 	if err != nil {
@@ -548,14 +538,21 @@ func createHttpClient(config Config) (*http.Client, error) {
 	return httpClient, nil
 }
 
-func newClientWithAuthenticator(config Config, authenticator Authenticator) (*Client, error) {
-	client, err := NewClient(config)
+func newClientWithAuthenticator(config Config, authenticator Authenticator, telemetry ...Telemetry) (*Client, error) {
+	client, err := NewClient(config, telemetry...)
 	if err != nil {
 		return nil, err
 	}
 
 	client.authenticator = authenticator
 	return client, nil
+}
+
+func resolveTelemetry(telemetry ...Telemetry) Telemetry {
+	if len(telemetry) > 0 {
+		return telemetry[0]
+	}
+	return NewTelemetry("", "", "", "", "")
 }
 
 func newHTTPSClient(cert []byte, config Config) (*http.Client, error) {
