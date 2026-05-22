@@ -38,7 +38,7 @@ type EnterpriseInfoService struct {
 // which in Conjur Enterprise is the version of the 'possum' service.
 func (c *Client) ServerVersion() (string, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return "", errors.New("Unable to retrieve server version: not supported in Secrets Manager SaaS")
+		return "", errors.New("Unable to retrieve server version: not supported in Idira Secrets Manager, SaaS")
 	}
 
 	info, err := c.EnterpriseServerInfo()
@@ -59,7 +59,7 @@ func (c *Client) ServerVersion() (string, error) {
 // This is only available in Conjur Enterprise and will fail with a 404 error in Conjur OSS.
 func (c *Client) EnterpriseServerInfo() (*EnterpriseInfoResponse, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, errors.New("Unable to retrieve server info: not supported in Secrets Manager SaaS")
+		return nil, errors.New("Unable to retrieve server info: not supported in Idira Secrets Manager, SaaS")
 	}
 
 	req, err := c.ServerInfoRequest()
@@ -70,7 +70,7 @@ func (c *Client) EnterpriseServerInfo() (*EnterpriseInfoResponse, error) {
 	resp, err := c.httpClient.Do(req)
 	// Handle 404 or 401 response, which indicates that the '/info' endpoint is not available (eg. in Conjur OSS)
 	if resp != nil && (resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusUnauthorized) {
-		return nil, fmt.Errorf("404 Not Found: Are you using Conjur Enterprise?")
+		return nil, fmt.Errorf("404 Not Found: Are you using Idira Secrets Manager, Self-Hosted")
 	}
 
 	// Handle any other errors
@@ -89,7 +89,7 @@ func (c *Client) EnterpriseServerInfo() (*EnterpriseInfoResponse, error) {
 // In newer Conjur versions, the version is available in a JSON response.
 func (c *Client) ServerVersionFromRoot() (string, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return "", errors.New("Unable to retrieve server version: not supported in Secrets Manager SaaS")
+		return "", errors.New("Unable to retrieve server version: not supported in Idira Secrets Manager, SaaS")
 	}
 
 	req, err := c.RootRequest()

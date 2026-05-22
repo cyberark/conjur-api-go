@@ -314,7 +314,7 @@ func TestConfig_Validate(t *testing.T) {
 			}
 			err := config.Validate()
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "Certificate authentication is not supported in Secrets Manager SaaS")
+			assert.Contains(t, err.Error(), "Certificate authentication is not supported in Idira Secrets Manager, SaaS")
 		})
 
 		t.Run("Returns error when used with HTTP URL", func(t *testing.T) {

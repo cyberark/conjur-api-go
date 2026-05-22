@@ -154,7 +154,7 @@ func TestPolicy_DryRunPolicy(t *testing.T) {
 			)
 
 			require.Error(t, err)
-			assert.EqualError(t, err, "Policy Dry Run is not supported in Secrets Manager SaaS")
+			assert.EqualError(t, err, "Policy Dry Run is not supported in Idira Secrets Manager, SaaS")
 			assert.Nil(t, resp)
 		})
 		// Skip the rest of the tests when running against Secrets Manager SaaS
@@ -521,12 +521,12 @@ func TestPolicy_DryRunPolicy(t *testing.T) {
 		resp, err := mockClient.DryRunPolicy(PolicyModePut, "test", strings.NewReader(""))
 		assert.Error(t, err)
 		assert.Nil(t, resp)
-		assert.Contains(t, err.Error(), "Policy Dry Run is not supported in Secrets Manager versions older than 1.21.1")
+		assert.Contains(t, err.Error(), "Policy Dry Run is not supported in Idira Secrets Manager versions older than 1.21.1")
 
 		fetchResp, err := mockClient.FetchPolicy(utils.PolicyBranch(), false, 64, 100000)
 		assert.Error(t, err)
 		assert.Nil(t, fetchResp)
-		assert.Contains(t, err.Error(), "Policy Fetch is not supported in Secrets Manager versions older than 1.21.1")
+		assert.Contains(t, err.Error(), "Policy Fetch is not supported in Idira Secrets Manager versions older than 1.21.1")
 	})
 }
 
@@ -565,7 +565,7 @@ func TestPolicy_FetchPolicy(t *testing.T) {
 			resp, err := conjur.FetchPolicy(utils.PolicyBranch(), false, 64, 100000)
 
 			require.Error(t, err)
-			assert.EqualError(t, err, "Policy Fetch is not supported in Secrets Manager SaaS")
+			assert.EqualError(t, err, "Policy Fetch is not supported in Idira Secrets Manager, SaaS")
 			assert.Nil(t, resp)
 		})
 		// Skip the rest of the tests when running against Secrets Manager SaaS

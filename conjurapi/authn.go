@@ -108,7 +108,7 @@ func (c *Client) createAuthRequest(req *http.Request) error {
 
 func (c *Client) ChangeUserPassword(username string, password string, newPassword string) ([]byte, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, errors.New("Change User Password is not supported in Secrets Manager SaaS")
+		return nil, errors.New("Change User Password is not supported in Idira Secrets Manager, SaaS")
 	}
 
 	req, err := c.ChangeUserPasswordRequest(username, password, newPassword)
@@ -136,7 +136,7 @@ func (c *Client) ChangeCurrentUserPassword(newPassword string) ([]byte, error) {
 // Login exchanges a user's password for an API key.
 func (c *Client) Login(login string, password string) ([]byte, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) && !strings.HasPrefix(login, "host/") {
-		return nil, errors.New("Login for users is not supported in Secrets Manager SaaS")
+		return nil, errors.New("Login for users is not supported in Idira Secrets Manager, SaaS")
 	}
 
 	req, err := c.LoginRequest(login, password)
@@ -179,7 +179,7 @@ func (c *Client) CloudHostLogin(login string, password string) ([]byte, error) {
 
 	_, err := c.Authenticate(loginPair)
 	if err != nil {
-		return nil, fmt.Errorf("unable to authenticate with Secrets Manager: %w", err)
+		return nil, fmt.Errorf("unable to authenticate with Idira Secrets Manager: %w", err)
 	}
 
 	if err := c.storeCredentialsIfAvailable(login, password); err != nil {
@@ -242,7 +242,7 @@ func (c *Client) InternalAuthenticate() ([]byte, error) {
 // is included in the request body.
 func (c *Client) CertAuthenticate(hostID string) ([]byte, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, errors.New("Certificate authentication is not supported in Secrets Manager SaaS")
+		return nil, errors.New("Certificate authentication is not supported in Idira Secrets Manager, SaaS")
 	}
 	req, err := c.CertAuthenticateRequest(hostID)
 	if err != nil {
@@ -362,7 +362,7 @@ func (c *Client) JWTAuthenticate(jwt, hostID string) ([]byte, error) {
 
 func (c *Client) ListOidcProviders() ([]OidcProvider, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, errors.New("List OIDC Providers is not supported in Secrets Manager SaaS")
+		return nil, errors.New("List OIDC Providers is not supported in Idira Secrets Manager, SaaS")
 	}
 
 	req, err := c.ListOidcProvidersRequest()
@@ -411,7 +411,7 @@ func (c *Client) RotateCurrentRoleAPIKey() ([]byte, error) {
 	}
 
 	if isConjurCloudURL(c.config.ApplianceURL) && !strings.HasPrefix(roleID, "host/") {
-		return nil, errors.New("Rotate API Key for users is not supported in Secrets Manager SaaS")
+		return nil, errors.New("Rotate API Key for users is not supported in Idira Secrets Manager, SaaS")
 	}
 
 	resp, err := c.rotateCurrentRoleAPIKey(roleID, password)
@@ -431,7 +431,7 @@ func (c *Client) RotateCurrentRoleAPIKey() ([]byte, error) {
 // The authenticated user must have update privilege on the role.
 func (c *Client) RotateUserAPIKey(userID string) ([]byte, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, errors.New("Rotate API Key for users is not supported in Secrets Manager SaaS")
+		return nil, errors.New("Rotate API Key for users is not supported in Idira Secrets Manager, SaaS")
 	}
 	return c.rotateApiKeyAndEnforceKind(userID, "user")
 }
@@ -490,7 +490,7 @@ func (c *Client) rotateCurrentRoleAPIKey(roleID string, password string) (*http.
 
 func (c *Client) PublicKeys(kind string, identifier string) ([]byte, error) {
 	if isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, errors.New("Public Keys is not supported in Secrets Manager SaaS")
+		return nil, errors.New("Public Keys is not supported in Idira Secrets Manager, SaaS")
 	}
 
 	req, err := c.PublicKeysRequest(kind, identifier)

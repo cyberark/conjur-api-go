@@ -559,7 +559,7 @@ func newHTTPSClient(cert []byte, config Config) (*http.Client, error) {
 	pool := x509.NewCertPool()
 	ok := pool.AppendCertsFromPEM(cert)
 	if !ok {
-		return nil, fmt.Errorf("Can't append Secrets Manager SSL cert")
+		return nil, fmt.Errorf("Can't append Idira Secrets Manager SSL cert")
 	}
 	//TODO: Test what happens if this cert is expired
 	//TODO: What if server cert is rotated
@@ -607,7 +607,7 @@ func newMTLSClient(caCert []byte, config Config) (*http.Client, error) {
 	if len(caCert) > 0 {
 		pool := x509.NewCertPool()
 		if !pool.AppendCertsFromPEM(caCert) {
-			return nil, fmt.Errorf("Can't append Secrets Manager SSL cert")
+			return nil, fmt.Errorf("Can't append Idira Secrets Manager SSL cert")
 		}
 		tlsCfg.RootCAs = pool
 	}

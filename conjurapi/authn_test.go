@@ -95,7 +95,7 @@ func TestClient_RotateCurrentUserAPIKey(t *testing.T) {
 
 			_, err = conjur.RotateCurrentUserAPIKey()
 			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "Rotate API Key for users is not supported in Secrets Manager SaaS")
+			assert.Contains(t, err.Error(), "Rotate API Key for users is not supported in Idira Secrets Manager, SaaS")
 		})
 		return
 	}
@@ -265,7 +265,7 @@ func TestClient_RotateUserAPIKey(t *testing.T) {
 
 			_, err = conjur.RotateUserAPIKey("alice@data-test")
 			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "Rotate API Key for users is not supported in Secrets Manager SaaS")
+			assert.Contains(t, err.Error(), "Rotate API Key for users is not supported in Idira Secrets Manager, SaaS")
 		})
 		return
 	}
@@ -365,7 +365,7 @@ func TestClient_ListOidcProviders(t *testing.T) {
 
 			_, err = conjur.ListOidcProviders()
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "List OIDC Providers is not supported in Secrets Manager SaaS")
+			assert.Contains(t, err.Error(), "List OIDC Providers is not supported in Idira Secrets Manager, SaaS")
 		})
 	} else {
 		t.Run("List OIDC Providers", func(t *testing.T) {
@@ -451,7 +451,7 @@ func testLoginConjurCloud(t *testing.T) {
 
 		apiKey, err := conjur.Login("alice", "password")
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "Login for users is not supported in Secrets Manager SaaS")
+		assert.Contains(t, err.Error(), "Login for users is not supported in Idira Secrets Manager, SaaS")
 		assert.Empty(t, apiKey)
 	})
 }
@@ -781,7 +781,7 @@ func TestClient_ChangeUserPassword(t *testing.T) {
 
 			_, err = conjur.ChangeUserPassword("alice@data-test", "test-api-key", "new-password")
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "Change User Password is not supported in Secrets Manager SaaS")
+			assert.Contains(t, err.Error(), "Change User Password is not supported in Idira Secrets Manager, SaaS")
 		})
 		return
 	}
@@ -847,7 +847,7 @@ func TestClient_ChangeCurrentUserPassword(t *testing.T) {
 
 			_, err = conjur.ChangeCurrentUserPassword("new-password")
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "Change User Password is not supported in Secrets Manager SaaS")
+			assert.Contains(t, err.Error(), "Change User Password is not supported in Idira Secrets Manager, SaaS")
 		})
 		return
 	}
@@ -927,7 +927,7 @@ func TestClient_PublicKeys(t *testing.T) {
 
 			_, err = conjur.PublicKeys("user", "alice@data-test")
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "Public Keys is not supported in Secrets Manager SaaS")
+			assert.Contains(t, err.Error(), "Public Keys is not supported in Idira Secrets Manager, SaaS")
 		})
 		return
 	}
@@ -1130,7 +1130,7 @@ func TestClient_CloudHostLogin(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, apiKey)
-		assert.Contains(t, err.Error(), "unable to authenticate with Secrets Manager")
+		assert.Contains(t, err.Error(), "unable to authenticate with Idira Secrets Manager")
 	})
 
 	t.Run("Handles storage errors gracefully", func(t *testing.T) {

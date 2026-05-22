@@ -1,6 +1,6 @@
 ARG FROM_IMAGE="golang:1.25"
 FROM ${FROM_IMAGE}
-LABEL maintainer="CyberArk Software Ltd."
+LABEL maintainer="Palo Alto Networks Idira™"
 
 ENV GOFIPS140=latest
 

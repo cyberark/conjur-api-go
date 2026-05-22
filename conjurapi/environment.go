@@ -12,9 +12,9 @@ import (
 type EnvironmentType string
 
 const (
-	// EnvironmentSaaS represents the Secrets Manager SaaS environment.
+	// EnvironmentSaaS represents the Idira Secrets Manager, SaaS environment.
 	EnvironmentSaaS EnvironmentType = "saas"
-	// EnvironmentSH represents the Secrets Manager Self-Hosted environment.
+	// EnvironmentSH represents the Idira Secrets Manager, Self-Hosted environment.
 	EnvironmentSH EnvironmentType = "self-hosted"
 	// EnvironmentOSS represents the Conjur Open Source environment.
 	EnvironmentOSS EnvironmentType = "oss"
@@ -32,9 +32,9 @@ func (e *EnvironmentType) String() string {
 func (e *EnvironmentType) FullName() string {
 	switch *e {
 	case EnvironmentSaaS:
-		return "Secrets Manager SaaS"
+		return "Idira Secrets Manager, SaaS"
 	case EnvironmentSH:
-		return "Secrets Manager Self-Hosted"
+		return "Idira Secrets Manager, Self-Hosted"
 	case EnvironmentOSS:
 		return "Conjur Open Source"
 	default:
@@ -69,7 +69,7 @@ func environmentIsSupported(environment string) bool {
 func defaultEnvironment(url string, showLog bool) EnvironmentType {
 	if isConjurCloudURL(url) {
 		if showLog {
-			logging.ApiLog.Info("Detected Secrets Manager SaaS URL, setting 'Environment' to 'saas'")
+			logging.ApiLog.Info("Detected Idira Secrets Manager, SaaS URL, setting 'Environment' to 'saas'")
 		}
 		return EnvironmentSaaS
 	}

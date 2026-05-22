@@ -144,7 +144,7 @@ func TestClient_CreateIssuerV2Issue(t *testing.T) {
 				}
 			} else {
 				require.Error(t, err)
-				require.Contains(t, err.Error(), "is not supported in Conjur Enterprise/OSS")
+				require.Contains(t, err.Error(), "is not supported in Idira Secrets Manager/Conjur OSS")
 				return
 			}
 
@@ -226,7 +226,7 @@ func TestClient_CreateIssuerV2Sign(t *testing.T) {
 				}
 			} else {
 				require.Error(t, err)
-				require.Contains(t, err.Error(), "is not supported in Conjur Enterprise/OSS")
+				require.Contains(t, err.Error(), "is not supported in Idira Secrets Manager/Conjur OSS")
 				return
 			}
 

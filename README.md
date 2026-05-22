@@ -1,12 +1,12 @@
-# CyberArk Secrets Manager API for Go
+# Idira™ Secrets Manager by Palo Alto Networks API for Go
 
-Programmatic Golang access to the CyberArk Secrets Manager API.
+Programmatic Golang access to the Idira Secrets Manager API.
 
 ## Certification level
 ![](https://img.shields.io/badge/Certification%20Level-Community-28A745?link=https://github.com/cyberark/community/blob/master/Conjur/conventions/certification-levels.md)
 
 This repo is a **Community** level project. It's a community contributed project that **is not reviewed or supported
-by CyberArk**. For more detailed information on our certification levels, see [our community guidelines](https://github.com/cyberark/community/blob/master/Conjur/conventions/certification-levels.md#community).
+by Palo Alto Networks Idira™**. For more detailed information on our certification levels, see [our community guidelines](https://github.com/cyberark/community/blob/master/Conjur/conventions/certification-levels.md#community).
 
 ## Using conjur-api-go with Conjur Open Source
 
@@ -104,9 +104,9 @@ The secret value is: fde5c4a45ce573f9768987cd
 
 ### Configuration and Authentication
 
-Connecting to CyberArk Secrets Manager requires two steps:
+Connecting to Idira Secrets Manager requires two steps:
 
-1. **Configuration** - Specify the CyberArk Secrets Manager endpoint and connection security settings
+1. **Configuration** - Specify the Idira Secrets Manager endpoint and connection security settings
 2. **Authentication** - Provide credentials for authentication
 
 ### Credential Storage
@@ -236,9 +236,9 @@ This method is suitable for workloads that already possess a machine certificate
 by a trusted CA (e.g., enterprise PKI, SPIFFE/SPIRE).
 
 > [!NOTE]
-> Certificate authentication is not supported for Conjur Cloud (Secrets Manager
-> SaaS) directly. It is supported for Conjur Cloud Edge deployments and all
-> self-hosted Conjur Enterprise instances.
+> Certificate authentication is not supported for Conjur Cloud (Idira Secrets
+> Manager, SaaS) directly. It is supported for Conjur Cloud Edge deployments
+> and all Idira Secrets Manager, Self-Hosted instances.
 
 > [!WARNING]
 > Client certificate files should be created with `0644` permissions, and their
@@ -313,6 +313,6 @@ guide][contrib].
 
 ## License
 
-Copyright (c) 2022-2026 CyberArk Software Ltd. All rights reserved.
+Copyright (c) 2022-2026 Palo Alto Networks Ltd. All rights reserved.
 
 This repository is licensed under Apache License 2.0 - see [`LICENSE`](LICENSE) for more details.
