@@ -328,7 +328,7 @@ func newClientFromStoredCredentials(config Config, telemetry ...Telemetry) (*Cli
 		logging.ApiLog.Debug("Config instance with authn type 'gcp' detected, initializing client with GCP authenticator")
 		return newClientFromStoredGCPConfig(config, telemetry...)
 
-	case "", AuthnTypeStandard:
+	case "", "ldap", AuthnTypeStandard:
 		// Fall through to generic storage lookup below.
 
 	default:
