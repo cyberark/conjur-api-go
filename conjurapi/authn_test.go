@@ -502,10 +502,12 @@ func testLoginConjurSelfHosted(t *testing.T) {
 }
 
 type mockStorageProvider struct {
-	username         string
-	storedCredential string
-	injectError      error
-	purgeCalled      bool
+	username              string
+	storedCredential      string
+	injectError           error
+	purgeCalled           bool
+	storeCredentialsCalls int
+	storeAuthnTokenCalls  int
 }
 
 func (m *mockStorageProvider) ReadCredentials() (string, string, error) {
@@ -513,6 +515,7 @@ func (m *mockStorageProvider) ReadCredentials() (string, string, error) {
 }
 
 func (m *mockStorageProvider) StoreCredentials(username, credential string) error {
+	m.storeCredentialsCalls++
 	m.username = username
 	m.storedCredential = credential
 	return m.injectError
@@ -526,6 +529,7 @@ func mockStorageWithPreloadedCredentials(username, credential string) *mockStora
 }
 
 func (m *mockStorageProvider) StoreAuthnToken(token []byte) error {
+	m.storeAuthnTokenCalls++
 	return m.StoreCredentials("", string(token))
 }
 
@@ -1215,5 +1219,164 @@ func TestClient_CloudHostLogin(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, hostAPIKey, string(apiKey))
+	})
+
+	t.Run("ReadOnly mode does not store credentials", func(t *testing.T) {
+		t.Setenv(credentialStorageModeEnvVar, "readonly")
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.Path, "/authenticate") {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("mock-access-token"))
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		config := Config{
+			ApplianceURL: server.URL,
+			Account:      "conjur",
+		}
+
+		client, err := NewClient(config)
+		require.NoError(t, err)
+
+		mockStorage := &mockStorageProvider{}
+		client.storage = mockStorage
+
+		hostAPIKey := testGeneratedSecret()
+		apiKey, err := client.CloudHostLogin(hostLogin, hostAPIKey)
+
+		assert.NoError(t, err)
+		assert.Equal(t, hostAPIKey, string(apiKey))
+		assert.Equal(t, 0, mockStorage.storeCredentialsCalls)
+	})
+
+	t.Run("ReadOnly mode still allows purge", func(t *testing.T) {
+		storedLogin := testGeneratedSecret()
+		mock := &mockStorageProvider{username: storedLogin}
+		mock.StoreCredentials(storedLogin, testGeneratedSecret())
+		client := &Client{
+			config:  Config{CredentialStorageMode: CredentialStorageModeReadOnly},
+			storage: mock,
+		}
+
+		err := client.PurgeCredentials()
+		assert.NoError(t, err)
+		assert.True(t, mock.purgeCalled)
+	})
+
+	t.Run("ReadOnly mode allows reading stored credentials", func(t *testing.T) {
+		storedLogin := testGeneratedSecret()
+		storedCredential := testGeneratedSecret()
+		mock := &mockStorageProvider{username: storedLogin}
+		mock.StoreCredentials(storedLogin, storedCredential)
+		mock.storeCredentialsCalls = 0
+		client := &Client{
+			config:  Config{CredentialStorageMode: CredentialStorageModeReadOnly},
+			storage: mock,
+		}
+
+		login, credential, err := client.storage.ReadCredentials()
+		assert.NoError(t, err)
+		assert.Equal(t, storedLogin, login)
+		assert.Equal(t, storedCredential, credential)
+		assert.Equal(t, 0, mock.storeCredentialsCalls)
+
+		token, err := client.storage.ReadAuthnToken()
+		assert.NoError(t, err)
+		assert.Equal(t, []byte(storedCredential), token)
+	})
+}
+
+func TestClient_credentialStorageMode_writeSuppression(t *testing.T) {
+	t.Run("zero-value mode allows writes", func(t *testing.T) {
+		mock := &mockStorageProvider{}
+		client := &Client{
+			config:  Config{},
+			storage: mock,
+		}
+
+		err := client.storeCredentialsIfAvailable(testGeneratedSecret(), testGeneratedSecret())
+		assert.NoError(t, err)
+		assert.Equal(t, 1, mock.storeCredentialsCalls)
+	})
+
+	t.Run("Login skips writes in ReadOnly mode", func(t *testing.T) {
+		apiKey := testGeneratedSecret()
+		login := testCredential("TEST_LOGIN_ALICE")
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasSuffix(r.URL.Path, "/authn/conjur/login") {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(apiKey))
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		mock := &mockStorageProvider{}
+		client := &Client{
+			config: Config{
+				ApplianceURL:          server.URL,
+				Account:               "conjur",
+				CredentialStorageMode: CredentialStorageModeReadOnly,
+			},
+			httpClient: server.Client(),
+			storage:    mock,
+		}
+
+		result, err := client.Login(login, testGeneratedSecret())
+		assert.NoError(t, err)
+		assert.Equal(t, apiKey, string(result))
+		assert.Equal(t, 0, mock.storeCredentialsCalls)
+	})
+
+	t.Run("storeCredentialsIfAvailable skips writes in ReadOnly mode", func(t *testing.T) {
+		mock := &mockStorageProvider{}
+		client := &Client{
+			config:  Config{CredentialStorageMode: CredentialStorageModeReadOnly},
+			storage: mock,
+		}
+
+		err := client.storeCredentialsIfAvailable(testGeneratedSecret(), testGeneratedSecret())
+		assert.NoError(t, err)
+		assert.Equal(t, 0, mock.storeCredentialsCalls)
+	})
+
+	t.Run("storeCredentialsIfAvailable writes in ReadWrite mode", func(t *testing.T) {
+		mock := &mockStorageProvider{}
+		client := &Client{
+			config:  Config{CredentialStorageMode: CredentialStorageModeReadWrite},
+			storage: mock,
+		}
+
+		err := client.storeCredentialsIfAvailable(testGeneratedSecret(), testGeneratedSecret())
+		assert.NoError(t, err)
+		assert.Equal(t, 1, mock.storeCredentialsCalls)
+	})
+
+	t.Run("authenticateWithTokenStorage skips writes in ReadOnly mode", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("token-bytes"))
+		}))
+		defer server.Close()
+
+		mock := &mockStorageProvider{}
+		client := &Client{
+			config:     Config{CredentialStorageMode: CredentialStorageModeReadOnly},
+			httpClient: server.Client(),
+			storage:    mock,
+		}
+
+		req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+		require.NoError(t, err)
+
+		token, err := client.authenticateWithTokenStorage(req)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte("token-bytes"), token)
+		assert.Equal(t, 0, mock.storeAuthnTokenCalls)
 	})
 }

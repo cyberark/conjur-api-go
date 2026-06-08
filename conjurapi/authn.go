@@ -154,20 +154,31 @@ func (c *Client) Login(login string, password string) ([]byte, error) {
 		return nil, err
 	}
 
-	// Store the API key in the credentials store
-	if c.storage != nil {
-		err = c.storage.StoreCredentials(login, string(apiKey))
+	if c.storage == nil || !c.shouldStoreCredentials() {
+		return apiKey, err
 	}
+
+	err = c.storage.StoreCredentials(login, string(apiKey))
 	return apiKey, err
+}
+
+func (c *Client) shouldStoreCredentials() bool {
+	mode := c.config.CredentialStorageMode
+	if mode == "" {
+		mode = CredentialStorageModeReadWrite
+	}
+	return mode != CredentialStorageModeReadOnly
 }
 
 // storeCredentialsIfAvailable stores credentials to storage if available.
 // Returns error if storage operation fails. Returns nil if no storage is configured.
 func (c *Client) storeCredentialsIfAvailable(login, credential string) error {
-	if c.storage != nil {
-		if err := c.storage.StoreCredentials(login, credential); err != nil {
-			return fmt.Errorf("failed to store credentials: %w", err)
-		}
+	if !c.shouldStoreCredentials() || c.storage == nil {
+		return nil
+	}
+
+	if err := c.storage.StoreCredentials(login, credential); err != nil {
+		return fmt.Errorf("failed to store credentials: %w", err)
 	}
 	return nil
 }
@@ -528,10 +539,15 @@ func (c *Client) authenticateWithTokenStorage(req *http.Request) ([]byte, error)
 	}
 
 	resp, err := response.DataResponse(res)
-
-	if err == nil && c.storage != nil {
-		c.storage.StoreAuthnToken(resp)
+	if err != nil {
+		return resp, err
 	}
 
-	return resp, err
+	if c.storage != nil && c.shouldStoreCredentials() {
+		if err := c.storage.StoreAuthnToken(resp); err != nil {
+			logging.ApiLog.Warnf("failed to cache authentication token: %v", err)
+		}
+	}
+
+	return resp, nil
 }

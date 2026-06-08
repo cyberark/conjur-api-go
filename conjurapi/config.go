@@ -54,7 +54,10 @@ type Config struct {
 	SSLCertPath          string          `yaml:"cert_file,omitempty"`
 	AuthnType            string          `yaml:"authn_type,omitempty"`
 	ServiceID            string          `yaml:"service_id,omitempty"`
-	CredentialStorage    string          `yaml:"credential_storage,omitempty"`
+	CredentialStorage     string                `yaml:"credential_storage,omitempty"`
+	// CredentialStorageMode is resolved by Validate and LoadConfig when unset; an explicit
+	// value on Config wins over env and WithDefaultCredentialStorageMode.
+	CredentialStorageMode CredentialStorageMode `yaml:"-"`
 	JWTHostID            string          `yaml:"jwt_host_id,omitempty"`
 	JWTContent           string          `yaml:"-"`
 	JWTFilePath          string          `yaml:"jwt_file,omitempty"`
@@ -89,6 +92,7 @@ func (c *Config) IsHttps() bool {
 
 func (c *Config) Validate() error {
 	c.applyDefaults(false)
+	resolveCredentialStorageMode(c)
 
 	errors := []string{}
 
@@ -299,6 +303,7 @@ func (c *Config) merge(o *Config) {
 	c.SSLCertPath = mergeValue(c.SSLCertPath, o.SSLCertPath)
 	c.NetRCPath = mergeValue(c.NetRCPath, o.NetRCPath)
 	c.CredentialStorage = mergeValue(c.CredentialStorage, o.CredentialStorage)
+	c.CredentialStorageMode = mergeCredentialStorageMode(c.CredentialStorageMode, o.CredentialStorageMode)
 	c.AuthnType = mergeValue(c.AuthnType, o.AuthnType)
 	c.ServiceID = mergeValue(c.ServiceID, o.ServiceID)
 	c.JWTHostID = mergeValue(c.JWTHostID, o.JWTHostID)
@@ -369,6 +374,7 @@ func (c *Config) mergeEnv() {
 		Account:           os.Getenv("CONJUR_ACCOUNT"),
 		NetRCPath:         os.Getenv("CONJUR_NETRC_PATH"),
 		CredentialStorage: os.Getenv("CONJUR_CREDENTIAL_STORAGE"),
+		CredentialStorageMode: CredentialStorageMode(os.Getenv(credentialStorageModeEnvVar)),
 		AuthnType:         os.Getenv("CONJUR_AUTHN_TYPE"),
 		ServiceID:         os.Getenv("CONJUR_SERVICE_ID"),
 		JWTContent:        os.Getenv("CONJUR_AUTHN_JWT_TOKEN"),
@@ -494,6 +500,7 @@ func LoadConfig() (Config, error) {
 	config.mergeEnv()
 
 	config.applyDefaults(conjurrcExists)
+	resolveCredentialStorageMode(&config)
 
 	logging.ApiLog.Debugf("Final config: %+v\n", config)
 	return config, nil
