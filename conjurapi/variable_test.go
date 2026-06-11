@@ -229,9 +229,8 @@ func TestClient_RetrieveSecret(t *testing.T) {
 	})
 
 	t.Run("Given configuration has invalid login credentials", func(t *testing.T) {
-		// file deepcode ignore NoHardcodedCredentials/test: This is a test file
-		login := "invalid-user"
-		apiKey := "invalid-key"
+		login := testGeneratedSecret()
+		apiKey := testGeneratedSecret()
 
 		t.Run("Returns 401 and a user not found error", func(t *testing.T) {
 			conjur, err := NewClientFromKey(*config, authn.LoginPair{Login: login, APIKey: apiKey})

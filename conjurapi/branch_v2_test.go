@@ -37,10 +37,9 @@ func NewHandler(t *testing.T) http.Handler {
 
 		// all requests V2 must contain V2 API HEADER
 		if r.Header.Get("Accept") != v2APIHeaderBeta {
-			custErr := fmt.Sprintf("Expected Accept: %s header, got: %s", v2APIHeaderBeta, r.Header.Get("Accept"))
-			t.Error(custErr)
+			t.Errorf("Expected Accept: %s header, got: %s", v2APIHeaderBeta, r.Header.Get("Accept"))
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(custErr))
+			w.Write([]byte("invalid Accept header"))
 			return
 		}
 
@@ -53,17 +52,15 @@ func NewHandler(t *testing.T) http.Handler {
 				branch := Branch{}
 				err := json.Unmarshal(body, &branch)
 				if err != nil {
-					custErr := fmt.Sprintf("Request is not in proper json format: %s . Error: %s", body, err.Error())
-					t.Error(custErr)
+					t.Errorf("Request is not in proper json format: %s . Error: %s", body, err.Error())
 					w.WriteHeader(http.StatusInternalServerError)
-					w.Write([]byte(custErr))
+					w.Write([]byte("invalid request body"))
 					return
 				}
 				if branch.Name != testBranchName || branch.Branch != testBranchBranch {
-					custErr := fmt.Sprintf("Request is not in proper json format: %s", body)
-					t.Error(custErr)
+					t.Errorf("Request is not in proper json format: %s", body)
 					w.WriteHeader(http.StatusInternalServerError)
-					w.Write([]byte(custErr))
+					w.Write([]byte("invalid branch payload"))
 					return
 				}
 				w.Header().Add(v2APIIncomingHeaderID, v2APIHeaderBeta)
