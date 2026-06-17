@@ -13,16 +13,18 @@ import (
 // The server will return test values for the login, authenticate, and OIDC provider endpoints,
 // as well as for the /info and / endpoints.
 // TODO: Use actual Conjur instance instead of mock server?
-func createMockConjurClient(t *testing.T) (*httptest.Server, *Client) {
+func createMockConjurClient(t *testing.T) (*httptest.Server, *Client, string) {
+	apiKey := testGeneratedSecret()
+	mockLogin := testCredential("TEST_LOGIN_ALICE")
 	mockConjurServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Listen for the login, authenticate, and oidc endpoints and return test values
 		if strings.HasSuffix(r.URL.Path, "/authn/conjur/login") {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("test-api-key"))
-		} else if strings.HasSuffix(r.URL.Path, "/authn/conjur/alice/authenticate") {
+			w.Write([]byte(apiKey))
+		} else if strings.HasSuffix(r.URL.Path, "/authn/conjur/"+mockLogin+"/authenticate") {
 			// Ensure that the api key we returned in /login is being used
 			body, _ := io.ReadAll(r.Body)
-			if string(body) == "test-api-key" {
+			if string(body) == apiKey {
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte("test-token"))
 			} else {
@@ -67,7 +69,7 @@ func createMockConjurClient(t *testing.T) (*httptest.Server, *Client) {
 		storage:    storage,
 	}
 
-	return mockConjurServer, client
+	return mockConjurServer, client, apiKey
 }
 
 var mockEnterpriseInfo = `{

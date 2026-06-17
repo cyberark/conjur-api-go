@@ -41,7 +41,7 @@ func TestServerVersion(t *testing.T) {
 	})
 
 	t.Run("Enterprise (Mocked): Gets server version", func(t *testing.T) {
-		mockServer, mockClient := createMockConjurClient(t)
+		mockServer, mockClient, _ := createMockConjurClient(t)
 		defer mockServer.Close()
 		version, err := mockClient.ServerVersion()
 		require.NoError(t, err)
@@ -65,7 +65,7 @@ func TestServerVersion(t *testing.T) {
 			mockRootResponse = originalMockRootResponse
 		}()
 
-		mockServer, mockClient := createMockConjurClient(t)
+		mockServer, mockClient, _ := createMockConjurClient(t)
 		defer mockServer.Close()
 		version, err := mockClient.ServerVersion()
 		require.Error(t, err)
@@ -90,7 +90,7 @@ func TestEnterpriseServerInfo(t *testing.T) {
 	}
 
 	t.Run("Enterprise (Mocked): Gets server info from the '/info' endpoint", func(t *testing.T) {
-		mockServer, mockClient := createMockConjurClient(t)
+		mockServer, mockClient, _ := createMockConjurClient(t)
 		defer mockServer.Close()
 		info, err := mockClient.EnterpriseServerInfo()
 		require.NoError(t, err)
@@ -202,7 +202,7 @@ func TestServerVersionFromRoot(t *testing.T) {
 		t.Run("Mocked: "+tc.name, func(t *testing.T) {
 			mockRootResponse = tc.rootResponse
 			mockRootResponseContentType = tc.contentType
-			mockServer, mockClient := createMockConjurClient(t)
+			mockServer, mockClient, _ := createMockConjurClient(t)
 			defer mockServer.Close()
 			version, err := mockClient.ServerVersionFromRoot()
 

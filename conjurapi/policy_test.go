@@ -114,8 +114,10 @@ func TestPolicy_LoadPolicy(t *testing.T) {
 
 	t.Run("Given invalid login credentials", func(t *testing.T) {
 		t.Run("Returns 401", func(t *testing.T) {
-			// deepcode ignore NoHardcodedCredentials/test: This is a test file
-			conjurClient, err := NewClientFromKey(*config, authn.LoginPair{Login: "invalid-login", APIKey: "invalid-key"})
+			conjurClient, err := NewClientFromKey(*config, authn.LoginPair{
+				Login:  testGeneratedSecret(),
+				APIKey: testGeneratedSecret(),
+			})
 			assert.NoError(t, err)
 
 			resp, err := conjurClient.LoadPolicy(PolicyModePut, utils.PolicyBranch(), strings.NewReader(""))
@@ -515,7 +517,7 @@ func TestPolicy_DryRunPolicy(t *testing.T) {
 			mockRootResponseContentType = originalMockRootResponseContentType
 		}()
 
-		mockServer, mockClient := createMockConjurClient(t)
+		mockServer, mockClient, _ := createMockConjurClient(t)
 		defer mockServer.Close()
 
 		resp, err := mockClient.DryRunPolicy(PolicyModePut, "test", strings.NewReader(""))

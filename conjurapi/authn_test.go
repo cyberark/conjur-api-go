@@ -112,11 +112,12 @@ func TestClient_RotateCurrentUserAPIKey(t *testing.T) {
 		// Login as alice with a mock storage provider to store her API key
 		config := &Config{}
 		config.mergeEnv()
-		// file deepcode ignore NoHardcodedCredentials/test: This is a test file
-		conjur, err := NewClientFromKey(*config, authn.LoginPair{Login: "alice@data-test", APIKey: keys["alice@data-test"]})
+		aliceLogin := testCredential("TEST_LOGIN_ALICE_DATA_TEST")
+		aliceAPIKey := keys[aliceLogin]
+		conjur, err := NewClientFromKey(*config, authn.LoginPair{Login: aliceLogin, APIKey: aliceAPIKey})
 		assert.NoError(t, err)
 		conjur.storage = &mockStorageProvider{}
-		_, err = conjur.Login("alice@data-test", keys["alice@data-test"])
+		_, err = conjur.Login(aliceLogin, aliceAPIKey)
 		assert.NoError(t, err)
 
 		// EXERCISE
@@ -126,7 +127,7 @@ func TestClient_RotateCurrentUserAPIKey(t *testing.T) {
 
 		// VERIFY
 		// Ensure the new API key works
-		_, err = conjur.Authenticate(authn.LoginPair{Login: "alice@data-test", APIKey: string(newAPIKey)})
+		_, err = conjur.Authenticate(authn.LoginPair{Login: aliceLogin, APIKey: string(newAPIKey)})
 		assert.NoError(t, err)
 	})
 }
@@ -150,12 +151,12 @@ func TestClient_RotateCurrentRoleAPIKey(t *testing.T) {
 		config := Config{}
 		config.mergeEnv()
 
-		conjur, err := NewClientFromKey(config, authn.LoginPair{Login: "host/data/test/kate", APIKey: keys["kate"]})
+		kateLogin := testCredential("TEST_LOGIN_HOST_KATE")
+		kateAPIKey := keys["kate"]
+
+		conjur, err := NewClientFromKey(config, authn.LoginPair{Login: kateLogin, APIKey: kateAPIKey})
 		require.NoError(t, err)
-		conjur.storage = &mockStorageProvider{
-			username: "host/data/test/kate",
-			password: keys["kate"],
-		}
+		conjur.storage = mockStorageWithPreloadedCredentials(kateLogin, kateAPIKey)
 
 		// EXERCISE
 		// This will use the "stored" API key to rotate Kate's API key
@@ -164,7 +165,7 @@ func TestClient_RotateCurrentRoleAPIKey(t *testing.T) {
 
 		// VERIFY
 		// Ensure the new API key works
-		_, err = NewClientFromKey(config, authn.LoginPair{Login: "host/data/test/kate", APIKey: string(newAPIKey)})
+		_, err = NewClientFromKey(config, authn.LoginPair{Login: kateLogin, APIKey: string(newAPIKey)})
 		require.NoError(t, err)
 	})
 }
@@ -255,6 +256,8 @@ type rotateUserAPIKeyTestCase struct {
 }
 
 func TestClient_RotateUserAPIKey(t *testing.T) {
+	aliceLogin := testCredential("TEST_LOGIN_ALICE_DATA_TEST")
+
 	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
 		t.Run("Rotate the API key of a user not supported in Secrets Manager SaaS", func(t *testing.T) {
 			utils, err := NewTestUtils(&Config{})
@@ -263,7 +266,7 @@ func TestClient_RotateUserAPIKey(t *testing.T) {
 			conjur := utils.Client()
 			conjur.storage = &mockStorageProvider{}
 
-			_, err = conjur.RotateUserAPIKey("alice@data-test")
+			_, err = conjur.RotateUserAPIKey(aliceLogin)
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), "Rotate API Key for users is not supported in Idira Secrets Manager, SaaS")
 		})
@@ -273,20 +276,20 @@ func TestClient_RotateUserAPIKey(t *testing.T) {
 	testCases := []rotateUserAPIKeyTestCase{
 		{
 			name:       "Rotate the API key of a user: ID only",
-			userID:     "alice@data-test",
-			login:      "alice@data-test",
+			userID:     aliceLogin,
+			login:      aliceLogin,
 			assertions: runRotateUserAPIKeyAssertions,
 		},
 		{
 			name:       "Rotate the API key of a user: partially qualified",
-			userID:     "user:alice@data-test",
-			login:      "alice@data-test",
+			userID:     "user:" + aliceLogin,
+			login:      aliceLogin,
 			assertions: runRotateUserAPIKeyAssertions,
 		},
 		{
 			name:       "Rotate the API key of a user: fully qualified",
-			userID:     "conjur:user:alice@data-test",
-			login:      "alice@data-test",
+			userID:     "conjur:user:" + aliceLogin,
+			login:      aliceLogin,
 			assertions: runRotateUserAPIKeyAssertions,
 		},
 		{
@@ -301,7 +304,7 @@ func TestClient_RotateUserAPIKey(t *testing.T) {
 		{
 			name:   "Rotate the API key of a user: Malformed ID",
 			userID: "id:with:too:many:colons",
-			login:  "alice@data-test",
+			login:  aliceLogin,
 			assertions: func(t *testing.T, tc rotateUserAPIKeyTestCase, conjur *Client) {
 				_, err := conjur.RotateUserAPIKey(tc.userID)
 				assert.Error(t, err)
@@ -370,7 +373,7 @@ func TestClient_ListOidcProviders(t *testing.T) {
 	} else {
 		t.Run("List OIDC Providers", func(t *testing.T) {
 			// Mock server to return OIDC providers
-			ts, client := createMockConjurClient(t)
+			ts, client, _ := createMockConjurClient(t)
 			defer ts.Close()
 
 			providers, err := client.ListOidcProviders()
@@ -391,7 +394,7 @@ func TestClient_Login(t *testing.T) {
 
 	t.Run("OIDC authentication", func(t *testing.T) {
 		// Mock server to return OIDC token
-		ts, client := createMockConjurClient(t)
+		ts, client, _ := createMockConjurClient(t)
 		defer ts.Close()
 
 		client.config.AuthnType = "oidc"
@@ -414,7 +417,7 @@ func TestClient_Login(t *testing.T) {
 
 	t.Run("JWT authentication", func(t *testing.T) {
 		// Mock server to return JWT token
-		ts, client := createMockConjurClient(t)
+		ts, client, _ := createMockConjurClient(t)
 		defer ts.Close()
 
 		client.config.AuthnType = "jwt"
@@ -429,10 +432,14 @@ func TestClient_Login(t *testing.T) {
 func TestClient_AuthenticateReader(t *testing.T) {
 	t.Run("Retrieves access token reader", func(t *testing.T) {
 		// Mock server to return access token
-		ts, client := createMockConjurClient(t)
+		ts, client, apiKey := createMockConjurClient(t)
 		defer ts.Close()
 
-		reader, err := client.AuthenticateReader(authn.LoginPair{Login: "alice", APIKey: "test-api-key"})
+		login := testCredential("TEST_LOGIN_ALICE")
+		reader, err := client.AuthenticateReader(authn.LoginPair{
+			Login:  login,
+			APIKey: apiKey,
+		})
 		assert.NoError(t, err)
 		token, err := ReadResponseBody(reader)
 		assert.NoError(t, err)
@@ -449,7 +456,7 @@ func testLoginConjurCloud(t *testing.T) {
 		assert.NoError(t, err)
 		conjur := utils.Client()
 
-		apiKey, err := conjur.Login("alice", "password")
+		apiKey, err := conjur.Login(testCredential("TEST_LOGIN_ALICE"), testGeneratedSecret())
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "Login for users is not supported in Idira Secrets Manager, SaaS")
 		assert.Empty(t, apiKey)
@@ -475,43 +482,58 @@ func testLoginConjurSelfHosted(t *testing.T) {
 		conjur, err := NewClient(*config)
 		require.NoError(t, err)
 
-		cindyApiKey := keys["cindy@data-test"]
-		loginResult, err := conjur.Login("cindy@data-test", cindyApiKey)
+		cindyLogin := testCredential("TEST_LOGIN_CINDY_DATA_TEST")
+		cindyAPIKey := keys[cindyLogin]
+		loginResult, err := conjur.Login(cindyLogin, cindyAPIKey)
 		require.NoError(t, err)
-		assert.Equal(t, cindyApiKey, string(loginResult))
+		assert.Equal(t, cindyAPIKey, string(loginResult))
 
 		// Check that api key was cached to the correct location
 		contents, err := os.ReadFile(config.NetRCPath)
 		assert.NoError(t, err)
 		assert.Contains(t, string(contents), config.ApplianceURL+"/authn")
-		assert.Contains(t, string(contents), string(cindyApiKey))
+		assert.Contains(t, string(contents), string(cindyAPIKey))
 
 		// Check that we can authenticate with the cached api key
-		authToken, err := conjur.Authenticate(authn.LoginPair{Login: "cindy@data-test", APIKey: string(loginResult)})
+		authToken, err := conjur.Authenticate(authn.LoginPair{Login: cindyLogin, APIKey: string(loginResult)})
 		assert.NoError(t, err)
 		assert.NotEmpty(t, string(authToken))
 	})
 }
 
 type mockStorageProvider struct {
-	username    string
-	password    string
-	injectError error
-	purgeCalled bool
+	username         string
+	storedCredential string
+	injectError      error
+	purgeCalled      bool
 }
 
 func (m *mockStorageProvider) ReadCredentials() (string, string, error) {
-	return m.username, m.password, m.injectError
+	return m.username, m.storedCredential, m.injectError
 }
 
-func (m *mockStorageProvider) StoreCredentials(username, password string) error {
+func (m *mockStorageProvider) StoreCredentials(username, credential string) error {
 	m.username = username
-	m.password = password
+	m.storedCredential = credential
 	return m.injectError
+}
+
+func mockStorageWithPreloadedCredentials(username, credential string) *mockStorageProvider {
+	return &mockStorageProvider{
+		username:         username,
+		storedCredential: credential,
+	}
 }
 
 func (m *mockStorageProvider) StoreAuthnToken(token []byte) error {
 	return m.StoreCredentials("", string(token))
+}
+
+func mockStorageWithCachedAuthnToken(token string, injectErr error) *mockStorageProvider {
+	return &mockStorageProvider{
+		storedCredential: token,
+		injectError:      injectErr,
+	}
 }
 
 func (m *mockStorageProvider) ReadAuthnToken() ([]byte, error) {
@@ -522,7 +544,7 @@ func (m *mockStorageProvider) ReadAuthnToken() ([]byte, error) {
 func (m *mockStorageProvider) PurgeCredentials() error {
 	m.purgeCalled = true
 	m.username = ""
-	m.password = ""
+	m.storedCredential = ""
 	return m.injectError
 }
 
@@ -567,10 +589,12 @@ func TestPurgeCredentials(t *testing.T) {
 			CredentialStorage: "file",
 		}
 
-		initialContent := `
+		netrcLogin := testCredential("TEST_NETRC_MACHINE_LOGIN")
+		netrcSecret := testCredential("TEST_NETRC_MACHINE_SECRET")
+		initialContent := fmt.Sprintf(`
 machine https://conjur/authn
-	login conjur
-	password test-api-key`
+	login %s
+	password %s`, netrcLogin, netrcSecret)
 
 		err := os.WriteFile(config.NetRCPath, []byte(initialContent), 0600)
 		assert.NoError(t, err)
@@ -581,8 +605,8 @@ machine https://conjur/authn
 		contents, err := os.ReadFile(config.NetRCPath)
 		assert.NoError(t, err)
 		assert.NotContains(t, string(contents), "https://conjur/authn")
-		assert.NotContains(t, string(contents), "conjur")
-		assert.NotContains(t, string(contents), "test-api-key")
+		assert.NotContains(t, string(contents), netrcLogin)
+		assert.NotContains(t, string(contents), netrcSecret)
 	})
 
 	t.Run("Doesn't fail when not storing credentials", func(t *testing.T) {
@@ -711,10 +735,7 @@ func TestClient_RefreshToken(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		client.storage = &mockStorageProvider{
-			// file deepcode ignore HardcodedPassword/test: This is a test file
-			password: sample_token,
-		}
+		client.storage = mockStorageWithCachedAuthnToken(sample_token, nil)
 		client.authenticator = &authn.OidcAuthenticator{}
 		err = client.RefreshToken()
 
@@ -756,10 +777,7 @@ func runOIDCInternalAuthenticateTest(t *testing.T, token string, injectErr error
 	})
 	assert.NoError(t, err)
 
-	client.storage = &mockStorageProvider{
-		password:    token,
-		injectError: injectErr,
-	}
+	client.storage = mockStorageWithCachedAuthnToken(token, injectErr)
 	client.authenticator = &authn.OidcAuthenticator{}
 	return client.InternalAuthenticate()
 }
@@ -779,7 +797,7 @@ func TestClient_ChangeUserPassword(t *testing.T) {
 
 			conjur := utils.Client()
 
-			_, err = conjur.ChangeUserPassword("alice@data-test", "test-api-key", "new-password")
+			_, err = conjur.ChangeUserPassword(testCredential("TEST_LOGIN_ALICE_DATA_TEST"), testGeneratedSecret(), testGeneratedSecret())
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "Change User Password is not supported in Idira Secrets Manager, SaaS")
 		})
@@ -789,9 +807,9 @@ func TestClient_ChangeUserPassword(t *testing.T) {
 	testCases := []changeUserPasswordTestCase{
 		{
 			name:        "Change the password of a user",
-			userID:      "alice@data-test",
-			login:       "alice@data-test",
-			newPassword: "SUp3r$3cr3t!!",
+			userID:      testCredential("TEST_LOGIN_ALICE_DATA_TEST"),
+			login:       testCredential("TEST_LOGIN_ALICE_DATA_TEST"),
+			newPassword: testCredential("TEST_USER_NEW_PASSWORD"),
 		},
 	}
 
@@ -845,7 +863,7 @@ func TestClient_ChangeCurrentUserPassword(t *testing.T) {
 			conjur := utils.Client()
 			conjur.storage = &mockStorageProvider{}
 
-			_, err = conjur.ChangeCurrentUserPassword("new-password")
+			_, err = conjur.ChangeCurrentUserPassword(testCredential("TEST_USER_CHANGE_CURRENT_PASSWORD"))
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "Change User Password is not supported in Idira Secrets Manager, SaaS")
 		})
@@ -855,7 +873,7 @@ func TestClient_ChangeCurrentUserPassword(t *testing.T) {
 	testCases := []changeCurrentUserPasswordTestCase{
 		{
 			name:        "Change the password of a user",
-			newPassword: "SUp3r$3cr3t!!",
+			newPassword: testCredential("TEST_USER_NEW_PASSWORD"),
 		},
 	}
 
@@ -884,22 +902,25 @@ func runChangeCurrentUserPasswordAssertions(t *testing.T, tc changeCurrentUserPa
 	var userAPIKey []byte
 	var err error
 
-	userAPIKey, err = conjur.RotateUserAPIKey("alice@data-test")
+	aliceLogin := testCredential("TEST_LOGIN_ALICE_DATA_TEST")
+
+	userAPIKey, err = conjur.RotateUserAPIKey(aliceLogin)
 	assert.NoError(t, err)
 
 	// Create empty netrc file, then login to write user credentials
 	err = os.WriteFile(conjur.config.NetRCPath, []byte(""), 0600)
 	assert.NoError(t, err)
-	conjur.Login("alice@data-test", string(userAPIKey))
+	_, err = conjur.Login(aliceLogin, string(userAPIKey))
+	assert.NoError(t, err)
 
 	// Change the user password, then login + authenticate to test the new password
 	_, err = conjur.ChangeCurrentUserPassword(tc.newPassword)
 	assert.NoError(t, err)
 
-	userAPIKey, err = conjur.Login("alice@data-test", tc.newPassword)
+	userAPIKey, err = conjur.Login(aliceLogin, tc.newPassword)
 	assert.NoError(t, err)
 
-	_, err = conjur.Authenticate(authn.LoginPair{Login: "alice@data-test", APIKey: string(userAPIKey)})
+	_, err = conjur.Authenticate(authn.LoginPair{Login: aliceLogin, APIKey: string(userAPIKey)})
 	assert.NoError(t, err)
 }
 
@@ -918,6 +939,8 @@ type publicKeysTestCase struct {
 }
 
 func TestClient_PublicKeys(t *testing.T) {
+	aliceLogin := testCredential("TEST_LOGIN_ALICE_DATA_TEST")
+
 	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
 		t.Run("Display public keys not supported in Secrets Manager SaaS", func(t *testing.T) {
 			utils, err := NewTestUtils(&Config{})
@@ -925,7 +948,7 @@ func TestClient_PublicKeys(t *testing.T) {
 
 			conjur := utils.Client()
 
-			_, err = conjur.PublicKeys("user", "alice@data-test")
+			_, err = conjur.PublicKeys("user", aliceLogin)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "Public Keys is not supported in Idira Secrets Manager, SaaS")
 		})
@@ -936,7 +959,7 @@ func TestClient_PublicKeys(t *testing.T) {
 		{
 			name:       "Display public keys",
 			kind:       "user",
-			identifier: "alice@data-test",
+			identifier: aliceLogin,
 		},
 	}
 
@@ -1077,6 +1100,8 @@ func TestClient_OidcTokenAuthenticate(t *testing.T) {
 }
 
 func TestClient_CloudHostLogin(t *testing.T) {
+	hostLogin := testCredential("TEST_LOGIN_HOST_TEST")
+
 	t.Run("Successful authentication via Authenticate endpoint", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.Contains(r.URL.Path, "/authenticate") {
@@ -1099,12 +1124,15 @@ func TestClient_CloudHostLogin(t *testing.T) {
 		mockStorage := &mockStorageProvider{}
 		client.storage = mockStorage
 
-		apiKey, err := client.CloudHostLogin("host/test-host", "test-api-key-12345")
+		hostAPIKey := testGeneratedSecret()
+		apiKey, err := client.CloudHostLogin(hostLogin, hostAPIKey)
 
 		assert.NoError(t, err)
-		assert.Equal(t, "test-api-key-12345", string(apiKey))
-		assert.Equal(t, "host/test-host", mockStorage.username)
-		assert.Equal(t, "test-api-key-12345", mockStorage.password)
+		assert.Equal(t, hostAPIKey, string(apiKey))
+		assert.Equal(t, hostLogin, mockStorage.username)
+		_, storedCredential, err := mockStorage.ReadCredentials()
+		assert.NoError(t, err)
+		assert.Equal(t, hostAPIKey, storedCredential)
 	})
 
 	t.Run("Returns error when authentication fails", func(t *testing.T) {
@@ -1126,7 +1154,7 @@ func TestClient_CloudHostLogin(t *testing.T) {
 		client, err := NewClient(config)
 		require.NoError(t, err)
 
-		apiKey, err := client.CloudHostLogin("host/test-host", "invalid-api-key")
+		apiKey, err := client.CloudHostLogin(hostLogin, testGeneratedSecret())
 
 		assert.Error(t, err)
 		assert.Nil(t, apiKey)
@@ -1155,7 +1183,7 @@ func TestClient_CloudHostLogin(t *testing.T) {
 		mockStorage := &mockStorageProvider{injectError: assert.AnError}
 		client.storage = mockStorage
 
-		apiKey, err := client.CloudHostLogin("host/test-host", "api-key-123")
+		apiKey, err := client.CloudHostLogin(hostLogin, testGeneratedSecret())
 
 		assert.Error(t, err)
 		assert.Nil(t, apiKey)
@@ -1182,9 +1210,10 @@ func TestClient_CloudHostLogin(t *testing.T) {
 		require.NoError(t, err)
 		client.storage = nil
 
-		apiKey, err := client.CloudHostLogin("host/test-host", "returned-api-key")
+		hostAPIKey := testGeneratedSecret()
+		apiKey, err := client.CloudHostLogin(hostLogin, hostAPIKey)
 
 		assert.NoError(t, err)
-		assert.Equal(t, "returned-api-key", string(apiKey))
+		assert.Equal(t, hostAPIKey, string(apiKey))
 	})
 }

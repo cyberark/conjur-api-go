@@ -8,24 +8,22 @@ import (
 )
 
 func TestAPIKeyAuthenticator_RefreshToken(t *testing.T) {
-	var login string
-	apiKey := "valid-api-key"
+	validLogin := testGeneratedSecret()
+	validAPIKey := testGeneratedSecret()
+	invalidLogin := testGeneratedSecret()
 	authenticate := func(loginPair LoginPair) ([]byte, error) {
-		if loginPair.Login == "valid-login" && loginPair.APIKey == "valid-api-key" {
+		if loginPair.Login == validLogin && loginPair.APIKey == validAPIKey {
 			return []byte("data"), nil
-		} else {
-			return nil, fmt.Errorf("401 Invalid")
 		}
+		return nil, fmt.Errorf("401 Invalid")
 	}
 
 	t.Run("Given valid credentials returns the token bytes", func(t *testing.T) {
-		// file deepcode ignore NoHardcodedCredentials/test: This is a test file
-		login := "valid-login"
 		authenticator := APIKeyAuthenticator{
 			Authenticate: authenticate,
 			LoginPair: LoginPair{
-				Login:  login,
-				APIKey: apiKey,
+				Login:  validLogin,
+				APIKey: validAPIKey,
 			},
 		}
 
@@ -36,12 +34,11 @@ func TestAPIKeyAuthenticator_RefreshToken(t *testing.T) {
 	})
 
 	t.Run("Given invalid credentials returns nil with error", func(t *testing.T) {
-		login = "invalid-login"
 		authenticator := APIKeyAuthenticator{
 			Authenticate: authenticate,
 			LoginPair: LoginPair{
-				Login:  login,
-				APIKey: apiKey,
+				Login:  invalidLogin,
+				APIKey: validAPIKey,
 			},
 		}
 

@@ -183,8 +183,8 @@ func TestClient_Resources(t *testing.T) {
 	config := Config{}
 	config.mergeEnv()
 
-	// file deepcode ignore NoHardcodedCredentials/test: This is a test file
-	conjur, err := NewClientFromKey(config, authn.LoginPair{Login: "host/data/test/kate", APIKey: keys["kate"]})
+	hostLogin := testCredential("TEST_LOGIN_HOST_KATE")
+	conjur, err := NewClientFromKey(config, authn.LoginPair{Login: hostLogin, APIKey: keys["kate"]})
 	require.NoError(t, err)
 
 	t.Run("Lists all resources", listResources(conjur, nil, 11))
@@ -214,8 +214,8 @@ func TestClient_ResourcesCount(t *testing.T) {
 	config := Config{}
 	config.mergeEnv()
 
-	// file deepcode ignore NoHardcodedCredentials/test: This is a test file
-	conjur, err := NewClientFromKey(config, authn.LoginPair{Login: "host/data/test/kate", APIKey: keys["kate"]})
+	hostLogin := testCredential("TEST_LOGIN_HOST_KATE")
+	conjur, err := NewClientFromKey(config, authn.LoginPair{Login: hostLogin, APIKey: keys["kate"]})
 	require.NoError(t, err)
 
 	t.Run("Counts all resources", listResourcesCount(conjur, nil, 11))
@@ -262,7 +262,8 @@ func TestClient_ResourceIDs(t *testing.T) {
 	config := Config{}
 	config.mergeEnv()
 
-	conjur, err := NewClientFromKey(config, authn.LoginPair{Login: "host/data/test/kate", APIKey: keys["kate"]})
+	hostLogin := testCredential("TEST_LOGIN_HOST_KATE")
+	conjur, err := NewClientFromKey(config, authn.LoginPair{Login: hostLogin, APIKey: keys["kate"]})
 	require.NoError(t, err)
 
 	t.Run("Lists all resources", listResourceIDs(conjur, nil, 11))
