@@ -111,15 +111,37 @@ Connecting to Idira Secrets Manager requires two steps:
 
 ### Credential Storage
 
-The Conjur Go API supports three credential storage options, configurable via the `CredentialStorage` field in the `Config` struct:
+The Conjur Go API supports three credential storage backends, configurable via the `CredentialStorage` field in the `Config` struct:
 
-#### Storage Options
+#### Storage backends
 
 - **`conjurapi.CredentialStorageKeyring`** - Stores credentials in the system keyring (default when available). This is the most secure option for desktop environments.
 - **`conjurapi.CredentialStorageFile`** - Stores credentials in a `.netrc` file (default when keyring is not available). The `.netrc` file location can be customized using the `NetRCPath` config field.
 - **`conjurapi.CredentialStorageNone`** - Does not store credentials. **Use this option in environments where there are no file permissions to create a `.netrc` file**, such as restricted containers, read-only filesystems, or ephemeral compute instances.
 
 > **Note:** If no credential storage is specified, the API will automatically select `CredentialStorageKeyring` if available, otherwise it will default to `CredentialStorageFile`.
+
+#### Storage mode (read/write policy)
+
+Separate from the backend selection, `CredentialStorageMode` controls whether the configured backend accepts writes:
+
+- **`conjurapi.CredentialStorageModeReadWrite`** (default) - Read and write cached credentials.
+- **`conjurapi.CredentialStorageModeReadOnly`** - Read cached credentials but suppress writes (no error).
+
+Configure the effective mode using (highest precedence first):
+
+1. An explicit `Config.CredentialStorageMode` field (struct literal or merged config)
+2. `CONJUR_CREDENTIAL_STORAGE_MODE` environment variable (`readwrite` or `readonly`, case-insensitive). This variable is read by the Go library when loading config; it is not a Conjur appliance or CLI setting.
+3. `conjurapi.WithDefaultCredentialStorageMode(mode)` when env is unset (used by integrators such as summon)
+4. Library fallback: `CredentialStorageModeReadWrite`
+
+`CredentialStorageModeReadOnly` still creates the configured storage provider and allows reads; it only suppresses writes. `CredentialStorageNone` disables storage entirely.
+
+```go
+conjurapi.WithDefaultCredentialStorageMode(conjurapi.CredentialStorageModeReadOnly)
+config, _ := conjurapi.LoadConfig()
+client, err := conjurapi.NewClientFromEnvironment(config)
+```
 
 #### Example: Disabling Credential Storage
 

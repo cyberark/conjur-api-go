@@ -791,10 +791,11 @@ func TestConfig_mergeYAML(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.EqualValues(t, config, Config{
-				Account:      "account",
-				ApplianceURL: "appliance-url",
-				Environment:  EnvironmentSH,
-				NetRCPath:    path.Join(home, ".netrc"),
+				Account:               "account",
+				ApplianceURL:          "appliance-url",
+				Environment:           EnvironmentSH,
+				NetRCPath:             path.Join(home, ".netrc"),
+				CredentialStorageMode: CredentialStorageModeReadWrite,
 			})
 		})
 	})
@@ -896,10 +897,11 @@ cert_file: "/path/to/cert/file/pem"
 		assert.NoError(t, err)
 
 		assert.EqualValues(t, config, Config{
-			Account:      "env_account",
-			ApplianceURL: "env_appliance_url",
-			SSLCertPath:  "/path/to/cert/file/pem", // from conjurrc, since not set in env
-			Environment:  EnvironmentSH,            // from defaults, since not set explicitly
+			Account:               "env_account",
+			ApplianceURL:          "env_appliance_url",
+			SSLCertPath:           "/path/to/cert/file/pem", // from conjurrc, since not set in env
+			Environment:           EnvironmentSH,            // from defaults, since not set explicitly
+			CredentialStorageMode: CredentialStorageModeReadWrite,
 		})
 	})
 

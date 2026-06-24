@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- `CredentialStorageMode` with `ReadWrite` and `ReadOnly` settings, configurable via `CONJUR_CREDENTIAL_STORAGE_MODE` and `WithDefaultCredentialStorageMode()` (CNJR-13714)
+
 ## [0.14.1] - 2026-05-22
 
 ### Fixed
