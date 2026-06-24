@@ -6,8 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-06-10
+
 ### Added
 - `CredentialStorageMode` with `ReadWrite` and `ReadOnly` settings, configurable via `CONJUR_CREDENTIAL_STORAGE_MODE` and `WithDefaultCredentialStorageMode()` (CNJR-13714)
+- `CONJUR_KEYCHAIN_NAMESPACE` and `keychain_namespace` config for per-invocation keyring isolation via namespaced service names (CNJR-13715)
 
 ## [0.14.1] - 2026-05-22
 
@@ -442,7 +445,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/cyberark/conjur-api-go/compare/v0.14.1...v0.15.0
 [0.14.0]: https://github.com/cyberark/conjur-api-go/compare/v0.13.19...v0.14.0
 [0.13.19]: https://github.com/cyberark/conjur-api-go/compare/v0.13.18...v0.13.19
 [0.13.18]: https://github.com/cyberark/conjur-api-go/compare/v0.13.16...v0.13.18

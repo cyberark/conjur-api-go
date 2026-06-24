@@ -58,6 +58,9 @@ type Config struct {
 	// CredentialStorageMode is resolved by Validate and LoadConfig when unset; an explicit
 	// value on Config wins over env and WithDefaultCredentialStorageMode.
 	CredentialStorageMode CredentialStorageMode `yaml:"-"`
+	// KeychainNamespace is resolved by Validate and LoadConfig when unset; an explicit
+	// value on Config wins over env, and env overrides YAML from conjur.conf / .conjurrc.
+	KeychainNamespace string `yaml:"keychain_namespace,omitempty"`
 	JWTHostID            string          `yaml:"jwt_host_id,omitempty"`
 	JWTContent           string          `yaml:"-"`
 	JWTFilePath          string          `yaml:"jwt_file,omitempty"`
@@ -84,6 +87,16 @@ type Config struct {
 	// CertHostID is the Conjur host path for authn-cert request mode
 	// (e.g. "host/vm-workloads/vm-01"). Leave empty for SPIFFE mode.
 	CertHostID string `yaml:"cert_host_id,omitempty"`
+	// keychainNamespaceResolved is set by LoadConfig after env/YAML precedence is applied.
+	keychainNamespaceResolved bool `yaml:"-"`
+}
+
+// SetKeychainNamespaceResolved controls whether Validate re-reads
+// CONJUR_KEYCHAIN_NAMESPACE. LoadConfig sets this to true after resolving env
+// over YAML. Call with true on hand-built Configs after adjusting
+// KeychainNamespace to keep env from re-applying on later Validate calls.
+func (c *Config) SetKeychainNamespaceResolved(resolved bool) {
+	c.keychainNamespaceResolved = resolved
 }
 
 func (c *Config) IsHttps() bool {
@@ -92,9 +105,16 @@ func (c *Config) IsHttps() bool {
 
 func (c *Config) Validate() error {
 	c.applyDefaults(false)
+	if !c.keychainNamespaceResolved {
+		resolveKeychainNamespace(c, true)
+	}
 	resolveCredentialStorageMode(c)
 
 	errors := []string{}
+
+	if err := validateKeychainNamespace(c.KeychainNamespace); err != nil {
+		errors = append(errors, err.Error())
+	}
 
 	if c.ApplianceURL == "" {
 		errors = append(errors, "Must specify an ApplianceURL")
@@ -304,6 +324,7 @@ func (c *Config) merge(o *Config) {
 	c.NetRCPath = mergeValue(c.NetRCPath, o.NetRCPath)
 	c.CredentialStorage = mergeValue(c.CredentialStorage, o.CredentialStorage)
 	c.CredentialStorageMode = mergeCredentialStorageMode(c.CredentialStorageMode, o.CredentialStorageMode)
+	c.KeychainNamespace = mergeValue(c.KeychainNamespace, o.KeychainNamespace)
 	c.AuthnType = mergeValue(c.AuthnType, o.AuthnType)
 	c.ServiceID = mergeValue(c.ServiceID, o.ServiceID)
 	c.JWTHostID = mergeValue(c.JWTHostID, o.JWTHostID)
@@ -330,6 +351,17 @@ func (c *Config) mergeYAML(filename string) error {
 		return err
 	}
 
+	var doc yaml.Node
+	if err := yaml.Unmarshal(buf, &doc); err != nil {
+		logging.ApiLog.Errorf("Parsing error %s: %s\n", filename, err)
+		return err
+	}
+	// Validate key presence before decoding: a bare or empty keychain_namespace
+	// must be rejected even when expressed via merge keys or YAML anchors.
+	if err := rejectEmptyYAMLKeychainNamespace(&doc); err != nil {
+		return err
+	}
+
 	// Parse the YAML file into a new struct containing the same
 	// fields as Config, plus a few extra fields for compatibility
 	aux := struct {
@@ -341,7 +373,7 @@ func (c *Config) mergeYAML(filename string) error {
 		// END COMPATIBILITY WITH PYTHON CLI
 	}{}
 
-	if err := yaml.Unmarshal(buf, &aux); err != nil {
+	if err := doc.Decode(&aux); err != nil {
 		logging.ApiLog.Errorf("Parsing error %s: %s\n", filename, err)
 		return err
 	}
@@ -367,6 +399,9 @@ func (c *Config) mergeYAML(filename string) error {
 }
 
 func (c *Config) mergeEnv() {
+	// Most fields merge here via mergeValue (non-empty env overrides YAML). CredentialStorageMode
+	// and KeychainNamespace use resolveCredentialStorageMode and resolveKeychainNamespace after
+	// mergeEnv so caller-built Config, explicit empty env, and YAML precedence can be applied.
 	env := Config{
 		ApplianceURL:      os.Getenv("CONJUR_APPLIANCE_URL"),
 		SSLCert:           os.Getenv("CONJUR_SSL_CERTIFICATE"),
@@ -498,12 +533,36 @@ func LoadConfig() (Config, error) {
 	}
 
 	config.mergeEnv()
+	resolveKeychainNamespace(&config, false)
+	config.keychainNamespaceResolved = true
+
+	if err := validateKeychainNamespace(config.KeychainNamespace); err != nil {
+		return config, err
+	}
 
 	config.applyDefaults(conjurrcExists)
 	resolveCredentialStorageMode(&config)
 
 	logging.ApiLog.Debugf("Final config: %+v\n", config)
 	return config, nil
+}
+
+func validateKeychainNamespace(namespace string) error {
+	if namespace == "" {
+		if v, ok := os.LookupEnv(keychainNamespaceEnvVar); ok && v == "" {
+			return fmt.Errorf("CONJUR_KEYCHAIN_NAMESPACE must not be empty")
+		}
+		return nil
+	}
+
+	for _, r := range namespace {
+		switch r {
+		case '/', '\\', ':', '\x00':
+			return fmt.Errorf("keychain namespace contains invalid character %q", r)
+		}
+	}
+
+	return nil
 }
 
 func getSystemPath() string {

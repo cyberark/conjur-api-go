@@ -35,7 +35,7 @@ func createStorageProvider(config Config) (CredentialStorageProvider, error) {
 		}
 
 		return storage.NewKeyringStorageProvider(
-			getMachineName(config),
+			keyringServiceName(config),
 		), nil
 	case CredentialStorageNone:
 		// Don't store credentials
@@ -44,6 +44,17 @@ func createStorageProvider(config Config) (CredentialStorageProvider, error) {
 	default:
 		return nil, fmt.Errorf("Unknown credential storage type")
 	}
+}
+
+// keyringServiceName returns the OS keyring service name for the config.
+// When KeychainNamespace is set, the name is machineName:namespace; otherwise
+// it matches getMachineName.
+func keyringServiceName(config Config) string {
+	machineName := getMachineName(config)
+	if config.KeychainNamespace == "" {
+		return machineName
+	}
+	return fmt.Sprintf("%s:%s", machineName, config.KeychainNamespace)
 }
 
 // getMachineName returns the machine name to use in the .netrc file or other credential storage.
