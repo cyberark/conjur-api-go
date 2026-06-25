@@ -273,6 +273,10 @@ func TestClient_AuthenticatorCRUD(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.authenticator.Owner != nil {
+				SkipIfCloud(t, "authenticator create with owner until Self-Hosted and Cloud share create schema (Refs: CNJR-9530)")
+			}
+
 			utils, err := NewTestUtils(&Config{})
 			require.NoError(t, err)
 
