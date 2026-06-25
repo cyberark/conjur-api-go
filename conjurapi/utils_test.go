@@ -4,9 +4,19 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"testing"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 )
+
+// SkipIfCloud skips the current test when running against Secrets Manager SaaS.
+// Reason should include a Jira ID when applicable.
+func SkipIfCloud(t *testing.T, reason string) {
+	t.Helper()
+	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
+		t.Skipf("Skipping test on Secrets Manager SaaS: %s", reason)
+	}
+}
 
 type TestUtils interface {
 	Client() *Client
