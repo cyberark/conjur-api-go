@@ -143,6 +143,12 @@ config, _ := conjurapi.LoadConfig()
 client, err := conjurapi.NewClientFromEnvironment(config)
 ```
 
+#### Keyring namespace isolation
+
+When using keyring storage, set `KeychainNamespace` on `Config` (YAML key `keychain_namespace`) or the `CONJUR_KEYCHAIN_NAMESPACE` environment variable to scope keyring entries per invocation. The effective keyring service name is `machineName:namespace` when a namespace is set, or the existing machine name when unset. Precedence matches other resolved config: an explicit non-empty `Config` value wins over the environment; when loading from files, environment overrides YAML. `LoadConfig` freezes namespace resolution so a later `Validate` does not re-apply env; on hand-built `Config` values, call `SetKeychainNamespaceResolved(true)` after clearing `KeychainNamespace` if env should not refill it. Namespaces must not be empty and cannot contain `/`, `\`, `:`, or null bytes.
+
+For file-based credential storage, use `CONJUR_NETRC_PATH` to isolate `.netrc` files per invocation.
+
 #### Example: Disabling Credential Storage
 
 ```go
