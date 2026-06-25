@@ -240,11 +240,13 @@ pipeline {
             INFRAPOOL_IDENTITY_TOKEN="${env.identity_token}"
             INFRAPOOL_TEST_CLOUD=true
             INFRAPOOL_TEST_AWS=true
-            INFRAPOOL_TEST_GCP=true
+            INFRAPOOL_TEST_GCP="${params.TEST_GCP}"
           }
           steps {
             script {
-              infrapool.agentUnstash name: 'token-out'
+              if (params.TEST_GCP) {
+                infrapool.agentUnstash name: 'token-out'
+              }
               infrapool.agentSh "./bin/test.sh"
               infrapool.agentStash name: 'merged-out', includes: 'output/cloud/*.xml'
               unstash 'merged-out'

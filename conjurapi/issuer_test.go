@@ -13,6 +13,7 @@ const TestAccessKeyID = "AKIAIOSFODNN7EXAMPLE"
 const TestSecretAccessKey = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
 func TestClient_CreateIssuer(t *testing.T) {
+	SkipIfCloud(t, "dynamic secrets issuer tests until issuer API schema aligns with self-hosted (Refs: CNJR-14234)")
 	config := &Config{}
 	config.mergeEnv()
 
@@ -105,6 +106,8 @@ func TestClient_CreateIssuer(t *testing.T) {
 }
 
 func TestClient_DeleteIssuer(t *testing.T) {
+	SkipIfCloud(t, "dynamic secrets issuer tests until issuer API schema aligns with self-hosted (Refs: CNJR-14234)")
+
 	config := &Config{}
 	config.mergeEnv()
 
@@ -237,6 +240,8 @@ func TestClient_DeleteIssuer(t *testing.T) {
 }
 
 func TestClient_Issuer(t *testing.T) {
+	SkipIfCloud(t, "dynamic secrets issuer tests until issuer API schema aligns with self-hosted (Refs: CNJR-14234)")
+
 	config := &Config{}
 	config.mergeEnv()
 
@@ -327,6 +332,8 @@ func TestClient_Issuer(t *testing.T) {
 }
 
 func TestClient_Issuers(t *testing.T) {
+	SkipIfCloud(t, "dynamic secrets issuer tests until issuer API schema aligns with self-hosted (Refs: CNJR-14234)")
+
 	config := &Config{}
 	config.mergeEnv()
 
@@ -481,6 +488,8 @@ func TestClient_Issuers(t *testing.T) {
 }
 
 func TestClient_UpdateIssuer(t *testing.T) {
+	SkipIfCloud(t, "dynamic secrets issuer tests until issuer API schema aligns with self-hosted (Refs: CNJR-14234)")
+
 	config := &Config{}
 	config.mergeEnv()
 
