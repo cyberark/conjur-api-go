@@ -19,7 +19,7 @@ waiting_loop:
 			err = fmt.Errorf("Operation waitForTextFile timed out.")
 			break waiting_loop
 		default:
-			if _, err := os.Stat(fileName); os.IsNotExist(err) {
+			if _, err = os.Stat(fileName); os.IsNotExist(err) {
 				time.Sleep(100 * time.Millisecond)
 			} else {
 				fileBytes, err = os.ReadFile(fileName)
