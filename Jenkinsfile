@@ -126,7 +126,9 @@ pipeline {
         stage('Golang 1.27') {
           steps {
             script {
-              sh "./bin/test.sh 1.27 $REGISTRY_URL"
+              withConjurAwsIamRole {
+                sh "./bin/test.sh 1.27 $REGISTRY_URL"
+              }
               stash name: '1.27-out', includes: 'output/1.27/*.xml'
               unstash '1.27-out'
               recordCoverage(
@@ -155,7 +157,9 @@ pipeline {
         stage('Golang 1.26') {
           steps {
             script {
-              sh "./bin/test.sh 1.26 $REGISTRY_URL"
+              withConjurAwsIamRole {
+                sh "./bin/test.sh 1.26 $REGISTRY_URL"
+              }
               stash name: '1.26-out', includes: 'output/1.26/*.xml'
               unstash '1.26-out'
             }
