@@ -1,7 +1,6 @@
 package conjurapi
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -104,7 +103,7 @@ func (c *Client) createAuthRequest(req *http.Request) error {
 
 	req.Header.Set(
 		"Authorization",
-		fmt.Sprintf("Token token=\"%s\"", base64.StdEncoding.EncodeToString(c.authToken.Raw())),
+		fmt.Sprintf("Token token=\"%s\"", c.authToken.Base64()),
 	)
 
 	return nil
