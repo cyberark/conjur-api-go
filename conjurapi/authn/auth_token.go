@@ -113,6 +113,12 @@ func (t *AuthnToken) Raw() []byte {
 	return t.bytes
 }
 
+// Base64 returns the token's raw bytes, base64-encoded — the form used in
+// the "Token token=\"...\"" Authorization header.
+func (t *AuthnToken) Base64() string {
+	return base64.StdEncoding.EncodeToString(t.bytes)
+}
+
 // ShouldRefresh determines if the token should be refreshed. By default tokens expire 8 minutes after issue.
 func (t *AuthnToken) ShouldRefresh() bool {
 	if t.exp != nil {

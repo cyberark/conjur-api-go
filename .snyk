@@ -1,0 +1,20 @@
+# Snyk (https://snyk.io) policy file
+version: v1.5.0
+ignore:
+  SNYK-GOLANG-GITHUBCOMLABSTACKECHOV5MIDDLEWARE-17660783:
+    - '*':
+        reason: >-
+          False positive: github.com/labstack/echo/v5 is pulled into the module
+          graph only as an unused example/test-only dependency of
+          github.com/oapi-codegen/runtime (see go.mod). conjur-api-go never
+          imports or builds it.
+        expires: 2027-09-03T00:00:00.000Z
+  SNYK-GOLANG-GITHUBCOMLABSTACKECHOV5INTERNALPATHUTIL-17660782:
+    - '*':
+        reason: >-
+          False positive: github.com/labstack/echo/v5 is pulled into the module
+          graph only as an unused example/test-only dependency of
+          github.com/oapi-codegen/runtime (see go.mod). conjur-api-go never
+          imports or builds it.
+        expires: 2027-09-03T00:00:00.000Z
+patch: {}
