@@ -1,8 +1,10 @@
 package conjurapi
 
 import (
+	"net/http"
 	"testing"
 
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -80,11 +82,12 @@ func TestClientV2_AddGroupMember(t *testing.T) {
 	}
 }
 
-// TestClientV2_AddGroupMemberServerError asserts that a request the server rejects
-// yields a nil member alongside the error, rather than a pointer to a zero-value
-// GroupMember. Every error case in TestClientV2_AddGroupMember fails client-side in
-// Validate() before a request is sent, so this is the only case that exercises the
-// response path at all.
+// TestClientV2_AddGroupMemberServerError asserts that adding a member to a
+// nonexistent group fails with a DISTINGUISHABLE not-found error — a
+// *response.ConjurError carrying HTTP 404 — and returns a nil member rather than
+// a pointer to a zero-value GroupMember. Every error case in
+// TestClientV2_AddGroupMember fails client-side in Validate() before a request
+// is sent, so this is the only case that exercises the response path.
 func TestClientV2_AddGroupMemberServerError(t *testing.T) {
 	utils, err := NewTestUtils(&Config{})
 	require.NoError(t, err)
@@ -97,6 +100,12 @@ func TestClientV2_AddGroupMemberServerError(t *testing.T) {
 
 	require.Error(t, err, "adding a member to a nonexistent group should fail")
 	assert.Nil(t, member, "member must be nil when the request fails, not a pointer to a zero-value struct")
+
+	// The error must be classifiable as a 404 (the AC's "distinguishable
+	// not-found"), not just any error.
+	var conjurErr *response.ConjurError
+	require.ErrorAs(t, err, &conjurErr, "error must be a *response.ConjurError")
+	assert.Equal(t, http.StatusNotFound, conjurErr.Code, "nonexistent group must surface HTTP 404")
 }
 
 func TestClientV2_RemoveGroupMember(t *testing.T) {

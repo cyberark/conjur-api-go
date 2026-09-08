@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   while others succeed) is readable per secret instead of being lost. A batch
   larger than `MaxSecretsInSingleBatch` (250) is rejected client-side with an
   actionable error. (CNJR-15240)
+- Group v2 CRUD on `ClientV2`: `CreateGroup`, `ReadGroup`, `ReadGroups`
+  (paginated via `GroupFilter` + `GroupsResponse.HasMore`), `UpdateGroup`,
+  `DeleteGroup`, plus `ListGroupMembers` (paginated). (CNJR-15228)
+
+### Fixed
+- Group membership request URLs now percent-escape the member and group
+  identifiers per segment and reject path-traversal segments; previously an id
+  containing spaces or other URL-significant characters produced a malformed
+  request. (CNJR-15228)
 
 ## [0.15.8] - 2026-09-14
 
