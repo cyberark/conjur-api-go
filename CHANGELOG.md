@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- `SecretValue.Description` on the batch-retrieve response carries the
+  server's per-secret error detail, so a partial failure (some secrets 403/404
+  while others succeed) is readable per secret instead of being lost. A batch
+  larger than `MaxSecretsInSingleBatch` (250) is rejected client-side with an
+  actionable error. (CNJR-15240)
+
 ## [0.15.8] - 2026-09-14
 
 ### Security
