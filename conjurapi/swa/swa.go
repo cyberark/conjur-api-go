@@ -8,7 +8,10 @@
 package swa
 
 import (
+	"strings"
+
 	internalswa "github.com/cyberark/conjur-api-go/internal/swa-sdk-go"
+	"github.com/cyberark/conjur-api-go/internal/swa-sdk-go/swaerrors"
 )
 
 // Client is the control-plane surface for Secure Workload Access (SWA)
@@ -250,3 +253,31 @@ const (
 // Client: it needs conjur-api-go's own unexported *http.Client and auth
 // wiring, so there's nothing for this package to usefully re-export beyond the
 // Client type itself and the resource types above.
+//
+// UserMessage is the one concrete caller need that surfaced (conjur-cli-go
+// needs to print a clean, user-facing line rather than the raw wrapped error):
+// it uses the internal error types itself, without exposing them.
+
+// UserMessage returns the part of err meant for a CLI/UI to display: the
+// violation text for a client-side *ValidationError, or the API's message for
+// a server-side *APIError, without the "swa: <Op>: " prefix or the trailing
+// "[status=... request_id=...]" suffix that Error() adds for logs/support.
+//
+// If err is not a recognized SWA error type, its Error() string is returned
+// unchanged.
+func UserMessage(err error) string {
+	if err == nil {
+		return ""
+	}
+	if vErr, ok := swaerrors.AsValidationError(err); ok {
+		parts := make([]string, len(vErr.Violations))
+		for i, v := range vErr.Violations {
+			parts[i] = v.String()
+		}
+		return strings.Join(parts, "; ")
+	}
+	if apiErr, ok := swaerrors.AsAPIError(err); ok && apiErr.Message != "" {
+		return apiErr.Message
+	}
+	return err.Error()
+}
