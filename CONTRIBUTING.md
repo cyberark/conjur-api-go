@@ -34,14 +34,14 @@ and will run all tests.
 
 To run the tests against a specific version of Golang, you can run the following:
 ```shell
-./bin/test.sh 1.25
+./bin/test.sh 1.26
 ```
 
 This will spin up a containerized Conjur OSS environment and build the test containers,
-and will run the tests in a `golang:1.25` container
+and will run the tests in a `golang:1.26` container
 
-Supported arguments are `1.25` and `1.26`, with the
-default being `1.26` if no argument is given.
+Supported arguments are `1.26` and `1.27`, with the
+default being `1.27` if no argument is given.
 
 ### Running authn-cert (mTLS) integration tests
 

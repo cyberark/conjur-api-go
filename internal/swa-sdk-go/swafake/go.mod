@@ -1,6 +1,6 @@
 module github.com/cyberark/conjur-api-go/internal/swa-sdk-go/swafake
 
-go 1.25.0
+go 1.26
 
 require (
 	github.com/cyberark/conjur-api-go v0.0.0

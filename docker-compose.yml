@@ -25,11 +25,11 @@ services:
     depends_on:
       - postgres
 
-  test-1.26:
+  test-1.27:
     build:
       context: .
       args:
-        FROM_IMAGE: "golang:1.26"
+        FROM_IMAGE: "golang:1.27"
     ports:
       - 8080
     depends_on:
@@ -50,11 +50,11 @@ services:
       - default
       - conjur
 
-  test-1.25:
+  test-1.26:
     build:
       context: .
       args:
-        FROM_IMAGE: "golang:1.25"
+        FROM_IMAGE: "golang:1.26"
     ports:
       - 8080
     depends_on:
@@ -68,7 +68,7 @@ services:
       CONJUR_AUTHN_LOGIN: admin
       CONJUR_AUTHN_API_KEY:
       GO_VERSION:
-    # See note on test-1.26 networks above.
+    # See note on test-1.27 networks above.
     networks:
       - default
       - conjur
@@ -77,7 +77,7 @@ services:
     build:
       context: .
       args:
-        FROM_IMAGE: "golang:1.25"
+        FROM_IMAGE: "golang:1.26"
     ports:
       - 8080
     depends_on:

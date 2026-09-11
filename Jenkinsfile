@@ -116,12 +116,12 @@ pipeline {
         INFRAPOOL_TEST_CERT=true
       }
       parallel {
-        stage('Golang 1.26') {
+        stage('Golang 1.27') {
           steps {
             script {
-              infrapool.agentSh "./bin/test.sh 1.26 $REGISTRY_URL"
-              infrapool.agentStash name: '1.26-out', includes: 'output/1.26/*.xml'
-              unstash '1.26-out'
+              infrapool.agentSh "./bin/test.sh 1.27 $REGISTRY_URL"
+              infrapool.agentStash name: '1.27-out', includes: 'output/1.27/*.xml'
+              unstash '1.27-out'
               recordCoverage(
                 tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']],
                 sourceCodeEncoding: 'ASCII',
@@ -132,31 +132,31 @@ pipeline {
                 ],
                 skipPublishingChecks: false
               )
-              infrapool.agentSh 'cp output/1.26/c.out .'
-              codacy action: 'reportCoverage', filePath: "output/1.26/coverage.xml"
+              infrapool.agentSh 'cp output/1.27/c.out .'
+              codacy action: 'reportCoverage', filePath: "output/1.27/coverage.xml"
+            }
+          }
+          post {
+            always {
+              script { infrapool.agentArchiveArtifacts artifacts: 'output/1.27/conjur-logs.txt' }
+              script { infrapool.agentArchiveArtifacts artifacts: 'output/1.27/conjur-leader-logs.txt', allowEmptyArchive: true }
+              junit 'output/1.27/junit.xml'
+            }
+          }
+        }
+
+        stage('Golang 1.26') {
+          steps {
+            script {
+              infrapool.agentSh "./bin/test.sh 1.26 $REGISTRY_URL"
+              infrapool.agentStash name: '1.26-out', includes: 'output/1.26/*.xml'
+              unstash '1.26-out'
             }
           }
           post {
             always {
               script { infrapool.agentArchiveArtifacts artifacts: 'output/1.26/conjur-logs.txt' }
               script { infrapool.agentArchiveArtifacts artifacts: 'output/1.26/conjur-leader-logs.txt', allowEmptyArchive: true }
-              junit 'output/1.26/junit.xml'
-            }
-          }
-        }
-
-        stage('Golang 1.25') {
-          steps {
-            script {
-              infrapool.agentSh "./bin/test.sh 1.25 $REGISTRY_URL"
-              infrapool.agentStash name: '1.25-out', includes: 'output/1.25/*.xml'
-              unstash '1.25-out'
-            }
-          }
-          post {
-            always {
-              script { infrapool.agentArchiveArtifacts artifacts: 'output/1.25/conjur-logs.txt' }
-              script { infrapool.agentArchiveArtifacts artifacts: 'output/1.25/conjur-leader-logs.txt', allowEmptyArchive: true }
             }
           }
         }
@@ -173,7 +173,7 @@ pipeline {
       }
       steps {
         script {
-          INFRAPOOL_AZURE_EXECUTORV2_AGENT_0.agentSh "summon ./bin/test.sh 1.26 $REGISTRY_URL"
+          INFRAPOOL_AZURE_EXECUTORV2_AGENT_0.agentSh "summon ./bin/test.sh 1.27 $REGISTRY_URL"
         }
       }
     }
@@ -195,7 +195,7 @@ pipeline {
           INFRAPOOL_GCP_EXECUTORV2_AGENT_0.agentStash name: 'token-out', includes: "${GCP_CTX_DIR}/*"
           GCP_TOKEN_STASHED = true
           infrapool.agentUnstash name: 'token-out'
-          infrapool.agentSh "./bin/test.sh 1.26 $REGISTRY_URL $GCP_CTX_DIR"
+          infrapool.agentSh "./bin/test.sh 1.27 $REGISTRY_URL $GCP_CTX_DIR"
         }
       }
     }

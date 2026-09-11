@@ -6,10 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.15.8] - 2026-09-14
+
 ### Added
 - Secure Workload Access (SWA) client support, Conjur Cloud only: trust
   domains, server groups, node groups, and servers (full CRUD), plus
   signing-key discovery endpoints (OIDC configuration, JWKS, and CA bundles). (CNJR-15186)
+
+### Changed
+- Drop support for go 1.25, add support for 1.27.
 
 ## [0.15.7] - 2026-09-02
 
