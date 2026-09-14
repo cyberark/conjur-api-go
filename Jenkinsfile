@@ -183,6 +183,27 @@ pipeline {
             }
           }
         }
+
+        stage('Windows cross-compile') {
+          steps {
+            script {
+              // Verify that the codebase compiles and passes vet for Windows
+              // (GOOS=windows). This catches platform-specific build failures
+              // such as unix-only syscalls or imports that do not build on
+              // Windows — without requiring a Windows infrapool agent.
+              //
+              // Note: this is a compile/vet check only; no tests are executed.
+              // Windows infrapool agents (ExecutorV2Windows) exist in the fleet
+              // but are not pre-installed with Go, so running 'go test' on a
+              // real Windows node would require either installing Go at build
+              // time or updating the Windows AMI. Track this as a follow-up
+              // if end-to-end Windows test coverage becomes a requirement.
+              timeout(time: 10, unit: 'MINUTES') {
+                sh "docker run --rm -v \"\$(pwd)\":/src -w /src golang:1.26 sh -c \"GOOS=windows go build ./... && GOOS=windows go vet ./...\""
+              }
+            }
+          }
+        }
       }
     }
 
