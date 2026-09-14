@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.15.8] - 2026-09-14
+
 ### Security
 - Upgrade the perl packages in the test image to their Debian security-patched
   version (5.40.1-6+deb13u1) to clear CVE-2026-8376, CVE-2026-13221 and
@@ -15,6 +17,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Secure Workload Access (SWA) client support, Conjur Cloud only: trust
   domains, server groups, node groups, and servers (full CRUD), plus
   signing-key discovery endpoints (OIDC configuration, JWKS, and CA bundles). (CNJR-15186)
+
+### Changed
+- Drop support for go 1.25, add support for 1.27.
 
 ## [0.15.7] - 2026-09-02
 

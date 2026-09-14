@@ -27,7 +27,7 @@ if [ "$API_TESTS" != "" ]; then
 fi
 
 export COMPOSE_PROJECT_NAME="conjurapigo_${PROJECT_SUFFIX}"
-export GO_VERSION="${1:-"1.26"}"
+export GO_VERSION="${1:-"1.27"}"
 export REGISTRY_URL="${2:-docker.io}"
 export TEST_AWS="${INFRAPOOL_TEST_AWS:-false}"
 export TEST_AZURE="${INFRAPOOL_TEST_AZURE:-false}"
@@ -165,7 +165,7 @@ else
             echo "Tests finished - aggregating results...";
             cat "$output_dir/junit.output" | go-junit-report > "$output_dir/junit.xml";
             gocov convert "$output_dir/c.out" | gocov-xml > "$output_dir/coverage.xml";
-            gocovmerge "./output/1.25/c.out" "$output_dir/c.out" > "$output_dir/merged-coverage.out";
+            gocovmerge "./output/1.26/c.out" "$output_dir/c.out" > "$output_dir/merged-coverage.out";
             gocov convert "$output_dir/merged-coverage.out" | gocov-xml > "$output_dir/merged-coverage.xml";
             [ "$exit_code" -eq 0 ]' || failed
 fi
