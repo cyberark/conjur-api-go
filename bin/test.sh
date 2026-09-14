@@ -33,6 +33,7 @@ export TEST_AWS="${INFRAPOOL_TEST_AWS:-false}"
 export TEST_AZURE="${INFRAPOOL_TEST_AZURE:-false}"
 export TEST_GCP="${INFRAPOOL_TEST_GCP:-false}"
 export TEST_CERT="${TEST_CERT:-${INFRAPOOL_TEST_CERT:-false}}"
+export TEST_SPIFFE="${TEST_SPIFFE:-${INFRAPOOL_TEST_SPIFFE:-false}}"
 
 if [[ "$TEST_GCP" == "true" ]]; then
   export GCP_CTX_DIR="${3:-gcp}"
@@ -64,13 +65,24 @@ if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
     source ./setup-cert-auth.sh
   fi
 
+  if [[ "$TEST_SPIFFE" == "true" ]]; then
+    # setup-spiffe.sh configures Conjur authn-cert for SPIFFE mode, which requires the
+    # enterprise appliance to already be running with authn-cert set up. Always enable
+    # TEST_CERT=true alongside TEST_SPIFFE=true.
+    if [[ "$TEST_CERT" != "true" ]]; then
+      echo "ERROR: TEST_SPIFFE=true requires TEST_CERT=true (SPIFFE tests need the enterprise appliance and authn-cert configured first)."
+      exit 1
+    fi
+    source ./setup-spiffe.sh
+  fi
+
   announce "Building test containers..."
   docker compose build "test-$GO_VERSION"
   echo "Done!"
 
   # generate output folder locally, if needed
   output_dir="../output/$GO_VERSION"
-  mkdir -p $output_dir
+  mkdir -p "$output_dir"
 
   # We are using package list mode of 'go test'
   # note: the expression must be eval'ed before passing to docker
@@ -89,6 +101,13 @@ if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
     CERT_EXTRA_ARGS+=("-v" "$CERT_TMPDIR:/certs:ro")
   fi
 
+  # When TEST_SPIFFE is true, mount the named volume that holds the SPIRE agent socket
+  # so the test container can reach the SPIFFE Workload API.
+  SPIFFE_EXTRA_ARGS=()
+  if [[ "$TEST_SPIFFE" == "true" ]]; then
+    SPIFFE_EXTRA_ARGS+=("-v" "${COMPOSE_PROJECT_NAME}_spire-agent-socket:/run/spire/sockets:ro")
+  fi
+
   docker compose run \
   --rm \
   --no-deps \
@@ -97,6 +116,7 @@ if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
   -e GOPATH=/tmp/go \
   -e GOCACHE=/tmp/go-cache \
   "${CERT_EXTRA_ARGS[@]}" \
+  "${SPIFFE_EXTRA_ARGS[@]}" \
   -e CONJUR_AUTHN_API_KEY \
   -e TEST_AWS \
   -e AWS_ACCESS_KEY_ID \
@@ -120,6 +140,10 @@ if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
   -e CONJUR_AUTHN_CERT_FILE \
   -e CONJUR_AUTHN_CERT_KEY_FILE \
   -e TEST_CERT_CA_CERT \
+  -e TEST_SPIFFE \
+  -e SPIFFE_SERVICE_ID \
+  -e SPIFFE_TRUST_BUNDLE \
+  -e "SPIFFE_ENDPOINT_SOCKET=unix:///run/spire/sockets/agent.sock" \
   -e GO_VERSION \
   -e PUBLIC_KEYS \
   -e JWT \
