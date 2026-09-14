@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   CVE-2026-42496 inherited from the golang base image. (CNJR-15396)
 
 ### Added
+- New `conjurapi/spiffe` package: `spiffe.NewProvider()` fetches and caches an
+  X.509-SVID from the SPIFFE Workload API and wires it into
+  `Config.ClientCertProvider` for authn-cert mutual TLS. Callers that do not
+  use this package are unaffected. (CNJR-14839)
 - Secure Workload Access (SWA) client support, Conjur Cloud only: trust
   domains, server groups, node groups, and servers (full CRUD), plus
   signing-key discovery endpoints (OIDC configuration, JWKS, and CA bundles). (CNJR-15186)
