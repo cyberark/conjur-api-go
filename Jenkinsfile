@@ -1,5 +1,8 @@
 #!/usr/bin/env groovy
-@Library("product-pipelines-shared-library") _
+@Library([
+  "product-pipelines-shared-library",
+  "conjur-enterprise-sharedlib"
+]) _
 
 // Automated release, promotion and dependencies
 properties([
@@ -20,7 +23,7 @@ if (params.MODE == "PROMOTE") {
 }
 
 pipeline {
-  agent { label 'conjur-enterprise-common-agent' }
+  agent { label 'conjur-enterprise-AmznDocker' }
 
   options {
     timestamps()
@@ -70,15 +73,11 @@ pipeline {
       }
     }
 
-    stage('Get InfraPool ExecutorV2 Agent') {
+    stage('Get Cloud Test Agents') {
       steps {
         script {
-          // Request ExecutorV2 agents for 1 hour(s)
-          INFRAPOOL_EXECUTORV2_AGENTS = getInfraPoolAgent(type: "ExecutorV2", quantity: 1, duration: 1)
-          INFRAPOOL_EXECUTORV2_AGENT_0 = INFRAPOOL_EXECUTORV2_AGENTS[0]
-          infrapool = infraPoolConnect(INFRAPOOL_EXECUTORV2_AGENT_0, {})
-
-          // Request additional executors for cloud specific tests
+          // Azure and GCP have no AmznDocker equivalent, so those pools are
+          // retained for their respective test stages.
           if (params.TEST_AZURE) {
             INFRAPOOL_AZURE_EXECUTORV2_AGENT_0 = getInfraPoolAgent.connected(type: "AzureExecutorV2", quantity: 1, duration: 1)[0]
           }
@@ -89,11 +88,19 @@ pipeline {
       }
     }
 
+    stage('Mark Workspace as Safe Git Directory') {
+      steps {
+        script {
+          sh 'git config --global --add safe.directory $WORKSPACE'
+        }
+      }
+    }
+
     // Generates a VERSION file based on the current build number and latest version in CHANGELOG.md
     stage('Validate Changelog and set version') {
       steps {
         script {
-          updateVersion(infrapool, "CHANGELOG.md", "${BUILD_NUMBER}")
+          updateVersion("CHANGELOG.md", "${BUILD_NUMBER}")
 
           if (params.TEST_AZURE) {
             updateVersion(INFRAPOOL_AZURE_EXECUTORV2_AGENT_0, "CHANGELOG.md", "${BUILD_NUMBER}")
@@ -119,8 +126,10 @@ pipeline {
         stage('Golang 1.27') {
           steps {
             script {
-              infrapool.agentSh "./bin/test.sh 1.27 $REGISTRY_URL"
-              infrapool.agentStash name: '1.27-out', includes: 'output/1.27/*.xml'
+              withConjurAwsIamRole {
+                sh "./bin/test.sh 1.27 $REGISTRY_URL"
+              }
+              stash name: '1.27-out', includes: 'output/1.27/*.xml'
               unstash '1.27-out'
               recordCoverage(
                 tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']],
@@ -132,14 +141,14 @@ pipeline {
                 ],
                 skipPublishingChecks: false
               )
-              infrapool.agentSh 'cp output/1.27/c.out .'
+              sh 'cp output/1.27/c.out .'
               codacy action: 'reportCoverage', filePath: "output/1.27/coverage.xml"
             }
           }
           post {
             always {
-              script { infrapool.agentArchiveArtifacts artifacts: 'output/1.27/conjur-logs.txt' }
-              script { infrapool.agentArchiveArtifacts artifacts: 'output/1.27/conjur-leader-logs.txt', allowEmptyArchive: true }
+              script { archiveArtifacts artifacts: 'output/1.27/conjur-logs.txt' }
+              script { archiveArtifacts artifacts: 'output/1.27/conjur-leader-logs.txt', allowEmptyArchive: true }
               junit 'output/1.27/junit.xml'
             }
           }
@@ -148,15 +157,17 @@ pipeline {
         stage('Golang 1.26') {
           steps {
             script {
-              infrapool.agentSh "./bin/test.sh 1.26 $REGISTRY_URL"
-              infrapool.agentStash name: '1.26-out', includes: 'output/1.26/*.xml'
+              withConjurAwsIamRole {
+                sh "./bin/test.sh 1.26 $REGISTRY_URL"
+              }
+              stash name: '1.26-out', includes: 'output/1.26/*.xml'
               unstash '1.26-out'
             }
           }
           post {
             always {
-              script { infrapool.agentArchiveArtifacts artifacts: 'output/1.26/conjur-logs.txt' }
-              script { infrapool.agentArchiveArtifacts artifacts: 'output/1.26/conjur-leader-logs.txt', allowEmptyArchive: true }
+              script { archiveArtifacts artifacts: 'output/1.26/conjur-logs.txt' }
+              script { archiveArtifacts artifacts: 'output/1.26/conjur-leader-logs.txt', allowEmptyArchive: true }
             }
           }
         }
@@ -178,7 +189,6 @@ pipeline {
       }
     }
 
-
     stage('Run GCP tests') {
       when {
         expression { params.TEST_GCP }
@@ -194,8 +204,8 @@ pipeline {
           INFRAPOOL_GCP_EXECUTORV2_AGENT_0.agentSh "./bin/get_gcp_token.sh host/data/test/gcp-apps/test-app conjur $GCP_CTX_DIR"
           INFRAPOOL_GCP_EXECUTORV2_AGENT_0.agentStash name: 'token-out', includes: "${GCP_CTX_DIR}/*"
           GCP_TOKEN_STASHED = true
-          infrapool.agentUnstash name: 'token-out'
-          infrapool.agentSh "./bin/test.sh 1.27 $REGISTRY_URL $GCP_CTX_DIR"
+          unstash 'token-out'
+          sh "./bin/test.sh 1.27 $REGISTRY_URL $GCP_CTX_DIR"
         }
       }
     }
@@ -216,13 +226,11 @@ pipeline {
           steps {
             script {
               def id_token = getConjurCloudTenant.tokens(
-                infrapool: infrapool,
                 identity_url: "${TENANT.identity_information.idaptive_tenant_fqdn}",
                 username: "${TENANT.login_name}"
               )
 
               def conj_token = getConjurCloudTenant.tokens(
-                infrapool: infrapool,
                 conjur_url: "${TENANT.conjur_cloud_url}",
                 identity_token: "${id_token}"
                 )
@@ -245,10 +253,10 @@ pipeline {
           steps {
             script {
               if (params.TEST_GCP) {
-                infrapool.agentUnstash name: 'token-out'
+                unstash 'token-out'
               }
-              infrapool.agentSh "./bin/test.sh"
-              infrapool.agentStash name: 'merged-out', includes: 'output/cloud/*.xml'
+              sh "./bin/test.sh"
+              stash name: 'merged-out', includes: 'output/cloud/*.xml'
               unstash 'merged-out'
               recordCoverage(
                 tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']],
@@ -260,7 +268,7 @@ pipeline {
                 ],
                 skipPublishingChecks: false
               )
-              infrapool.agentSh 'cp output/cloud/merged-coverage.out .'
+              sh 'cp output/cloud/merged-coverage.out .'
               codacy action: 'reportCoverage', filePath: "output/cloud/merged-coverage.xml"
             }
           }
@@ -279,8 +287,8 @@ pipeline {
     stage('Package distribution tarballs') {
       steps {
         script {
-          infrapool.agentSh './bin/package.sh'
-          infrapool.agentArchiveArtifacts artifacts: 'output/dist/*', fingerprint: true
+          sh './bin/package.sh'
+          archiveArtifacts artifacts: 'output/dist/*', fingerprint: true
         }
       }
     }
@@ -293,14 +301,14 @@ pipeline {
       }
       steps {
         script {
-          release(infrapool) { billOfMaterialsDirectory, assetDirectory, toolsDirectory ->
+          release { billOfMaterialsDirectory, assetDirectory, toolsDirectory ->
             // Publish release artifacts to all the appropriate locations
 
             // Copy any artifacts to assetDirectory to attach them to the Github release
-            infrapool.agentSh "cp -r output/dist/* ${assetDirectory}"
+            sh "cp -r output/dist/* ${assetDirectory}"
 
             // Create Go module SBOM
-            infrapool.agentSh """export PATH="${toolsDirectory}/bin:${PATH}" && go-bom --tools "${toolsDirectory}" --go-mod ./go.mod --image "golang" --output "${billOfMaterialsDirectory}/go-mod-bom.json" """
+            sh """export PATH="${toolsDirectory}/bin:${PATH}" && go-bom --tools "${toolsDirectory}" --go-mod ./go.mod --image "golang" --output "${billOfMaterialsDirectory}/go-mod-bom.json" """
           }
         }
       }

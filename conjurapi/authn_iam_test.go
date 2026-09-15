@@ -1,6 +1,7 @@
 package conjurapi
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -9,7 +10,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var authnIamPolicy = `
+func getAuthnIamRole() string {
+	if role := os.Getenv("AUTHN_IAM_TEST_ROLE"); role != "" {
+		return role
+	}
+	return "InstanceReadJenkinsExecutorHostFactoryToken"
+}
+
+func getAuthnIamPolicy(role string) string {
+	return fmt.Sprintf(`
 - !policy
   id: prod
   body:
@@ -25,9 +34,12 @@ var authnIamPolicy = `
   # Give the host permission to authenticate using the IAM Authenticator
   - !grant
     role: !group clients
-    member: !host /data/test/myspace/601277729239/InstanceReadJenkinsExecutorHostFactoryToken
-`
-var authIamRolesPolicy = `
+    member: !host /data/test/myspace/601277729239/%s
+`, role)
+}
+
+func getAuthIamRolesPolicy(role string) string {
+	return fmt.Sprintf(`
 - !policy
   id: myspace
   body:
@@ -45,16 +57,17 @@ var authIamRolesPolicy = `
   # Create a layer to hold this application's hosts
   - !layer
   # The host ID needs to match the AWS ARN of the role we wish to authenticate
-  - !host 601277729239/InstanceReadJenkinsExecutorHostFactoryToken
+  - !host 601277729239/%s
   # Add our host into our layer
   - !grant
     role: !layer
-    member: !host 601277729239/InstanceReadJenkinsExecutorHostFactoryToken
+    member: !host 601277729239/%s
   # Give the host in our layer permission to retrieve variables
   - !grant
     member: !layer
     role: !group secrets-users
-`
+`, role, role)
+}
 
 func TestAuthnIam(t *testing.T) {
 	// Only run this if running on AWS
@@ -63,10 +76,13 @@ func TestAuthnIam(t *testing.T) {
 	}
 
 	t.Run("authn-iam e2e happy path", func(t *testing.T) {
+		role := getAuthnIamRole()
+		jwtHostID := fmt.Sprintf("data/test/myspace/601277729239/%s", role)
+
 		utils, err := NewTestUtils(&Config{})
 		require.NoError(t, err)
 
-		err = utils.SetupWithAuthenticator("iam", authnIamPolicy, authIamRolesPolicy)
+		err = utils.SetupWithAuthenticator("iam", getAuthnIamPolicy(role), getAuthIamRolesPolicy(role))
 		require.NoError(t, err)
 		conjur := utils.Client()
 		conjur.EnableAuthenticator("iam", "prod", true)
@@ -82,7 +98,7 @@ func TestAuthnIam(t *testing.T) {
 			Account:      conjur.config.Account,
 			AuthnType:    "iam",
 			ServiceID:    "prod",
-			JWTHostID:    "data/test/myspace/601277729239/InstanceReadJenkinsExecutorHostFactoryToken",
+			JWTHostID:    jwtHostID,
 		}
 		iamConjur, err := NewClientFromAWSCredentials(config)
 		require.NoError(t, err)

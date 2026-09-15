@@ -92,9 +92,19 @@ if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
   docker compose run \
   --rm \
   --no-deps \
+  --user "$(id -u):$(id -g)" \
+  -e HOME=/tmp/go \
+  -e GOPATH=/tmp/go \
+  -e GOCACHE=/tmp/go-cache \
   "${CERT_EXTRA_ARGS[@]}" \
   -e CONJUR_AUTHN_API_KEY \
   -e TEST_AWS \
+  -e AWS_ACCESS_KEY_ID \
+  -e AWS_SECRET_ACCESS_KEY \
+  -e AWS_SESSION_TOKEN \
+  -e AWS_REGION \
+  -e AWS_DEFAULT_REGION \
+  -e AUTHN_IAM_TEST_ROLE \
   -e TEST_AZURE \
   -e AZURE_SUBSCRIPTION_ID \
   -e AZURE_RESOURCE_GROUP \
