@@ -48,6 +48,12 @@ pipeline {
     booleanParam(name: 'TEST_AZURE', defaultValue: false, description: 'Run integration tests against Azure')
 
     booleanParam(name: 'TEST_GCP', defaultValue: false, description: 'Run integration tests against GCP')
+
+    booleanParam(name: 'TEST_AWS', defaultValue: true, description: 'Run AWS IAM integration tests')
+
+    booleanParam(name: 'TEST_CERT', defaultValue: true, description: 'Run authn-cert integration tests (requires enterprise appliance)')
+
+    booleanParam(name: 'TEST_SPIFFE', defaultValue: true, description: 'Run SPIFFE/SPIRE X.509-SVID integration tests (requires cert-authn appliance)')
   }
 
   stages {
@@ -119,8 +125,10 @@ pipeline {
         // Added a switch in Jenkinsfile and test configurations to toggle between registry.tld for internal testing and docker.io for using the conjur:edge image externally.
         // Tests default to using DockerHub images. In our internal Jenkins setup, this is overridden to pull from our internal registry instead.
         REGISTRY_URL = "registry.tld"
-        INFRAPOOL_TEST_AWS=true
-        INFRAPOOL_TEST_CERT=true
+        INFRAPOOL_TEST_AWS="${params.TEST_AWS}"
+        INFRAPOOL_TEST_CERT="${params.TEST_CERT}"
+        // SPIFFE tests require the cert-authn appliance; guaranteed by TEST_CERT=true above.
+        INFRAPOOL_TEST_SPIFFE="${params.TEST_SPIFFE}"
       }
       parallel {
         stage('Golang 1.27') {
@@ -149,6 +157,8 @@ pipeline {
             always {
               script { archiveArtifacts artifacts: 'output/1.27/conjur-logs.txt' }
               script { archiveArtifacts artifacts: 'output/1.27/conjur-leader-logs.txt', allowEmptyArchive: true }
+              script { archiveArtifacts artifacts: 'output/1.27/spire-server-logs.txt', allowEmptyArchive: true }
+              script { archiveArtifacts artifacts: 'output/1.27/spire-agent-logs.txt', allowEmptyArchive: true }
               junit 'output/1.27/junit.xml'
             }
           }
@@ -168,6 +178,29 @@ pipeline {
             always {
               script { archiveArtifacts artifacts: 'output/1.26/conjur-logs.txt' }
               script { archiveArtifacts artifacts: 'output/1.26/conjur-leader-logs.txt', allowEmptyArchive: true }
+              script { archiveArtifacts artifacts: 'output/1.26/spire-server-logs.txt', allowEmptyArchive: true }
+              script { archiveArtifacts artifacts: 'output/1.26/spire-agent-logs.txt', allowEmptyArchive: true }
+            }
+          }
+        }
+
+        stage('Windows cross-compile') {
+          steps {
+            script {
+              // Verify that the codebase compiles and passes vet for Windows
+              // (GOOS=windows). This catches platform-specific build failures
+              // such as unix-only syscalls or imports that do not build on
+              // Windows — without requiring a Windows infrapool agent.
+              //
+              // Note: this is a compile/vet check only; no tests are executed.
+              // Windows infrapool agents (ExecutorV2Windows) exist in the fleet
+              // but are not pre-installed with Go, so running 'go test' on a
+              // real Windows node would require either installing Go at build
+              // time or updating the Windows AMI. Track this as a follow-up
+              // if end-to-end Windows test coverage becomes a requirement.
+              timeout(time: 10, unit: 'MINUTES') {
+                sh "docker run --rm -v \"\$(pwd)\":/src -w /src golang:1.26 sh -c \"GOOS=windows go build ./... && GOOS=windows go vet ./...\""
+              }
             }
           }
         }

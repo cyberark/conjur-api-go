@@ -1,6 +1,7 @@
 package conjurapi
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -84,6 +85,11 @@ type Config struct {
 	ClientCert string `yaml:"-"`
 	// ClientCertKey holds the inline PEM-encoded private key. Never written to disk.
 	ClientCertKey string `yaml:"-"`
+	// ClientCertProvider, when non-nil, is called on every TLS handshake to supply the
+	// mTLS client certificate for authn-cert. It takes precedence over ClientCertFile
+	// and ClientCert. Use conjurapi/spiffe.NewProvider() to source the certificate from
+	// a SPIFFE Workload API (SPIRE agent).
+	ClientCertProvider func(context.Context) (*tls.Certificate, error) `yaml:"-"`
 	// CertHostID is the Conjur host path for authn-cert request mode
 	// (e.g. "host/vm-workloads/vm-01"). Leave empty for SPIFFE mode.
 	CertHostID string `yaml:"cert_host_id,omitempty"`
@@ -151,41 +157,48 @@ func (c *Config) Validate() error {
 		if isConjurCloudURL(c.ApplianceURL) {
 			errors = append(errors, "Certificate authentication is not supported in Idira Secrets Manager, SaaS")
 		}
-		if c.ClientCert == "" && c.ClientCertFile == "" {
-			errors = append(errors, "Must specify a client certificate (ClientCert or ClientCertFile) when using cert authentication")
-		}
-		if c.ClientCertKey == "" && c.ClientCertKeyFile == "" {
-			errors = append(errors, "Must specify a client certificate key (ClientCertKey or ClientCertKeyFile) when using cert authentication")
-		}
-		if c.ClientCert != "" && c.ClientCertFile != "" {
-			errors = append(errors, "Must not specify both ClientCert and ClientCertFile when using cert authentication")
-		}
-		if c.ClientCertKey != "" && c.ClientCertKeyFile != "" {
-			errors = append(errors, "Must not specify both ClientCertKey and ClientCertKeyFile when using cert authentication")
-		}
-		// When inline PEM is provided, parse it now so misconfiguration is caught
-		// at construction time rather than at the first TLS handshake.
-		if c.ClientCert != "" && c.ClientCertKey != "" {
-			if cert, err := tls.X509KeyPair([]byte(c.ClientCert), []byte(c.ClientCertKey)); err != nil {
-				errors = append(errors, fmt.Sprintf("invalid client certificate or key: %s", err))
-			} else if len(cert.Certificate) > 0 {
-				if parsed, err := x509.ParseCertificate(cert.Certificate[0]); err == nil {
-					if time.Now().After(parsed.NotAfter) {
-						logging.ApiLog.Warnf("client certificate expired at %s", parsed.NotAfter)
+		// ClientCertProvider is an alternative to static cert+key fields. When it is
+		// set the provider function supplies the certificate at handshake time, so the
+		// static fields are not required. If both ClientCertProvider and a static cert
+		// field are set, the provider takes exclusive precedence in newMTLSClient and
+		// the static fields are ignored — this is by design, not an oversight.
+		if c.ClientCertProvider == nil {
+			if c.ClientCert == "" && c.ClientCertFile == "" {
+				errors = append(errors, "Must specify a client certificate (ClientCert, ClientCertFile, or ClientCertProvider) when using cert authentication")
+			}
+			if c.ClientCertKey == "" && c.ClientCertKeyFile == "" {
+				errors = append(errors, "Must specify a client certificate key (ClientCertKey, ClientCertKeyFile, or ClientCertProvider) when using cert authentication")
+			}
+			if c.ClientCert != "" && c.ClientCertFile != "" {
+				errors = append(errors, "Must not specify both ClientCert and ClientCertFile when using cert authentication")
+			}
+			if c.ClientCertKey != "" && c.ClientCertKeyFile != "" {
+				errors = append(errors, "Must not specify both ClientCertKey and ClientCertKeyFile when using cert authentication")
+			}
+			// When inline PEM is provided, parse it now so misconfiguration is caught
+			// at construction time rather than at the first TLS handshake.
+			if c.ClientCert != "" && c.ClientCertKey != "" {
+				if cert, err := tls.X509KeyPair([]byte(c.ClientCert), []byte(c.ClientCertKey)); err != nil {
+					errors = append(errors, fmt.Sprintf("invalid client certificate or key: %s", err))
+				} else if len(cert.Certificate) > 0 {
+					if parsed, err := x509.ParseCertificate(cert.Certificate[0]); err == nil {
+						if time.Now().After(parsed.NotAfter) {
+							logging.ApiLog.Warnf("client certificate expired at %s", parsed.NotAfter)
+						}
 					}
 				}
 			}
-		}
-		// Inline PEM takes precedence over file paths in ReadClientCert; validate
-		// each file path when the corresponding inline field is unset.
-		if c.ClientCert == "" && c.ClientCertFile != "" {
-			if err := validateClientCertFilePath("client certificate file", c.ClientCertFile); err != nil {
-				errors = append(errors, err.Error())
+			// Inline PEM takes precedence over file paths in ReadClientCert; validate
+			// each file path when the corresponding inline field is unset.
+			if c.ClientCert == "" && c.ClientCertFile != "" {
+				if err := validateClientCertFilePath("client certificate file", c.ClientCertFile); err != nil {
+					errors = append(errors, err.Error())
+				}
 			}
-		}
-		if c.ClientCertKey == "" && c.ClientCertKeyFile != "" {
-			if err := validateClientCertFilePath("client certificate key file", c.ClientCertKeyFile); err != nil {
-				errors = append(errors, err.Error())
+			if c.ClientCertKey == "" && c.ClientCertKeyFile != "" {
+				if err := validateClientCertFilePath("client certificate key file", c.ClientCertKeyFile); err != nil {
+					errors = append(errors, err.Error())
+				}
 			}
 		}
 	}
@@ -383,6 +396,12 @@ func (c *Config) merge(o *Config) {
 	c.ClientCert = mergeValue(c.ClientCert, o.ClientCert)
 	c.ClientCertKey = mergeValue(c.ClientCertKey, o.ClientCertKey)
 	c.CertHostID = mergeValue(c.CertHostID, o.CertHostID)
+	// ClientCertProvider is a function and cannot use the generic mergeValue helper
+	// (functions are not comparable). Apply the override only when the incoming value
+	// is non-nil so that explicit nil does not clear a previously set provider.
+	if o.ClientCertProvider != nil {
+		c.ClientCertProvider = o.ClientCertProvider
+	}
 }
 
 func (c *Config) mergeYAML(filename string) error {

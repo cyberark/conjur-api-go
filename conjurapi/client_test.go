@@ -1,6 +1,7 @@
 package conjurapi
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/pem"
 	"io"
@@ -1373,6 +1374,33 @@ func TestNewMTLSClient(t *testing.T) {
 
 		transport := client.Transport.(*http.Transport)
 		assert.Equal(t, uint16(tls.VersionTLS12), transport.TLSClientConfig.MinVersion)
+	})
+
+	t.Run("ClientCertProvider is wired as GetClientCertificate", func(t *testing.T) {
+		certPEM, keyPEM := generateTestCertPEM(t)
+		providerCalled := false
+
+		config := Config{
+			ClientCertProvider: func(_ context.Context) (*tls.Certificate, error) {
+				providerCalled = true
+				cert, err := tls.X509KeyPair([]byte(certPEM), []byte(keyPEM))
+				if err != nil {
+					return nil, err
+				}
+				return &cert, nil
+			},
+		}
+
+		client, err := newMTLSClient(nil, config)
+		require.NoError(t, err)
+
+		transport := client.Transport.(*http.Transport)
+		got, err := transport.TLSClientConfig.GetClientCertificate(&tls.CertificateRequestInfo{})
+
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		assert.NotEmpty(t, got.Certificate)
+		assert.True(t, providerCalled, "expected the provider function to be called")
 	})
 }
 

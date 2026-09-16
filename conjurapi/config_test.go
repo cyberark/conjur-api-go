@@ -1,9 +1,11 @@
 package conjurapi
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
@@ -477,6 +479,22 @@ func TestConfig_Validate(t *testing.T) {
 			err := config.Validate()
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "client certificate key file not found")
+		})
+
+		t.Run("ClientCertProvider replaces static cert fields", func(t *testing.T) {
+			config := Config{
+				Account:      "account",
+				ApplianceURL: "https://conjur.example.com",
+				AuthnType:    "cert",
+				ServiceID:    "acme-vm",
+				Environment:  EnvironmentSH,
+				// No ClientCert, ClientCertKey, ClientCertFile, or ClientCertKeyFile.
+				ClientCertProvider: func(context.Context) (*tls.Certificate, error) {
+					return nil, nil
+				},
+			}
+			err := config.Validate()
+			assert.NoError(t, err, "provider alone must satisfy the cert credential requirement")
 		})
 	})
 

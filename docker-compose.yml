@@ -131,12 +131,64 @@ services:
     profiles:
       - cert
 
+  # SPIRE server — only started when the "spiffe" profile is active
+  # (i.e. when TEST_SPIFFE=true and setup-spiffe.sh is invoked from test.sh).
+  spire-server:
+    image: ghcr.io/spiffe/spire-server:${SPIRE_VERSION:-1.15.2}
+    hostname: spire-server
+    command: ["-config", "/etc/spire/server/server.conf"]
+    volumes:
+      - ./bin/spire/server:/etc/spire/server:ro
+    networks:
+      - spiffe
+    profiles:
+      - spiffe
+
+  # SPIRE agent — only started when the "spiffe" profile is active.
+  # The agent image is distroless (only /opt/spire/bin/spire-agent; no shell).
+  # setup-spiffe.sh generates a join token and exports SPIRE_JOIN_TOKEN before
+  # calling 'docker compose up', so Compose substitutes it into the entrypoint.
+  #
+  # pid: host is required for the unix WorkloadAttestor. The agent identifies
+  # workloads by reading /proc/<pid>/status via the PID returned by SO_PEERCRED.
+  # When the test container and the agent container have separate PID namespaces
+  # (the Docker default), the agent's /proc does not contain the test process,
+  # and workload attestation fails immediately. Sharing the host PID namespace
+  # gives the agent a /proc view that includes all containers on the node.
+  spire-agent:
+    image: ghcr.io/spiffe/spire-agent:${SPIRE_VERSION:-1.15.2}
+    hostname: spire-agent
+    pid: "host"
+    entrypoint: ["/opt/spire/bin/spire-agent", "run", "-config", "/etc/spire/agent/agent.conf", "-joinToken"]
+    # kics-scan ignore-line
+    command: ["${SPIRE_JOIN_TOKEN:-placeholder}"]
+    depends_on:
+      - spire-server
+    volumes:
+      - ./bin/spire/agent:/etc/spire/agent:ro
+      - ${SPIFFE_TMPDIR:-/tmp/spiffe-tokens}:/run/spire/secrets
+      - spire-agent-socket:/run/spire/sockets
+    networks:
+      - spiffe
+    profiles:
+      - spiffe
+
 # The 'conjur' network exists solely for cert-auth (Enterprise appliance) tests.
 # conjur-leader uses a fixed FQDN hostname (conjur-leader-1.mycompany.local) that
 # must match the TLS cert baked in by 'evoke configure master'. Because that FQDN
 # won't resolve on the default network, conjur-leader is placed here with a
 # matching alias, and the test services join both networks.
 # Without TEST_CERT=true this network is created but no service uses it.
+#
+# The 'spiffe' network connects the SPIRE server and agent. Without TEST_SPIFFE=true
+# this network is created but no service uses it.
 networks:
   conjur:
     driver: bridge
+  spiffe:
+    driver: bridge
+
+volumes:
+  # Shared between the SPIRE agent container and the test container (via docker run -v).
+  # Provides the SPIFFE Workload API socket at /run/spire/sockets/agent.sock.
+  spire-agent-socket:
