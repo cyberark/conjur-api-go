@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -346,4 +347,80 @@ func TestClientV2_ValidateSecretIdentifiers(t *testing.T) {
 			}
 		})
 	}
+}
+
+// --- partial-failure surfacing and per-secret detail ---
+
+func newSaaSBatchServer(t *testing.T, handler http.HandlerFunc) (*httptest.Server, *Client) {
+	t.Helper()
+	mux := http.NewServeMux()
+	mux.HandleFunc("/authn-jwt/jwt_service/myTestAccount/authenticate", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(mockConjurToken))
+	})
+	mux.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"release":"12.2.0","services":{"possum":{"version":"` + MinVersion + `"}}}`))
+	})
+	mux.HandleFunc("/", handler)
+
+	ts := httptest.NewServer(mux)
+	client, err := NewClientFromJwt(Config{
+		ApplianceURL: ts.URL,
+		Account:      "myTestAccount",
+		AuthnType:    "jwt",
+		ServiceID:    "jwt_service",
+		JWTContent:   `{"protected":"true","payload":"true","signature":"yes"}`,
+		Environment:  EnvironmentSaaS,
+	})
+	if err != nil {
+		ts.Close()
+		t.Fatalf("NewClientFromJwt: %s", err)
+	}
+	return ts, client
+}
+
+// TestBatchRetrieveSecrets_PartialFailureIsNotTopLevel checks that a 207
+// Multi-Status with a mix of 200/403/404 per-secret statuses returns a non-nil
+// response and a nil error, with failures readable per secret — never collapsed
+// into a top-level error.
+func TestBatchRetrieveSecrets_PartialFailureIsNotTopLevel(t *testing.T) {
+	ts, c := newSaaSBatchServer(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		w.WriteHeader(http.StatusMultiStatus) // 207
+		w.Write([]byte(`{"secrets":[
+			{"id":"data/ok","value":"s3cr3t","status":200},
+			{"id":"data/denied","status":403,"description":"Forbidden"},
+			{"id":"data/missing","status":404,"description":"Not Found"}
+		]}`))
+	})
+	defer ts.Close()
+
+	resp, err := c.V2().BatchRetrieveSecrets([]string{"data/ok", "data/denied", "data/missing"})
+	require.NoError(t, err, "partial failure must NOT be a top-level error")
+	require.NotNil(t, resp)
+	assert.Len(t, resp.Secrets, 3)
+
+	byID := map[string]SecretValue{}
+	for _, s := range resp.Secrets {
+		byID[s.ID] = s
+	}
+	// Success carries the value; failures carry the per-secret status and the
+	// server's error description, so a caller can render each secret's outcome.
+	assert.Equal(t, 200, byID["data/ok"].Status)
+	assert.Equal(t, "s3cr3t", byID["data/ok"].Value)
+	assert.Equal(t, 403, byID["data/denied"].Status)
+	assert.Equal(t, "Forbidden", byID["data/denied"].Description)
+	assert.Equal(t, 404, byID["data/missing"].Status)
+	assert.Equal(t, "Not Found", byID["data/missing"].Description)
+}
+
+func TestValidateSecretIdentifiers_OversizedNamesCountAndLimit(t *testing.T) {
+	ids := make([]string, MaxSecretsInSingleBatch+1)
+	for i := range ids {
+		ids[i] = fmt.Sprintf("data/secret%d", i)
+	}
+	_, err := ValidateSecretIdentifiers(ids)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), fmt.Sprintf("%d", MaxSecretsInSingleBatch+1))
 }
