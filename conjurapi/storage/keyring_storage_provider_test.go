@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
@@ -14,14 +15,35 @@ import (
 )
 
 func TestIsKeyringAvailable(t *testing.T) {
-	// Simulate an unavailable keyring (e.g. no D-Bus session in a container)
-	// by injecting a mock that returns an error on every operation.
-	keyring.MockInitWithError(errors.New("keyring unavailable"))
+	// Keyring shouldn't be available by default in the container running the tests
+	// until we enable the mock keyring
 	assert.False(t, IsKeyringAvailable())
 
-	// Switch to a healthy mock — the keyring should now report as available.
 	keyring.MockInit()
+
+	if runtime.GOOS == "linux" {
+		t.Setenv("DBUS_SESSION_BUS_ADDRESS", "unix:path=/tmp/dummy-bus")
+	}
+
 	assert.True(t, IsKeyringAvailable())
+}
+
+func TestIsKeyringAvailable_LinuxDBusGuard(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("D-Bus autolaunch guard is Linux-specific")
+	}
+
+	keyring.MockInit()
+
+	t.Run("unset bus address", func(t *testing.T) {
+		t.Setenv("DBUS_SESSION_BUS_ADDRESS", "")
+		assert.False(t, IsKeyringAvailable())
+	})
+
+	t.Run("bus address configured", func(t *testing.T) {
+		t.Setenv("DBUS_SESSION_BUS_ADDRESS", "unix:path=/tmp/dummy-bus")
+		assert.True(t, IsKeyringAvailable())
+	})
 }
 
 func TestKeyringStorageProvider_StoreCredentials(t *testing.T) {

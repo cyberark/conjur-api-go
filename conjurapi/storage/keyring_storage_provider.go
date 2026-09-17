@@ -2,6 +2,8 @@ package storage
 
 import (
 	"errors"
+	"os"
+	"runtime"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 	"github.com/zalando/go-keyring"
@@ -23,6 +25,15 @@ func NewKeyringStorageProvider(machineName string) *KeyringStorageProvider {
 
 // IsKeyringAvailable returns true if the keyring is available on the system
 func IsKeyringAvailable() bool {
+	if runtime.GOOS == "linux" && os.Getenv("DBUS_SESSION_BUS_ADDRESS") == "" {
+		// No D-Bus session bus configured: go-keyring relies on the
+		// Secret Service backend over D-Bus on Linux. With no bus
+		// address set, attempting anything here triggers godbus's
+		// autolaunch (spawning dbus-launch/dbus-daemon). We therefore
+		// short-circuit before any call to keyring.*.
+		return false
+	}
+
 	// Try to get a value. If there's an error other than "not found", then the
 	// keyring is not available.
 	_, err := keyring.Get("test", "test")

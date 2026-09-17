@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path"
+	"runtime"
 	"testing"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/storage"
@@ -18,6 +19,9 @@ import (
 func initMockKeyring(t *testing.T) {
 	t.Helper()
 	keyring.MockInit()
+	if runtime.GOOS == "linux" {
+		t.Setenv("DBUS_SESSION_BUS_ADDRESS", "unix:path=/tmp/dummy-bus")
+	}
 	t.Cleanup(func() {
 		keyring.MockInitWithError(errors.New("keyring unavailable for test isolation"))
 	})
@@ -332,6 +336,7 @@ func TestNewClientFromEnvironment_KeychainNamespace(t *testing.T) {
 	t.Setenv(keychainNamespaceEnvVar, "tenant-a")
 	os.Setenv("CONJUR_AUTHN_LOGIN", "user")
 	os.Setenv("CONJUR_AUTHN_API_KEY", "password")
+	os.Setenv("DBUS_SESSION_BUS_ADDRESS", "unix:path=/tmp/dummy-bus")
 
 	config, err := LoadConfig()
 	require.NoError(t, err)

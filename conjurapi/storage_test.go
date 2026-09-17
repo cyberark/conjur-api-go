@@ -1,6 +1,7 @@
 package conjurapi
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/storage"
@@ -77,6 +78,9 @@ func TestCreateStorageProvider(t *testing.T) {
 			action: func() {
 				// Enable a mock memory-based keyring storage
 				keyring.MockInit()
+				if runtime.GOOS == "linux" {
+					t.Setenv("DBUS_SESSION_BUS_ADDRESS", "unix:path=/tmp/dummy-bus")
+				}
 			},
 			assert: func(t *testing.T, storageProvider CredentialStorageProvider, err error) {
 				assert.Nil(t, err)
@@ -93,6 +97,9 @@ func TestCreateStorageProvider(t *testing.T) {
 			action: func() {
 				// Enable a mock memory-based keyring storage
 				keyring.MockInit()
+				if runtime.GOOS == "linux" {
+					t.Setenv("DBUS_SESSION_BUS_ADDRESS", "unix:path=/tmp/dummy-bus")
+				}
 			},
 			assert: func(t *testing.T, storageProvider CredentialStorageProvider, err error) {
 				assert.Nil(t, err)
