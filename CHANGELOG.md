@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.15.9] - 2026-09-17
+
 ### Added
 - `SecretValue.Description` on the batch-retrieve response carries the
   server's per-secret error detail, so a partial failure (some secrets 403/404
