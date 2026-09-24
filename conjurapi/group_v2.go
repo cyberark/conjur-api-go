@@ -172,6 +172,28 @@ func (c *ClientV2) DeleteGroup(identifier string) error {
 	return response.EmptyResponse(resp)
 }
 
+// DeleteGroupAnnotation removes a single annotation key from a group. This is
+// the only way to remove an annotation without deleting and recreating the
+// group: UpdateGroup's PATCH merges annotations (see UpdateGroupRequest), so
+// it can only add or overwrite a key, never remove one. Server responds with 204 No Content on success.
+func (c *ClientV2) DeleteGroupAnnotation(identifier, key string) error {
+	if !c.config.IsSaaS() && c.VerifyMinServerVersion(MinVersion) != nil {
+		return fmt.Errorf(NotSupportedInOldVersions, "Group API", MinVersion)
+	}
+
+	req, err := c.DeleteGroupAnnotationRequest(identifier, key)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.SubmitRequest(req)
+	if err != nil {
+		return err
+	}
+
+	return response.EmptyResponse(resp)
+}
+
 // ListGroupMembers returns a page of a group's members. filter may be nil for
 // the server default page. Use GroupMembersResponse.HasMore for auto-pagination.
 func (c *ClientV2) ListGroupMembers(groupID string, filter *GroupFilter) (GroupMembersResponse, error) {
@@ -262,8 +284,8 @@ func (c *ClientV2) UpdateGroupRequest(identifier string, annotations map[string]
 	// keys in the payload are added/overwritten, keys not present are left
 	// untouched. Sending an empty map is a no-op server-side, not a "clear all" —
 	// this route has no whole-map replacement (verified against the live tenant).
-	// Remove a single annotation via DeleteAnnotation instead. `omitempty` keeps
-	// a nil map from serialising as `"annotations":null`.
+	// Remove a single annotation via DeleteGroupAnnotation instead. `omitempty`
+	// keeps a nil map from serializing as `"annotations":null`.
 	payload := struct {
 		Annotations map[string]string `json:"annotations,omitempty"`
 	}{Annotations: annotations}
@@ -282,6 +304,22 @@ func (c *ClientV2) DeleteGroupRequest(identifier string) (*http.Request, error) 
 	}
 
 	return newV2Request(http.MethodDelete, groupURL, v2APIHeaderBeta)
+}
+
+func (c *ClientV2) DeleteGroupAnnotationRequest(identifier, key string) (*http.Request, error) {
+	if identifier == "" {
+		return nil, fmt.Errorf("Must specify an identifier")
+	}
+	if key == "" {
+		return nil, fmt.Errorf("Must specify an annotation key")
+	}
+
+	annotationURL, err := c.groupAnnotationURL(identifier, key)
+	if err != nil {
+		return nil, err
+	}
+
+	return newV2Request(http.MethodDelete, annotationURL, v2APIHeaderBeta)
 }
 
 func (c *ClientV2) ListGroupMembersRequest(groupID string, filter *GroupFilter) (*http.Request, error) {
@@ -367,4 +405,21 @@ func (c *ClientV2) groupMembersURL(groupID string) (string, error) {
 		return "", err
 	}
 	return c.groupPathURL(escaped, "members"), nil
+}
+
+// groupAnnotationURL builds the single-annotation sub-resource URL:
+// /groups(/{account})/{identifier}/annotations/{key}. key is escaped as its
+// own path segment (not via escapeGroupIdentifier: an annotation key is a
+// single opaque value, not a slash-separated identifier, so a literal "/" in
+// it must be percent-escaped rather than preserved as a separator).
+func (c *ClientV2) groupAnnotationURL(identifier, key string) (string, error) {
+	escapedIdentifier, err := escapeGroupIdentifier("Group identifier", identifier)
+	if err != nil {
+		return "", err
+	}
+	escapedKey, err := escapePathSegments("Annotation key", []string{key})
+	if err != nil {
+		return "", err
+	}
+	return c.groupPathURL(escapedIdentifier, "annotations", escapedKey[0]), nil
 }

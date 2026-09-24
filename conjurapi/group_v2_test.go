@@ -126,6 +126,21 @@ func TestUpdateGroupRequest_OnlyAnnotations(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestDeleteGroupAnnotationRequest(t *testing.T) {
+	c := newLocalGroupClient("localhost")
+
+	req, err := c.DeleteGroupAnnotationRequest("data/my-group", "team")
+	assert.NoError(t, err)
+	assert.Equal(t, http.MethodDelete, req.Method)
+	assert.Equal(t, "localhost/groups/data/my-group/annotations/team", req.URL.Path)
+
+	_, err = c.DeleteGroupAnnotationRequest("", "team")
+	assert.Error(t, err)
+
+	_, err = c.DeleteGroupAnnotationRequest("data/my-group", "")
+	assert.Error(t, err)
+}
+
 func TestGroupsResponse_HasMore(t *testing.T) {
 	page := func(n int) []Group { return make([]Group, n) }
 	assert.True(t, GroupsResponse{Groups: page(10), Count: 25}.HasMore(&GroupFilter{Limit: 10, Offset: 0}))
@@ -240,6 +255,8 @@ func TestGroupExecutors_TypedResponses(t *testing.T) {
 		case r.Method == http.MethodPatch && r.URL.Path == "/groups/data/my-group":
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`{"name":"my-group","branch":"data","annotations":{"team":"wolves"},"created_at":"2026-01-02T03:04:05Z"}`))
+		case r.Method == http.MethodDelete && r.URL.Path == "/groups/data/my-group/annotations/team":
+			w.WriteHeader(http.StatusNoContent)
 		case r.Method == http.MethodDelete && r.URL.Path == "/groups/data/my-group":
 			w.WriteHeader(http.StatusNoContent)
 		default:
@@ -264,6 +281,8 @@ func TestGroupExecutors_TypedResponses(t *testing.T) {
 	updated, err := c.V2().UpdateGroup(Group{Name: "my-group", Branch: "data", Annotations: map[string]string{"team": "wolves"}})
 	assert.NoError(t, err)
 	assert.Equal(t, "wolves", updated.Annotations["team"])
+
+	assert.NoError(t, c.V2().DeleteGroupAnnotation("data/my-group", "team"))
 
 	list, err := c.V2().ReadGroups(&GroupFilter{Limit: 2, Offset: 0})
 	assert.NoError(t, err)
@@ -324,4 +343,10 @@ func TestGroupURL_EscapesIdentifier(t *testing.T) {
 	req, err = c.ListGroupMembersRequest("data/my group", nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "localhost/groups/data/my%20group/members", req.URL.EscapedPath())
+
+	// The annotation key is a single opaque segment, not a slash-separated
+	// identifier: a literal "/" in it must be escaped away, not preserved.
+	req, err = c.DeleteGroupAnnotationRequest("data/my group", "a/b")
+	assert.NoError(t, err)
+	assert.Equal(t, "localhost/groups/data/my%20group/annotations/a%2Fb", req.URL.EscapedPath())
 }
