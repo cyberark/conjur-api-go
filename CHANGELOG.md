@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.15.10] - 2026-09-24
+
 ### Added
 - `DeleteGroupAnnotation` on `ClientV2`, removing a single annotation key from a group. `UpdateGroup`'s
   PATCH merges annotations and can only add or overwrite a key, never remove one; this is the only way
