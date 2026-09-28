@@ -11,6 +11,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"math/big"
+	"os"
 	"testing"
 	"time"
 
@@ -154,6 +155,98 @@ func makeTestSVID(t *testing.T, id spiffeid.ID) *x509svid.SVID {
 		Certificates: []*x509.Certificate{cert},
 		PrivateKey:   key,
 	}
+}
+
+func TestSocketPath_UnixSocket(t *testing.T) {
+	tests := []struct {
+		socket string
+		want   string
+	}{
+		{"unix:///var/run/spire.sock", "/var/run/spire.sock"},
+		{"unix:/var/run/spire.sock", "/var/run/spire.sock"},
+		// Malformed (missing third slash): url.Parse splits into Host="var",
+		// Path="/run/spire.sock". Return Host+Path so the pre-check operates
+		// on the same segments that url.Parse extracted.
+		{"unix://var/run/spire.sock", "var/run/spire.sock"},
+		{"", ""},
+		{"tcp://127.0.0.1:8888", ""},
+	}
+	for _, tc := range tests {
+		got := socketPath(tc.socket)
+		assert.Equal(t, tc.want, got, "socketPath(%q)", tc.socket)
+	}
+}
+
+func TestValidateWorkloadEndpoint(t *testing.T) {
+	tests := []struct {
+		name      string
+		socket    string
+		wantErr   bool
+		errSubstr string
+	}{
+		{
+			name:   "empty socket passes",
+			socket: "",
+		},
+		{
+			name:   "unix socket passes",
+			socket: "unix:///var/run/spire.sock",
+		},
+		{
+			name:   "bare path passes",
+			socket: "/var/run/spire.sock",
+		},
+		{
+			name:   "loopback IPv4 passes",
+			socket: "tcp://127.0.0.1:8888",
+		},
+		{
+			name:   "loopback IPv6 passes",
+			socket: "tcp://[::1]:8888",
+		},
+		{
+			name:   "localhost passes",
+			socket: "tcp://localhost:8888",
+		},
+		{
+			name:      "non-loopback tcp is blocked",
+			socket:    "tcp://192.168.1.5:8888",
+			wantErr:   true,
+			errSubstr: "non-loopback",
+		},
+		{
+			name:      "unsupported http scheme is rejected",
+			socket:    "http://localhost:8888",
+			wantErr:   true,
+			errSubstr: "unsupported scheme",
+		},
+		{
+			name:      "unsupported file scheme is rejected",
+			socket:    "file:///var/run/spire.sock",
+			wantErr:   true,
+			errSubstr: "unsupported scheme",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateWorkloadEndpoint(tc.socket)
+			if tc.wantErr {
+				require.Error(t, err)
+				if tc.errSubstr != "" {
+					assert.Contains(t, err.Error(), tc.errSubstr)
+				}
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+
+	// CONJUR_SPIFFE_ALLOW_REMOTE_ENDPOINT is an undocumented override; verify
+	// it still permits non-loopback TCP when set.
+	t.Run("non-loopback tcp allowed via CONJUR_SPIFFE_ALLOW_REMOTE_ENDPOINT", func(t *testing.T) {
+		t.Setenv("CONJUR_SPIFFE_ALLOW_REMOTE_ENDPOINT", "true")
+		require.NoError(t, validateWorkloadEndpoint("tcp://192.168.1.5:8888"))
+	})
 }
 
 func TestClassifyWorkloadAPIError(t *testing.T) {
@@ -324,5 +417,36 @@ func TestFetchSVIDFromWorkloadAPI(t *testing.T) {
 		cert, _, err := fetchSVIDFromWorkloadAPI(context.Background(), f)
 		require.NoError(t, err)
 		assert.NotNil(t, cert)
+	})
+
+	t.Run("socket path not found returns actionable error", func(t *testing.T) {
+		t.Setenv("SPIFFE_ENDPOINT_SOCKET", "/tmp/no-such-spire-agent-socket-xyz.sock")
+		// fetchSVIDs should never be called — the pre-check exits first.
+		f := func(_ context.Context) ([]*x509svid.SVID, error) {
+			t.Fatal("fetchSVIDs called despite missing socket")
+			return nil, nil
+		}
+		_, _, err := fetchSVIDFromWorkloadAPI(context.Background(), f)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+		assert.Contains(t, err.Error(), "/tmp/no-such-spire-agent-socket-xyz.sock")
+	})
+}
+
+func TestCheckSocketPath(t *testing.T) {
+	t.Run("returns nil when socket exists", func(t *testing.T) {
+		f, err := os.CreateTemp("", "spire-test-*.sock")
+		require.NoError(t, err)
+		f.Close()
+		defer os.Remove(f.Name())
+
+		assert.NoError(t, checkSocketPath(f.Name()))
+	})
+
+	t.Run("returns not-found error when path is absent", func(t *testing.T) {
+		err := checkSocketPath("/tmp/no-such-spire-socket-xyz-test.sock")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+		assert.Contains(t, err.Error(), "/tmp/no-such-spire-socket-xyz-test.sock")
 	})
 }
