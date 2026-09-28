@@ -859,6 +859,60 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 		})
 	})
 
+	t.Run("When SPIFFE_ENDPOINT_SOCKET is set with cert auth and no static cert", func(t *testing.T) {
+		e := ClearEnv()
+		defer e.RestoreEnv()
+
+		os.Setenv("SPIFFE_ENDPOINT_SOCKET", "unix:///var/run/spire-agent/public/api.sock")
+		os.Setenv("CONJUR_AUTHN_CERT_SERVICE_ID", "acme-spiffe") // implies AuthnType=cert
+
+		t.Run("Auto-wires ClientCertProvider from the SPIFFE Workload API", func(t *testing.T) {
+			config := &Config{}
+			config.mergeEnv()
+
+			assert.NotNil(t, config.ClientCertProvider,
+				"ClientCertProvider must be set automatically when SPIFFE_ENDPOINT_SOCKET + cert auth are configured and no static cert is present")
+		})
+
+		t.Run("Does not auto-wire when a cert file is already configured", func(t *testing.T) {
+			os.Setenv("CONJUR_AUTHN_CERT_FILE", "/etc/ssl/client.pem")
+			defer os.Setenv("CONJUR_AUTHN_CERT_FILE", "")
+
+			config := &Config{}
+			config.mergeEnv()
+
+			assert.Nil(t, config.ClientCertProvider,
+				"ClientCertProvider must not be auto-wired when a static cert file is configured")
+		})
+
+		t.Run("Does not auto-wire when SPIFFE_ENDPOINT_SOCKET is absent", func(t *testing.T) {
+			e2 := ClearEnv()
+			defer e2.RestoreEnv()
+
+			os.Setenv("CONJUR_AUTHN_CERT_SERVICE_ID", "acme-spiffe")
+
+			config := &Config{}
+			config.mergeEnv()
+
+			assert.Nil(t, config.ClientCertProvider,
+				"ClientCertProvider must remain nil when SPIFFE_ENDPOINT_SOCKET is not set")
+		})
+
+		t.Run("Does not auto-wire when AuthnType is not cert", func(t *testing.T) {
+			e2 := ClearEnv()
+			defer e2.RestoreEnv()
+
+			os.Setenv("SPIFFE_ENDPOINT_SOCKET", "unix:///var/run/spire-agent/public/api.sock")
+			os.Setenv("CONJUR_AUTHN_TYPE", "oidc")
+
+			config := &Config{}
+			config.mergeEnv()
+
+			assert.Nil(t, config.ClientCertProvider,
+				"ClientCertProvider must not be auto-wired for non-cert authn types")
+		})
+	})
+
 	t.Run("When CONJUR_AUTHN_CERT_FILE and CONJUR_AUTHN_CERT_KEY_FILE are set", func(t *testing.T) {
 		e := ClearEnv()
 		defer e.RestoreEnv()

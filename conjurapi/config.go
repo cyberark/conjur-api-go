@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
+	"github.com/cyberark/conjur-api-go/conjurapi/spiffe"
 )
 
 const (
@@ -88,7 +89,8 @@ type Config struct {
 	// ClientCertProvider, when non-nil, is called on every TLS handshake to supply the
 	// mTLS client certificate for authn-cert. It takes precedence over ClientCertFile
 	// and ClientCert. Use conjurapi/spiffe.NewProvider() to source the certificate from
-	// a SPIFFE Workload API (SPIRE agent).
+	// a SPIFFE Workload API (SPIRE agent), or set SPIFFE_ENDPOINT_SOCKET in the
+	// environment to have LoadConfig wire the SPIFFE provider automatically.
 	ClientCertProvider func(context.Context) (*tls.Certificate, error) `yaml:"-"`
 	// CertHostID is the Conjur host path for authn-cert request mode
 	// (e.g. "host/vm-workloads/vm-01"). Leave empty for SPIFFE mode.
@@ -502,6 +504,19 @@ func (c *Config) mergeEnv() {
 
 	logging.ApiLog.Debugf("Config from environment: %s\n", env)
 	c.merge(&env)
+
+	// Auto-wire the SPIFFE Workload API as the cert source when all three
+	// conditions are met after the full env merge:
+	//   1. SPIFFE_ENDPOINT_SOCKET is set — a Workload API socket is available.
+	//   2. AuthnType is "cert" — cert auth is selected (e.g. via CONJUR_AUTHN_CERT_SERVICE_ID).
+	//   3. No static certificate is configured — neither a cert file path nor
+	//      inline PEM is present, and no explicit ClientCertProvider was set.
+	// This mirrors how CONJUR_AUTHN_JWT_SERVICE_ID auto-wires JWT token sources.
+	if os.Getenv("SPIFFE_ENDPOINT_SOCKET") != "" &&
+		c.AuthnType == "cert" &&
+		c.ClientCert == "" && c.ClientCertFile == "" && c.ClientCertProvider == nil {
+		c.ClientCertProvider = spiffe.NewProvider()
+	}
 
 	if c.SSLCert != "" && c.SSLCertPath != "" {
 		logging.ApiLog.Warnf(
