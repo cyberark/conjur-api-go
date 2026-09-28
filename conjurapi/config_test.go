@@ -76,7 +76,7 @@ func TestConfig_Validate(t *testing.T) {
 		assert.Error(t, err)
 
 		errString := err.Error()
-		assert.Contains(t, errString, "Must specify a ServiceID when using ldap")
+		assert.Contains(t, errString, "Must specify a service ID (CONJUR_SERVICE_ID) when using ldap authentication")
 	})
 
 	t.Run("Return error for authn-oidc configuration missing ServiceId", func(t *testing.T) {
@@ -90,7 +90,7 @@ func TestConfig_Validate(t *testing.T) {
 		assert.Error(t, err)
 
 		errString := err.Error()
-		assert.Contains(t, errString, "Must specify a ServiceID when using oidc")
+		assert.Contains(t, errString, "Must specify a service ID (CONJUR_SERVICE_ID) when using oidc authentication")
 	})
 
 	t.Run("Return error for invalid configuration unsupported AuthnType", func(t *testing.T) {
@@ -274,7 +274,7 @@ func TestConfig_Validate(t *testing.T) {
 			}
 			err := config.Validate()
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "Must specify a ServiceID when using cert")
+			assert.Contains(t, err.Error(), "Must specify a service ID (CONJUR_AUTHN_CERT_SERVICE_ID)")
 		})
 
 		t.Run("Returns error when client certificate is missing", func(t *testing.T) {

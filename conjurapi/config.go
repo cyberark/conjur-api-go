@@ -140,8 +140,20 @@ func (c *Config) Validate() error {
 		errors = append(errors, fmt.Sprintf("AuthnType must be one of %v", supportedAuthnTypes))
 	}
 
-	if (c.AuthnType == "ldap" || c.AuthnType == "oidc" || c.AuthnType == "jwt" || c.AuthnType == "iam" || c.AuthnType == "azure" || c.AuthnType == "cert") && c.ServiceID == "" {
-		errors = append(errors, fmt.Sprintf("Must specify a ServiceID when using %s", c.AuthnType))
+	// serviceIDVar maps each authn type that requires a service ID to the
+	// environment variable the caller should set to provide one. Naming the
+	// variable in the error makes the message immediately actionable.
+	serviceIDVar := map[string]string{
+		"azure": "CONJUR_SERVICE_ID",
+		"cert":  "CONJUR_AUTHN_CERT_SERVICE_ID",
+		"iam":   "CONJUR_SERVICE_ID",
+		"jwt":   "CONJUR_AUTHN_JWT_SERVICE_ID",
+		"ldap":  "CONJUR_SERVICE_ID",
+		"oidc":  "CONJUR_SERVICE_ID",
+	}
+	if envVar, ok := serviceIDVar[c.AuthnType]; ok && c.ServiceID == "" {
+		errors = append(errors, fmt.Sprintf(
+			"Must specify a service ID (%s) when using %s authentication", envVar, c.AuthnType))
 	}
 
 	if c.AuthnType == "jwt" && (c.JWTContent == "" && c.JWTFilePath == "") {
