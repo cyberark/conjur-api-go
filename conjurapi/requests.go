@@ -268,6 +268,11 @@ func (c *Client) CertAuthenticateRequest(hostID string) (*http.Request, error) {
 		return nil, err
 	}
 	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
+	// Ask Conjur to return the access token base64-encoded. Some Conjur versions
+	// return a token that contains characters unsafe for direct HTTP transport.
+	// CertAuthenticate decodes the body when the server honors this with
+	// Content-Encoding: base64.
+	req.Header.Add("Accept-Encoding", "base64")
 	return req, nil
 }
 

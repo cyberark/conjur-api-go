@@ -258,21 +258,21 @@ func TestClient_CertAuthenticateRequest(t *testing.T) {
 			req.URL.String())
 	})
 
-	t.Run("Request carries no Accept-Encoding header", func(t *testing.T) {
+	t.Run("Request carries Accept-Encoding: base64 header", func(t *testing.T) {
 		client := newCertClient("vm-01")
 		req, err := client.CertAuthenticateRequest("vm-01")
 
 		require.NoError(t, err)
 		require.NotNil(t, req)
-		assert.Empty(t, req.Header.Get("Accept-Encoding"))
+		assert.Equal(t, "base64", req.Header.Get("Accept-Encoding"))
 	})
 
-	t.Run("SPIFFE mode also carries no Accept-Encoding header", func(t *testing.T) {
+	t.Run("SPIFFE mode also carries Accept-Encoding: base64 header", func(t *testing.T) {
 		client := newCertClient("")
 		req, err := client.CertAuthenticateRequest("")
 
 		require.NoError(t, err)
 		require.NotNil(t, req)
-		assert.Empty(t, req.Header.Get("Accept-Encoding"))
+		assert.Equal(t, "base64", req.Header.Get("Accept-Encoding"))
 	})
 }
