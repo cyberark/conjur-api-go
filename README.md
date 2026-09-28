@@ -352,6 +352,105 @@ func main() {
 }
 ```
 
+##### SPIFFE Workload API authentication
+
+The SPIFFE provider sources the client certificate from the
+[SPIFFE Workload API](https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE_Workload_API.md)
+instead of a static file or inline PEM. It fetches an X.509-SVID from the SPIRE agent,
+caches it until near expiry, and refreshes it transparently.
+
+**Configuration from environment variables (recommended):** When `SPIFFE_ENDPOINT_SOCKET`
+is set, `LoadConfig()` wires the provider automatically. No code change is needed.
+
+###### Prerequisites
+
+- A running SPIRE agent with its socket at `SPIFFE_ENDPOINT_SOCKET`
+  (e.g. `unix:///var/run/spire-agent/public/api.sock`)
+- A Conjur authn-cert webservice configured for SPIFFE mode
+
+###### Additional environment variables
+
+| Variable | Description |
+|---|---|
+| `SPIFFE_ENDPOINT_SOCKET` | Address of the SPIRE agent socket (e.g. `unix:///var/run/spire-agent/public/api.sock`) |
+| `CONJUR_SPIFFE_ID` | SPIFFE ID to select when the Workload API returns multiple SVIDs (e.g. `spiffe://example.org/workload/myapp`). Required when multiple SVIDs are present. |
+
+###### Error conditions
+
+| Condition | Behaviour |
+|---|---|
+| `SPIFFE_ENDPOINT_SOCKET` path does not exist | Fails immediately, error names the missing path |
+| Socket exists but gRPC handshake fails | Fails immediately, error message is distinct from "not found" |
+| Workload API returns `codes.Unavailable` | Retries up to 3 times with exponential back-off (500 ms initial delay, 2× multiplier) |
+| Workload API returns `codes.PermissionDenied` | Fails immediately, error names the condition without leaking credential material |
+| Multiple SVIDs returned and `CONJUR_SPIFFE_ID` is not set | Fails immediately, error lists the available SPIFFE IDs |
+| `CONJUR_SPIFFE_ID` set but no matching SVID found | Fails immediately, error lists the available SPIFFE IDs |
+
+###### Example: environment-variable configuration (no code changes needed)
+
+Set these variables in the workload environment:
+
+```sh
+SPIFFE_ENDPOINT_SOCKET=unix:///var/run/spire-agent/public/api.sock
+CONJUR_AUTHN_CERT_SERVICE_ID=acme-spiffe   # also sets AuthnType=cert implicitly
+CONJUR_APPLIANCE_URL=https://conjur.example.com
+CONJUR_ACCOUNT=myorg
+# Optional: CONJUR_SPIFFE_ID=spiffe://example.org/workload/myapp
+```
+
+Then in code:
+
+```go
+config, err := conjurapi.LoadConfig()   // picks up SPIFFE_ENDPOINT_SOCKET automatically
+if err != nil {
+    log.Fatalf("Cannot load config: %s", err)
+}
+conjur, err := conjurapi.NewClientFromCertificate(config)
+if err != nil {
+    log.Fatalf("Cannot create SPIFFE client: %s", err)
+}
+secretValue, err := conjur.RetrieveSecret("prod/database/password")
+fmt.Printf("%s", string(secretValue))
+```
+
+###### Example: code-based configuration
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+
+    "github.com/cyberark/conjur-api-go/conjurapi"
+    "github.com/cyberark/conjur-api-go/conjurapi/spiffe"
+)
+
+func main() {
+    // SPIFFE_ENDPOINT_SOCKET and (optionally) CONJUR_SPIFFE_ID are read from the
+    // environment at the time the provider fetches the certificate.
+    config := conjurapi.Config{
+        ApplianceURL:       "https://conjur.example.com",
+        Account:            "myorg",
+        AuthnType:          "cert",
+        ServiceID:          "acme-spiffe",           // authn-cert service ID
+        ClientCertProvider: spiffe.NewProvider(),    // SVID from the Workload API
+    }
+
+    conjur, err := conjurapi.NewClientFromCertificate(config)
+    if err != nil {
+        log.Fatalf("Cannot create SPIFFE client: %s", err)
+    }
+
+    secretValue, err := conjur.RetrieveSecret("prod/database/password")
+    if err != nil {
+        log.Fatalf("Cannot retrieve secret: %s", err)
+    }
+
+    fmt.Printf("%s", string(secretValue))
+}
+```
+
 ## Contributing
 
 We welcome contributions of all kinds to this repository. For instructions on how to get started and descriptions of our development workflows, please see our [contributing

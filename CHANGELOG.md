@@ -43,6 +43,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   X.509-SVID from the SPIFFE Workload API and wires it into
   `Config.ClientCertProvider` for authn-cert mutual TLS. Callers that do not
   use this package are unaffected. (CNJR-14839)
+- `LoadConfig` automatically wires the SPIFFE Workload API as the cert source
+  when `SPIFFE_ENDPOINT_SOCKET` is set, authn-cert is selected (e.g. via
+  `CONJUR_AUTHN_CERT_SERVICE_ID`), and no static certificate file or inline PEM
+  is configured. No code change is needed; callers can use
+  `NewClientFromCertificate(LoadConfig())` with environment variables only. (CNJR-14840)
 - Secure Workload Access (SWA) client support, Conjur Cloud only: trust
   domains, server groups, node groups, and servers (full CRUD), plus
   signing-key discovery endpoints (OIDC configuration, JWKS, and CA bundles). (CNJR-15186)
