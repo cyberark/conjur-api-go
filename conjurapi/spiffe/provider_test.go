@@ -18,6 +18,8 @@ import (
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // makeFakeCert generates a self-signed TLS certificate with the given NotAfter time.
@@ -154,7 +156,41 @@ func makeTestSVID(t *testing.T, id spiffeid.ID) *x509svid.SVID {
 	}
 }
 
+func TestClassifyWorkloadAPIError(t *testing.T) {
+	t.Run("nil error returns nil", func(t *testing.T) {
+		assert.NoError(t, classifyWorkloadAPIError(nil))
+	})
+
+	t.Run("codes.Unavailable returns errRetry sentinel", func(t *testing.T) {
+		err := status.Error(codes.Unavailable, "service unavailable")
+		got := classifyWorkloadAPIError(err)
+		assert.Equal(t, errRetry, got)
+	})
+
+	t.Run("codes.PermissionDenied returns non-retry error naming the condition", func(t *testing.T) {
+		err := status.Error(codes.PermissionDenied, "access denied")
+		got := classifyWorkloadAPIError(err)
+		require.Error(t, got)
+		assert.NotEqual(t, errRetry, got)
+		assert.Contains(t, got.Error(), "PermissionDenied")
+		// Error must not leak gRPC error message that could contain sensitive context
+		assert.NotContains(t, got.Error(), "access denied")
+	})
+
+	t.Run("transport error returns handshake-failure message distinct from socket-not-found", func(t *testing.T) {
+		plain := errors.New("connection reset by peer")
+		got := classifyWorkloadAPIError(plain)
+		require.Error(t, got)
+		assert.NotEqual(t, errRetry, got)
+		assert.Contains(t, got.Error(), "Workload API request failed")
+		assert.NotContains(t, got.Error(), "not found")
+	})
+}
+
 func TestFetchSVIDFromWorkloadAPI(t *testing.T) {
+	unavailErr := status.Error(codes.Unavailable, "temporarily unavailable")
+	permDeniedErr := status.Error(codes.PermissionDenied, "access denied")
+
 	// stub builds a svidFetcher that replays the given (svids, err) pairs in order.
 	stub := func(pairs ...struct {
 		svids []*x509svid.SVID
@@ -178,6 +214,61 @@ func TestFetchSVIDFromWorkloadAPI(t *testing.T) {
 
 	okID, err := spiffeid.FromString("spiffe://example.org/workload")
 	require.NoError(t, err)
+
+	t.Run("retries on Unavailable then succeeds", func(t *testing.T) {
+		orig := retryInitial
+		retryInitial = time.Millisecond
+		t.Cleanup(func() { retryInitial = orig })
+
+		svid := makeTestSVID(t, okID)
+		f := stub(resp{nil, unavailErr}, resp{nil, unavailErr}, resp{[]*x509svid.SVID{svid}, nil})
+		cert, expiry, err := fetchSVIDFromWorkloadAPI(context.Background(), f)
+		require.NoError(t, err)
+		assert.NotNil(t, cert)
+		assert.False(t, expiry.IsZero())
+	})
+
+	t.Run("returns error after retryMax retries exhausted", func(t *testing.T) {
+		orig := retryInitial
+		retryInitial = time.Millisecond
+		t.Cleanup(func() { retryInitial = orig })
+
+		pairs := make([]resp, retryMax+2)
+		for i := range pairs {
+			pairs[i] = resp{nil, unavailErr}
+		}
+		f := stub(pairs...)
+		_, _, err := fetchSVIDFromWorkloadAPI(context.Background(), f)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "still unavailable after")
+	})
+
+	t.Run("PermissionDenied fails immediately without retry", func(t *testing.T) {
+		callCount := 0
+		f := func(_ context.Context) ([]*x509svid.SVID, error) {
+			callCount++
+			return nil, permDeniedErr
+		}
+		_, _, err := fetchSVIDFromWorkloadAPI(context.Background(), f)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "PermissionDenied")
+		assert.Equal(t, 1, callCount)
+	})
+
+	t.Run("context cancellation during backoff returns context error", func(t *testing.T) {
+		orig := retryInitial
+		retryInitial = time.Millisecond
+		t.Cleanup(func() { retryInitial = orig })
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		f := func(_ context.Context) ([]*x509svid.SVID, error) {
+			return nil, unavailErr
+		}
+		_, _, err := fetchSVIDFromWorkloadAPI(ctx, f)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, context.Canceled)
+	})
 
 	t.Run("no SVIDs returned", func(t *testing.T) {
 		f := stub(resp{[]*x509svid.SVID{}, nil})
