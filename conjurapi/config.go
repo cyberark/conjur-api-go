@@ -97,6 +97,11 @@ type Config struct {
 	CertHostID string `yaml:"cert_host_id,omitempty"`
 	// keychainNamespaceResolved is set by LoadConfig after env/YAML precedence is applied.
 	keychainNamespaceResolved bool `yaml:"-"`
+	// ServerVersion is the backend version, either read from .conjurrc or
+	// learned by the Client and saved back to it. Not settable via
+	// environment variable. Distinct from the legacy "version" key, which
+	// older CLIs use for the .conjurrc format and this field never reads.
+	ServerVersion string `yaml:"server_version,omitempty"`
 }
 
 // SetKeychainNamespaceResolved controls whether Validate re-reads
@@ -410,6 +415,7 @@ func (c *Config) merge(o *Config) {
 	c.ClientCert = mergeValue(c.ClientCert, o.ClientCert)
 	c.ClientCertKey = mergeValue(c.ClientCertKey, o.ClientCertKey)
 	c.CertHostID = mergeValue(c.CertHostID, o.CertHostID)
+	c.ServerVersion = mergeValue(c.ServerVersion, o.ServerVersion)
 	// ClientCertProvider is a function and cannot use the generic mergeValue helper
 	// (functions are not comparable). Apply the override only when the incoming value
 	// is non-nil so that explicit nil does not clear a previously set provider.
@@ -441,6 +447,9 @@ func (c *Config) mergeYAML(filename string) error {
 	// Parse the YAML file into a new struct containing the same
 	// fields as Config, plus a few extra fields for compatibility
 	aux := struct {
+		// ConjurVersion absorbs the legacy "version" key (the .conjurrc
+		// format version, written by older CLIs) so it's never mistaken for
+		// Config.ServerVersion's "server_version" key. Not otherwise used.
 		ConjurVersion string `yaml:"version"`
 		Config        `yaml:",inline"`
 		// BEGIN COMPATIBILITY WITH PYTHON CLI
@@ -631,7 +640,13 @@ func LoadConfig() (Config, error) {
 		}
 	}
 
+	fileApplianceURL := config.ApplianceURL
 	config.mergeEnv()
+	// A saved version belongs to the config file's appliance URL: preloading
+	// it against an env-overridden one would judge the wrong backend.
+	if config.ApplianceURL != fileApplianceURL {
+		config.ServerVersion = ""
+	}
 	resolveKeychainNamespace(&config, false)
 	config.keychainNamespaceResolved = true
 

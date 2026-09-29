@@ -92,13 +92,29 @@ func unopinionatedParseID(id string) (account, kind, identifier string) {
 	return tokens[0], tokens[1], tokens[2]
 }
 
+// SubmitRequest authenticates and sends req. A route the backend doesn't
+// support fails with *contract.FeatureNotSupportedError before sending. req is
+// pinned to the known server version and resent once if the server finds it stale.
 func (c *Client) SubmitRequest(req *http.Request) (resp *http.Response, err error) {
+	if err = c.checkRequestCapability(req); err != nil {
+		return
+	}
 	err = c.createAuthRequest(req)
 	if err != nil {
 		return
 	}
 	req.Header.Add(ConjurSourceHeader, c.GetTelemetryHeader())
-	return c.submitRequestWithCustomAuth(req)
+	pinned := c.version.pin(req)
+
+	resp, err = c.submitRequestWithCustomAuth(req)
+	if err != nil || pinned == "" {
+		return
+	}
+	mismatch, hinted := isVersionMismatch(resp)
+	if !mismatch {
+		return
+	}
+	return c.retryAfterVersionMismatch(req, resp, pinned, hinted)
 }
 
 func (c *Client) submitRequestWithCustomAuth(req *http.Request) (resp *http.Response, err error) {

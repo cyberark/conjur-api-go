@@ -921,7 +921,7 @@ func TestClient_DisableKeepAlive(t *testing.T) {
 		os.Setenv("CONJUR_DISABLE_KEEP_ALIVES", "error")
 		os.Setenv("HOME", t.TempDir())
 		config := Config{Account: "account", ApplianceURL: "appliance-url"}
-		client := Client{
+		client := &Client{
 			config: config,
 		}
 		assert.NotNil(t, client)
@@ -952,7 +952,7 @@ func TestClient_DisableKeepAlive(t *testing.T) {
 		os.Setenv("CONJUR_AUTHN_API_KEY", "password")
 		os.Setenv("HOME", t.TempDir())
 		config := Config{Account: "account", ApplianceURL: "appliance-url", DisableKeepAlives: true}
-		client := Client{
+		client := &Client{
 			config: config,
 		}
 		assert.NotNil(t, client)

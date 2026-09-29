@@ -526,10 +526,6 @@ func (c *Client) rotateCurrentRoleAPIKey(roleID string, password string) (*http.
 }
 
 func (c *Client) PublicKeys(kind string, identifier string) ([]byte, error) {
-	if isConjurCloudURL(c.config.ApplianceURL) {
-		return nil, errors.New("Public Keys is not supported in Idira Secrets Manager, SaaS")
-	}
-
 	req, err := c.PublicKeysRequest(kind, identifier)
 	if err != nil {
 		return nil, err
@@ -540,17 +536,7 @@ func (c *Client) PublicKeys(kind string, identifier string) ([]byte, error) {
 		return nil, err
 	}
 
-	data, err := response.DataResponse(res)
-	if err != nil {
-		// Conjur OSS versions that do not expose the public_keys endpoint return
-		// a Rails routing error (404 with HTML body). Surface a clear message
-		// instead of leaking the raw HTML to the caller.
-		if res.StatusCode == 404 || strings.Contains(err.Error(), "No route matches") {
-			return nil, fmt.Errorf("public keys endpoint is not available on this server (got %d): the server may not support this feature", res.StatusCode)
-		}
-		return nil, err
-	}
-	return data, nil
+	return response.DataResponse(res)
 }
 
 // authenticateWithTokenStorage is a helper function that handles the common authentication flow

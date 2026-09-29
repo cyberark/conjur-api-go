@@ -1,8 +1,6 @@
 package conjurapi
 
 import (
-	"fmt"
-
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
@@ -95,16 +93,12 @@ type AuthenticatorListResponse struct {
 	Count          int                     `json:"count"`
 }
 
-const AuthenticatorsMinVersion = "1.23.0"
+const AuthenticatorsMinVersion = MinVersion
 
 // CreateAuthenticator creates a new authenticator instance using the V2 API.
 //
 // The authenticated user must have create privileges on the conjur/authn-<type> policy.
 func (c *ClientV2) CreateAuthenticator(authenticator *AuthenticatorBase) (*AuthenticatorResponse, error) {
-	if !c.config.IsSaaS() && c.VerifyMinServerVersion(AuthenticatorsMinVersion) != nil {
-		return nil, fmt.Errorf("authenticators API is not supported in Conjur versions older than %s", AuthenticatorsMinVersion)
-	}
-
 	req, err := c.CreateAuthenticatorRequest(authenticator)
 	if err != nil {
 		return nil, err
@@ -123,10 +117,6 @@ func (c *ClientV2) CreateAuthenticator(authenticator *AuthenticatorBase) (*Authe
 //
 // The authenticated user must have read privileges on the authenticator.
 func (c *ClientV2) GetAuthenticator(authenticatorType string, authenticatorName string) (*AuthenticatorResponse, error) {
-	if !c.config.IsSaaS() && c.VerifyMinServerVersion(AuthenticatorsMinVersion) != nil {
-		return nil, fmt.Errorf("authenticators API is not supported in Conjur versions older than %s", AuthenticatorsMinVersion)
-	}
-
 	req, err := c.GetAuthenticatorRequest(authenticatorType, authenticatorName)
 	if err != nil {
 		return nil, err
@@ -146,10 +136,6 @@ func (c *ClientV2) GetAuthenticator(authenticatorType string, authenticatorName 
 //
 // The authenticated user must have update privileges on the authenticator.
 func (c *ClientV2) UpdateAuthenticator(authenticatorType string, authenticatorName string, enabled bool) (*AuthenticatorResponse, error) {
-	if !c.config.IsSaaS() && c.VerifyMinServerVersion(AuthenticatorsMinVersion) != nil {
-		return nil, fmt.Errorf("authenticators API is not supported in Conjur versions older than %s", AuthenticatorsMinVersion)
-	}
-
 	req, err := c.UpdateAuthenticatorRequest(authenticatorType, authenticatorName, enabled)
 	if err != nil {
 		return nil, err
@@ -168,10 +154,6 @@ func (c *ClientV2) UpdateAuthenticator(authenticatorType string, authenticatorNa
 //
 // The authenticated user must have update privileges on the authenticator.
 func (c *ClientV2) DeleteAuthenticator(authenticatorType string, authenticatorName string) error {
-	if !c.config.IsSaaS() && c.VerifyMinServerVersion(AuthenticatorsMinVersion) != nil {
-		return fmt.Errorf("authenticators API is not supported in Conjur versions older than %s", AuthenticatorsMinVersion)
-	}
-
 	req, err := c.DeleteAuthenticatorRequest(authenticatorType, authenticatorName)
 	if err != nil {
 		return err
@@ -194,10 +176,6 @@ func (c *ClientV2) DeleteAuthenticator(authenticatorType string, authenticatorNa
 //
 // The authenticated user must have read privileges on the authenticators.
 func (c *ClientV2) ListAuthenticators() (*AuthenticatorListResponse, error) {
-	if !c.config.IsSaaS() && c.VerifyMinServerVersion(AuthenticatorsMinVersion) != nil {
-		return nil, fmt.Errorf("authenticators API is not supported in Conjur versions older than %s", AuthenticatorsMinVersion)
-	}
-
 	req, err := c.ListAuthenticatorsRequest()
 	if err != nil {
 		return nil, err

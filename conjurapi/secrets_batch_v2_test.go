@@ -237,11 +237,11 @@ func TestClientV2_BatchRetrieveSecrets_EnvironmentGuard(t *testing.T) {
 			_, err := c.BatchRetrieveSecrets([]string{"data/test/secret1"})
 			require.Error(t, err)
 			if tt.expectBlocked {
-				assert.Contains(t, err.Error(), fmt.Sprintf(NotSupportedInConjurEnterprise, "V2 Batch Retrieve Secrets API"))
+				assert.Contains(t, err.Error(), "V2 Batch Retrieve Secrets API is not supported in Idira Secrets Manager/Conjur OSS")
 			} else {
 				// Past the guard, the call fails for an unrelated reason (no live
 				// server/token), but must not be blocked as unsupported.
-				assert.NotContains(t, err.Error(), fmt.Sprintf(NotSupportedInConjurEnterprise, "V2 Batch Retrieve Secrets API"))
+				assert.NotContains(t, err.Error(), "V2 Batch Retrieve Secrets API is not supported in Idira Secrets Manager/Conjur OSS")
 			}
 		})
 	}

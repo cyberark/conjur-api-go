@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
+	"github.com/cyberark/conjur-api-go/conjurapi/contract"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1010,8 +1011,9 @@ func TestClient_PublicKeys(t *testing.T) {
 
 func runPublicKeysAssertions(t *testing.T, tc publicKeysTestCase, conjur *Client) {
 	publicKeys, err := conjur.PublicKeys(tc.kind, tc.identifier)
-	if err != nil && strings.Contains(err.Error(), "public keys endpoint is not available on this server") {
-		t.Skip("Conjur server does not support the public_keys endpoint")
+	var notSupported *contract.FeatureNotSupportedError
+	if errors.As(err, &notSupported) {
+		t.Skipf("Conjur server does not support the public_keys endpoint: %v", err)
 	}
 	require.NoError(t, err)
 

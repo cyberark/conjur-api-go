@@ -2,7 +2,6 @@ package conjurapi
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -31,10 +30,6 @@ const LdapMappingsMinVersion = "1.28.0"
 
 // LdapCreateGroupMapping creates an LDAP group -> Conjur role mapping.
 func (c *Client) LdapCreateGroupMapping(serviceID, groupName string, roles []string) (*LdapGroupMappingResponse, error) {
-	if !isConjurCloudURL(c.config.ApplianceURL) && c.VerifyMinServerVersion(LdapMappingsMinVersion) != nil {
-		return nil, fmt.Errorf(NotSupportedInOldVersions, "LDAP JIT mappings", LdapMappingsMinVersion)
-	}
-
 	req, err := c.LdapCreateGroupMappingRequest(serviceID, groupName, roles)
 	if err != nil {
 		return nil, err
@@ -51,10 +46,6 @@ func (c *Client) LdapCreateGroupMapping(serviceID, groupName string, roles []str
 
 // LdapShowGroupMapping retrieves a single LDAP group mapping.
 func (c *Client) LdapShowGroupMapping(serviceID, groupName string) (*LdapGroupMappingResponse, error) {
-	if !isConjurCloudURL(c.config.ApplianceURL) && c.VerifyMinServerVersion(LdapMappingsMinVersion) != nil {
-		return nil, fmt.Errorf(NotSupportedInOldVersions, "LDAP JIT mappings", LdapMappingsMinVersion)
-	}
-
 	req, err := c.LdapShowGroupMappingRequest(serviceID, groupName)
 	if err != nil {
 		return nil, err
@@ -71,10 +62,6 @@ func (c *Client) LdapShowGroupMapping(serviceID, groupName string) (*LdapGroupMa
 
 // LdapListGroupMappings lists all LDAP group mappings for a service.
 func (c *Client) LdapListGroupMappings(serviceID string) (*LdapMappingListResponse, error) {
-	if !isConjurCloudURL(c.config.ApplianceURL) && c.VerifyMinServerVersion(LdapMappingsMinVersion) != nil {
-		return nil, fmt.Errorf(NotSupportedInOldVersions, "LDAP JIT mappings", LdapMappingsMinVersion)
-	}
-
 	req, err := c.LdapListGroupMappingsRequest(serviceID)
 	if err != nil {
 		return nil, err
@@ -91,10 +78,6 @@ func (c *Client) LdapListGroupMappings(serviceID string) (*LdapMappingListRespon
 
 // LdapDeleteGroupMapping deletes an LDAP group mapping.
 func (c *Client) LdapDeleteGroupMapping(serviceID, groupName string) error {
-	if !isConjurCloudURL(c.config.ApplianceURL) && c.VerifyMinServerVersion(LdapMappingsMinVersion) != nil {
-		return fmt.Errorf(NotSupportedInOldVersions, "LDAP JIT mappings", LdapMappingsMinVersion)
-	}
-
 	req, err := c.LdapDeleteGroupMappingRequest(serviceID, groupName)
 	if err != nil {
 		return err
@@ -110,10 +93,6 @@ func (c *Client) LdapDeleteGroupMapping(serviceID, groupName string) error {
 
 // LdapCreateUserMapping creates an LDAP user -> Conjur role mapping.
 func (c *Client) LdapCreateUserMapping(serviceID, username string, roles []string) (*LdapUserMappingResponse, error) {
-	if !isConjurCloudURL(c.config.ApplianceURL) && c.VerifyMinServerVersion(LdapMappingsMinVersion) != nil {
-		return nil, fmt.Errorf(NotSupportedInOldVersions, "LDAP JIT mappings", LdapMappingsMinVersion)
-	}
-
 	req, err := c.LdapCreateUserMappingRequest(serviceID, username, roles)
 	if err != nil {
 		return nil, err
@@ -130,10 +109,6 @@ func (c *Client) LdapCreateUserMapping(serviceID, username string, roles []strin
 
 // LdapShowUserMapping retrieves a single LDAP user mapping.
 func (c *Client) LdapShowUserMapping(serviceID, username string) (*LdapUserMappingResponse, error) {
-	if !isConjurCloudURL(c.config.ApplianceURL) && c.VerifyMinServerVersion(LdapMappingsMinVersion) != nil {
-		return nil, fmt.Errorf(NotSupportedInOldVersions, "LDAP JIT mappings", LdapMappingsMinVersion)
-	}
-
 	req, err := c.LdapShowUserMappingRequest(serviceID, username)
 	if err != nil {
 		return nil, err
@@ -150,10 +125,6 @@ func (c *Client) LdapShowUserMapping(serviceID, username string) (*LdapUserMappi
 
 // LdapListUserMappings lists all LDAP user mappings for a service.
 func (c *Client) LdapListUserMappings(serviceID string) (*LdapMappingListResponse, error) {
-	if !isConjurCloudURL(c.config.ApplianceURL) && c.VerifyMinServerVersion(LdapMappingsMinVersion) != nil {
-		return nil, fmt.Errorf(NotSupportedInOldVersions, "LDAP JIT mappings", LdapMappingsMinVersion)
-	}
-
 	req, err := c.LdapListUserMappingsRequest(serviceID)
 	if err != nil {
 		return nil, err
@@ -170,10 +141,6 @@ func (c *Client) LdapListUserMappings(serviceID string) (*LdapMappingListRespons
 
 // LdapDeleteUserMapping deletes an LDAP user mapping.
 func (c *Client) LdapDeleteUserMapping(serviceID, username string) error {
-	if !isConjurCloudURL(c.config.ApplianceURL) && c.VerifyMinServerVersion(LdapMappingsMinVersion) != nil {
-		return fmt.Errorf(NotSupportedInOldVersions, "LDAP JIT mappings", LdapMappingsMinVersion)
-	}
-
 	req, err := c.LdapDeleteUserMappingRequest(serviceID, username)
 	if err != nil {
 		return err

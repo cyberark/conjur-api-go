@@ -464,7 +464,7 @@ func TestCreateWorkloadRequest_Forbidden403(t *testing.T) {
 
 // workloadRequestBuilders is every request builder that takes a workload
 // identifier, so identifier handling can be asserted uniformly across them.
-func workloadRequestBuilders(c Client) map[string]func(string) (*http.Request, error) {
+func workloadRequestBuilders(c *Client) map[string]func(string) (*http.Request, error) {
 	return map[string]func(string) (*http.Request, error){
 		"DeleteWorkloadRequest": func(id string) (*http.Request, error) {
 			return c.V2().DeleteWorkloadRequest(id)
@@ -493,7 +493,7 @@ func TestWorkloadRequests_RejectInvalidIdentifiers(t *testing.T) {
 
 	identifiers := []string{"", ".", ".."}
 
-	for name, build := range workloadRequestBuilders(c) {
+	for name, build := range workloadRequestBuilders(&c) {
 		t.Run(name, func(t *testing.T) {
 			for _, identifier := range identifiers {
 				if _, err := build(identifier); err == nil {
@@ -517,7 +517,7 @@ func TestWorkloadRequests_FlattenTraversalIdentifiers(t *testing.T) {
 	// segment, with no unescaped "/" beyond the one the prefix ends with.
 	identifiers := []string{"/", "data//w", "data/", "/data", "data/./apps", "foo/../../secrets/bar"}
 
-	for name, build := range workloadRequestBuilders(c) {
+	for name, build := range workloadRequestBuilders(&c) {
 		t.Run(name, func(t *testing.T) {
 			for _, identifier := range identifiers {
 				req, err := build(identifier)

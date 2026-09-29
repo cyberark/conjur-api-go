@@ -89,10 +89,6 @@ func (c *ClientV2) CertificateIssueRequest(issuerName string, issue Issue) (*htt
 }
 
 func (c *ClientV2) CertificateIssue(issuerName string, issue Issue) (*CertificateResponse, error) {
-	if err := c.requireSaaS(issueAPIName); err != nil {
-		return nil, err
-	}
-
 	req, err := c.CertificateIssueRequest(issuerName, issue)
 	if err != nil {
 		return nil, err
@@ -115,10 +111,6 @@ func (c *ClientV2) CertificateSignRequest(issuerName string, sign Sign) (*http.R
 }
 
 func (c *ClientV2) CertificateSign(issuerName string, sign Sign) (*CertificateResponse, error) {
-	if err := c.requireSaaS(issueAPIName); err != nil {
-		return nil, err
-	}
-
 	req, err := c.CertificateSignRequest(issuerName, sign)
 	if err != nil {
 		return nil, err

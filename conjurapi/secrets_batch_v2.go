@@ -32,10 +32,6 @@ type BatchSecretResponse struct {
 const MaxSecretsInSingleBatch = 250
 
 func (c *ClientV2) BatchRetrieveSecrets(identifiers []string) (*BatchSecretResponse, error) {
-	if err := c.requireSaaS(batchRetrieveSecretsAPIName); err != nil {
-		return nil, err
-	}
-
 	req, err := c.BatchRetrieveSecretsRequest(identifiers)
 	if err != nil {
 		return nil, err

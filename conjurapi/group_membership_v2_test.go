@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/cyberark/conjur-api-go/conjurapi/contract"
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,6 +28,7 @@ var hostInGroupPolicy = `
 func TestClientV2_AddGroupMember(t *testing.T) {
 	utils, err := NewTestUtils(&Config{})
 	require.NoError(t, err)
+	SkipIfUnsupported(t, utils.Client(), contract.CapabilityGroupsV2)
 	_, err = utils.Setup(emptyGroupPolicy)
 	require.NoError(t, err)
 	conjur := utils.Client().V2()
@@ -91,6 +93,7 @@ func TestClientV2_AddGroupMember(t *testing.T) {
 func TestClientV2_AddGroupMemberServerError(t *testing.T) {
 	utils, err := NewTestUtils(&Config{})
 	require.NoError(t, err)
+	SkipIfUnsupported(t, utils.Client(), contract.CapabilityGroupsV2)
 	_, err = utils.Setup(emptyGroupPolicy)
 	require.NoError(t, err)
 	conjur := utils.Client().V2()
@@ -111,6 +114,7 @@ func TestClientV2_AddGroupMemberServerError(t *testing.T) {
 func TestClientV2_RemoveGroupMember(t *testing.T) {
 	utils, err := NewTestUtils(&Config{})
 	require.NoError(t, err)
+	SkipIfUnsupported(t, utils.Client(), contract.CapabilityGroupsV2)
 	_, err = utils.Setup(hostInGroupPolicy)
 	require.NoError(t, err)
 	conjur := utils.Client().V2()
