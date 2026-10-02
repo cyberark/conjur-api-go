@@ -92,6 +92,14 @@ type Config struct {
 	// a SPIFFE Workload API (SPIRE agent), or set SPIFFE_ENDPOINT_SOCKET in the
 	// environment to have LoadConfig wire the SPIFFE provider automatically.
 	ClientCertProvider func(context.Context) (*tls.Certificate, error) `yaml:"-"`
+	// JWTProvider, when non-nil, is called on every authentication attempt to obtain
+	// the JWT string for authn-jwt. It takes precedence over JWTFilePath and the
+	// Kubernetes service-account token path. Use conjurapi/spiffe.NewJWTProvider() to
+	// source the token from a SPIFFE Workload API (SPIRE agent). When
+	// SPIFFE_ENDPOINT_SOCKET and CONJUR_AUTHN_JWT_SERVICE_ID are set and no static
+	// credential env var is configured, LoadFromEnvironment auto-wires this field
+	// (FR-AUTH-SPIFFE-05).
+	JWTProvider func(context.Context) (string, error) `yaml:"-"`
 	// CertHostID is the Conjur host path for authn-cert request mode
 	// (e.g. "host/vm-workloads/vm-01"). Leave empty for SPIFFE mode.
 	CertHostID string `yaml:"cert_host_id,omitempty"`
@@ -161,7 +169,7 @@ func (c *Config) Validate() error {
 			"Must specify a service ID (%s) when using %s authentication", envVar, c.AuthnType))
 	}
 
-	if c.AuthnType == "jwt" && (c.JWTContent == "" && c.JWTFilePath == "") {
+	if c.AuthnType == "jwt" && (c.JWTContent == "" && c.JWTFilePath == "" && c.JWTProvider == nil) {
 		errors = append(errors, fmt.Sprintf("Must specify a JWT token when using %s authentication", c.AuthnType))
 	}
 
@@ -422,6 +430,10 @@ func (c *Config) merge(o *Config) {
 	if o.ClientCertProvider != nil {
 		c.ClientCertProvider = o.ClientCertProvider
 	}
+	// JWTProvider is also a function; same nil-guard applies.
+	if o.JWTProvider != nil {
+		c.JWTProvider = o.JWTProvider
+	}
 }
 
 func (c *Config) mergeYAML(filename string) error {
@@ -514,6 +526,16 @@ func (c *Config) mergeEnv() {
 		env.AuthnType = "jwt"
 		// If using authn-jwt, CONJUR_AUTHN_JWT_SERVICE_ID overrides CONJUR_SERVICE_ID
 		env.ServiceID = mergeValue(env.ServiceID, os.Getenv("CONJUR_AUTHN_JWT_SERVICE_ID"))
+	}
+
+	// FR-AUTH-SPIFFE-05: when SPIFFE_ENDPOINT_SOCKET and CONJUR_AUTHN_JWT_SERVICE_ID
+	// are set and no static JWT token or file path is configured, auto-wire the SPIFFE
+	// JWT-SVID provider so no additional credential env var is needed.
+	if os.Getenv("SPIFFE_ENDPOINT_SOCKET") != "" &&
+		os.Getenv("CONJUR_AUTHN_JWT_SERVICE_ID") != "" &&
+		os.Getenv("CONJUR_AUTHN_JWT_TOKEN") == "" &&
+		os.Getenv("JWT_TOKEN_PATH") == "" {
+		env.JWTProvider = spiffe.NewJWTProvider()
 	}
 
 	if os.Getenv("CONJUR_AUTHN_CERT_SERVICE_ID") != "" {
