@@ -1,5 +1,6 @@
-// Package spiffe provides a conjurapi.Config.ClientCertProvider implementation
-// that sources a client certificate from the SPIFFE Workload API.
+// Package spiffe provides conjurapi.Config.ClientCertProvider and
+// conjurapi.Config.JWTProvider implementations that source credentials from
+// the SPIFFE Workload API (SPIRE agent).
 package spiffe
 
 import (
@@ -16,6 +17,7 @@ import (
 
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
+	"github.com/spiffe/go-spiffe/v2/svid/jwtsvid"
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"google.golang.org/grpc/codes"
@@ -27,6 +29,11 @@ const (
 	// certificate is considered stale. Refreshing early ensures a valid SVID is
 	// in hand before the current one expires at the TLS layer.
 	svidExpirySkew = 30 * time.Second
+
+	// jwtExpirySkew is the margin before a JWT-SVID's expiry at which the cached
+	// token is considered stale. Refreshing early avoids presenting an expired
+	// token to Conjur when the Workload API round-trip takes non-trivial time.
+	jwtExpirySkew = 30 * time.Second
 
 	// retryMax is the maximum number of retries for transient Workload API
 	// failures (codes.Unavailable).
@@ -54,6 +61,11 @@ var retryInitial = 500 * time.Millisecond
 // tests substitute a stub to drive the retry loop without a real Workload API.
 type svidFetcher func(ctx context.Context) ([]*x509svid.SVID, error)
 
+// jwtSVIDFetcher is the function signature for fetching JWT-SVIDs from the
+// SPIFFE Workload API. The production default wraps workloadapi.FetchJWTSVIDs;
+// tests substitute a stub.
+type jwtSVIDFetcher func(ctx context.Context, audience string) ([]*jwtsvid.SVID, error)
+
 // errRetry is returned by classifyWorkloadAPIError when the caller should retry
 // the fetch after a backoff delay.
 var errRetry = errors.New("Workload API temporarily unavailable")
@@ -61,9 +73,9 @@ var errRetry = errors.New("Workload API temporarily unavailable")
 // provider caches an X.509-SVID fetched from the SPIFFE Workload API and re-fetches
 // when the cached certificate is within svidExpirySkew of its expiry.
 type provider struct {
-	mu     sync.Mutex        // serialises cache reads and writes
-	cached *tls.Certificate  // nil until the first successful fetch
-	expiry time.Time         // NotAfter of the leaf certificate in cached
+	mu     sync.Mutex                                                     // serialises cache reads and writes
+	cached *tls.Certificate                                               // nil until the first successful fetch
+	expiry time.Time                                                      // NotAfter of the leaf certificate in cached
 	fetch  func(ctx context.Context) (*tls.Certificate, time.Time, error) // production: fetchSVIDFromWorkloadAPI
 }
 
@@ -85,6 +97,34 @@ func (p *provider) getCertificate(ctx context.Context) (*tls.Certificate, error)
 		return nil, err
 	}
 	p.cached = cert
+	p.expiry = expiry
+	return p.cached, nil
+}
+
+// jwtProvider caches a JWT-SVID token string fetched from the SPIFFE Workload
+// API and re-fetches when the cached token is within jwtExpirySkew of expiry.
+type jwtProvider struct {
+	mu     sync.Mutex // serialises cache reads and writes
+	cached string     // empty until the first successful fetch
+	expiry time.Time  // expiry reported by the JWT-SVID
+	fetch  func(ctx context.Context) (string, time.Time, error)
+}
+
+// getJWT returns the cached JWT string, re-fetching from the Workload API when
+// the cache is empty or the token is within jwtExpirySkew of expiry.
+func (p *jwtProvider) getJWT(ctx context.Context) (string, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.cached != "" && time.Now().Before(p.expiry.Add(-jwtExpirySkew)) {
+		return p.cached, nil
+	}
+
+	token, expiry, err := p.fetch(ctx)
+	if err != nil {
+		return "", err
+	}
+	p.cached = token
 	p.expiry = expiry
 	return p.cached, nil
 }
@@ -241,7 +281,24 @@ func selectSVID(svids []*x509svid.SVID) (*x509svid.SVID, error) {
 	for i, s := range svids {
 		ids[i] = s.ID
 	}
-	idx, err := selectBySpiffeID(ids, os.Getenv("CONJUR_SPIFFE_ID"))
+	idx, err := selectBySpiffeID(ids, os.Getenv(envConjurSpiffeID))
+	if err != nil {
+		return nil, err
+	}
+	return svids[idx], nil
+}
+
+// selectJWTSVID picks the correct JWT-SVID from the slice returned by the
+// Workload API using the same CONJUR_SPIFFE_ID selection rule as selectSVID.
+func selectJWTSVID(svids []*jwtsvid.SVID) (*jwtsvid.SVID, error) {
+	if len(svids) == 0 {
+		return nil, errors.New("Workload API returned no JWT-SVIDs")
+	}
+	ids := make([]spiffeid.ID, len(svids))
+	for i, s := range svids {
+		ids[i] = s.ID
+	}
+	idx, err := selectBySpiffeID(ids, os.Getenv(envConjurSpiffeID))
 	if err != nil {
 		return nil, err
 	}
@@ -398,4 +455,93 @@ func NewProvider() func(context.Context) (*tls.Certificate, error) {
 	}
 	// Return the bound method so each call shares the same cache.
 	return p.getCertificate
+}
+
+// fetchJWTSVIDFromWorkloadAPI fetches a JWT-SVID for the given audience from the
+// SPIFFE Workload API and returns the raw JWT string and its expiry time.
+//
+// Endpoint validation, SVID selection, and the same error taxonomy and retry
+// policy as fetchSVIDFromWorkloadAPI apply.
+//
+// fetchSVIDs is called to obtain SVIDs; in production this wraps
+// workloadapi.FetchJWTSVIDs; tests may substitute a stub.
+func fetchJWTSVIDFromWorkloadAPI(ctx context.Context, audience string, fetchSVIDs jwtSVIDFetcher) (string, time.Time, error) {
+	socket := os.Getenv(envSpiffeEndpointSocket)
+	if err := validateWorkloadEndpoint(socket); err != nil {
+		return "", time.Time{}, err
+	}
+	if p := socketPath(socket); p != "" {
+		if err := checkSocketPath(p); err != nil {
+			return "", time.Time{}, err
+		}
+	}
+
+	delay := retryInitial
+	for attempt := 0; attempt <= retryMax; attempt++ {
+		svids, err := fetchSVIDs(ctx, audience)
+
+		if err == nil {
+			svid, err := selectJWTSVID(svids)
+			if err != nil {
+				return "", time.Time{}, err
+			}
+			logging.ApiLog.Debugf("spiffe: selected JWT-SVID %s (expires %s)",
+				svid.ID, svid.Expiry.Format(time.RFC3339))
+			return svid.Marshal(), svid.Expiry, nil
+		}
+
+		classified := classifyWorkloadAPIError(err)
+		if classified != errRetry {
+			return "", time.Time{}, classified
+		}
+		if attempt >= retryMax {
+			return "", time.Time{}, fmt.Errorf("SPIFFE Workload API still unavailable after %d retries", retryMax)
+		}
+		logging.ApiLog.Debugf("spiffe: Workload API unavailable (attempt %d/%d); retrying in %s",
+			attempt+1, retryMax, delay)
+		select {
+		case <-ctx.Done():
+			return "", time.Time{}, ctx.Err()
+		case <-time.After(delay):
+		}
+		delay *= 2
+	}
+	return "", time.Time{}, errors.New("fetchJWTSVIDFromWorkloadAPI: unexpected loop exit")
+}
+
+// NewJWTProvider returns a function that supplies a JWT-SVID token string for
+// authn-jwt authentication. The SVID is fetched from the SPIFFE Workload API
+// (socket address from SPIFFE_ENDPOINT_SOCKET) for the audience read from
+// CONJUR_JWT_AUDIENCE at construction time (default "conjur"), using the
+// following selection rules:
+//
+//   - If CONJUR_SPIFFE_ID is set, the SVID whose SPIFFE ID matches it is used;
+//     if no SVID matches, the call fails listing the available IDs.
+//   - If CONJUR_SPIFFE_ID is unset and the Workload API returns exactly one
+//     SVID, that SVID is used.
+//   - If CONJUR_SPIFFE_ID is unset and multiple SVIDs are returned, the call
+//     fails listing the candidates so the caller can set CONJUR_SPIFFE_ID.
+//
+// The token is cached until jwtExpirySkew before its expiry; subsequent calls
+// within that window return the cached value without a network round-trip.
+//
+// Assign the returned function to conjurapi.Config.JWTProvider to authenticate
+// a Conjur client using authn-jwt with a SPIFFE-issued JWT-SVID. When
+// SPIFFE_ENDPOINT_SOCKET and CONJUR_AUTHN_JWT_SERVICE_ID are set and no static
+// token or file path is configured, conjurapi.LoadFromEnvironment auto-wires
+// this provider (FR-AUTH-SPIFFE-05).
+func NewJWTProvider() func(context.Context) (string, error) {
+	audience := os.Getenv("CONJUR_JWT_AUDIENCE")
+	if audience == "" {
+		audience = "conjur"
+	}
+	realFetch := func(ctx context.Context, aud string) ([]*jwtsvid.SVID, error) {
+		return workloadapi.FetchJWTSVIDs(ctx, jwtsvid.Params{Audience: aud})
+	}
+	p := &jwtProvider{
+		fetch: func(ctx context.Context) (string, time.Time, error) {
+			return fetchJWTSVIDFromWorkloadAPI(ctx, audience, realFetch)
+		},
+	}
+	return p.getJWT
 }
