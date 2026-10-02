@@ -450,3 +450,45 @@ func TestCheckSocketPath(t *testing.T) {
 		assert.Contains(t, err.Error(), "/tmp/no-such-spire-socket-xyz-test.sock")
 	})
 }
+
+// ---------------------------------------------------------------------------
+// selectBySpiffeID
+// ---------------------------------------------------------------------------
+
+func TestSelectBySpiffeID(t *testing.T) {
+	id1, _ := spiffeid.FromString("spiffe://example.org/a")
+	id2, _ := spiffeid.FromString("spiffe://example.org/b")
+
+	t.Run("empty want + single SVID returns index 0", func(t *testing.T) {
+		idx, err := selectBySpiffeID([]spiffeid.ID{id1}, "")
+		require.NoError(t, err)
+		assert.Equal(t, 0, idx)
+	})
+
+	t.Run("empty want + multiple SVIDs returns error listing candidates", func(t *testing.T) {
+		_, err := selectBySpiffeID([]spiffeid.ID{id1, id2}, "")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "set CONJUR_SPIFFE_ID")
+		assert.Contains(t, err.Error(), "spiffe://example.org/a")
+		assert.Contains(t, err.Error(), "spiffe://example.org/b")
+	})
+
+	t.Run("valid want that matches returns correct index", func(t *testing.T) {
+		idx, err := selectBySpiffeID([]spiffeid.ID{id1, id2}, "spiffe://example.org/b")
+		require.NoError(t, err)
+		assert.Equal(t, 1, idx)
+	})
+
+	t.Run("invalid want format returns error", func(t *testing.T) {
+		_, err := selectBySpiffeID([]spiffeid.ID{id1}, "not-a-spiffe-id")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not a valid SPIFFE ID")
+	})
+
+	t.Run("valid want not found returns error listing candidates", func(t *testing.T) {
+		_, err := selectBySpiffeID([]spiffeid.ID{id1}, "spiffe://example.org/missing")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+		assert.Contains(t, err.Error(), "spiffe://example.org/a")
+	})
+}

@@ -189,51 +189,63 @@ func classifyWorkloadAPIError(err error) error {
 	return fmt.Errorf("Workload API request failed: %w", err)
 }
 
-// selectSVID picks the correct SVID from the slice returned by the Workload API.
+// selectBySpiffeID picks the index of the matching SVID from a slice of
+// SPIFFE IDs, applying the CONJUR_SPIFFE_ID selection rule.
 //
-// When CONJUR_SPIFFE_ID is set the SVID with a matching SPIFFE ID is returned;
-// an invalid ID format or a missing match is an error. When the env var is unset
-// exactly one SVID must be present; multiple SVIDs without a selector are an
-// error. A silent default would re-point the workload identity.
+// When want is empty and ids has exactly one element, index 0 is returned.
+// When want is empty and ids has more than one element, an error listing all
+// candidates is returned so the caller can set CONJUR_SPIFFE_ID.
+// When want is set, the index of the matching ID is returned; an invalid want
+// value or a missing match are errors.
+func selectBySpiffeID(ids []spiffeid.ID, want string) (int, error) {
+	if want == "" {
+		if len(ids) > 1 {
+			candidates := make([]string, len(ids))
+			for i, id := range ids {
+				candidates[i] = id.String()
+			}
+			return -1, fmt.Errorf(
+				"Workload API returned %d SVIDs; set CONJUR_SPIFFE_ID to one of: %s",
+				len(ids), strings.Join(candidates, ", "),
+			)
+		}
+		return 0, nil
+	}
+
+	parsedID, err := spiffeid.FromString(want)
+	if err != nil {
+		return -1, fmt.Errorf("CONJUR_SPIFFE_ID %q is not a valid SPIFFE ID: %w", want, err)
+	}
+	for i, id := range ids {
+		if id == parsedID {
+			return i, nil
+		}
+	}
+	candidates := make([]string, len(ids))
+	for i, id := range ids {
+		candidates[i] = id.String()
+	}
+	return -1, fmt.Errorf(
+		"CONJUR_SPIFFE_ID %q not found; available SVIDs: %s",
+		want, strings.Join(candidates, ", "),
+	)
+}
+
+// selectSVID picks the correct X.509-SVID from the slice returned by the
+// Workload API using the CONJUR_SPIFFE_ID selection rule.
 func selectSVID(svids []*x509svid.SVID) (*x509svid.SVID, error) {
 	if len(svids) == 0 {
 		return nil, errors.New("Workload API returned no SVIDs")
 	}
-
-	wantID := os.Getenv(envConjurSpiffeID)
-
-	if wantID == "" {
-		if len(svids) > 1 {
-			candidates := make([]string, len(svids))
-			for i, s := range svids {
-				candidates[i] = s.ID.String()
-			}
-			return nil, fmt.Errorf(
-				"Workload API returned %d SVIDs; set CONJUR_SPIFFE_ID to one of: %s",
-				len(svids), strings.Join(candidates, ", "),
-			)
-		}
-		return svids[0], nil
-	}
-
-	parsedID, err := spiffeid.FromString(wantID)
-	if err != nil {
-		return nil, fmt.Errorf("CONJUR_SPIFFE_ID %q is not a valid SPIFFE ID: %w", wantID, err)
-	}
-	// spiffeid.ID is a value type (two string fields); == comparison is safe.
-	for _, s := range svids {
-		if s.ID == parsedID {
-			return s, nil
-		}
-	}
-	candidates := make([]string, len(svids))
+	ids := make([]spiffeid.ID, len(svids))
 	for i, s := range svids {
-		candidates[i] = s.ID.String()
+		ids[i] = s.ID
 	}
-	return nil, fmt.Errorf(
-		"CONJUR_SPIFFE_ID %q not found; available SVIDs: %s",
-		wantID, strings.Join(candidates, ", "),
-	)
+	idx, err := selectBySpiffeID(ids, os.Getenv("CONJUR_SPIFFE_ID"))
+	if err != nil {
+		return nil, err
+	}
+	return svids[idx], nil
 }
 
 // buildTLSCert marshals an x509svid.SVID into a *tls.Certificate and returns
