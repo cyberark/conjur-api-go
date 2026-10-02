@@ -5,8 +5,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Nothing should go in this section, please add to the latest unreleased version
+  (and update the corresponding date), or add a new version.
+
+## [0.16.0] - 2026-10-05
 
 ### Added
+- Workloads running alongside a SPIRE agent can now authenticate to Conjur via
+  authn-jwt using a JWT-SVID without a static token file. Set
+  `SPIFFE_ENDPOINT_SOCKET` and `CONJUR_AUTHN_JWT_SERVICE_ID` to enable
+  automatic JWT credential sourcing from the Workload API. (CNJR-14841)
 - `conjurapi/contract` package holding the SDK's compatibility matrix: which
   APIs each platform supports, and from which server version on Self-Hosted.
   An unsupported call fails with `*contract.FeatureNotSupportedError`, and
@@ -609,7 +618,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.15.3...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/cyberark/conjur-api-go/compare/v0.15.10...v0.16.0
+[0.15.10]: https://github.com/cyberark/conjur-api-go/compare/v0.15.9...v0.15.10
+[0.15.9]: https://github.com/cyberark/conjur-api-go/compare/v0.15.8...v0.15.9
+[0.15.8]: https://github.com/cyberark/conjur-api-go/compare/v0.15.7...v0.15.8
+[0.15.7]: https://github.com/cyberark/conjur-api-go/compare/v0.15.6...v0.15.7
+[0.15.6]: https://github.com/cyberark/conjur-api-go/compare/v0.15.5...v0.15.6
+[0.15.5]: https://github.com/cyberark/conjur-api-go/compare/v0.15.4...v0.15.5
+[0.15.4]: https://github.com/cyberark/conjur-api-go/compare/v0.15.3...v0.15.4
 [0.15.3]: https://github.com/cyberark/conjur-api-go/compare/v0.15.2...v0.15.3
 [0.15.2]: https://github.com/cyberark/conjur-api-go/compare/v0.15.1...v0.15.2
 [0.15.1]: https://github.com/cyberark/conjur-api-go/compare/v0.15.0...v0.15.1

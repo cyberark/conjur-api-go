@@ -451,6 +451,90 @@ func main() {
 }
 ```
 
+##### JWT-SVID authentication via the Workload API
+
+Use `spiffe.NewJWTProvider()` to source a JWT-SVID from the SPIFFE Workload API
+for Conjur's authn-jwt authenticator. The provider reads the audience from
+`CONJUR_JWT_AUDIENCE` at construction time (default: `"conjur"`), fetches a
+JWT-SVID from the SPIRE agent, caches it until near expiry, and refreshes it
+transparently.
+
+When both `SPIFFE_ENDPOINT_SOCKET` and `CONJUR_AUTHN_JWT_SERVICE_ID` are set and
+no static token is configured (`CONJUR_AUTHN_JWT_TOKEN` and `JWT_TOKEN_PATH` are
+both unset), `LoadFromEnvironment` (used by `NewClientFromEnvironment`) auto-wires
+`JWTProvider` automatically. No code change is required for workloads that read
+config from the environment.
+
+###### Prerequisites
+
+- A running SPIRE agent with its socket at `SPIFFE_ENDPOINT_SOCKET`
+  (e.g. `unix:///var/run/spire-agent/public/api.sock`)
+- A Conjur authn-jwt webservice with `jwks-uri` pointing to the SPIRE OIDC
+  discovery provider (e.g. `http://spire-oidc:8085/keys`)
+- A Conjur host with annotation `authn-jwt/<service-id>/sub: <spiffe-id>`
+
+###### Additional environment variables
+
+| Variable | Description |
+|---|---|
+| `SPIFFE_ENDPOINT_SOCKET` | Address of the SPIRE agent socket (e.g. `unix:///var/run/spire-agent/public/api.sock`) |
+| `CONJUR_AUTHN_JWT_SERVICE_ID` | Conjur authn-jwt service ID; triggers auto-wire when `SPIFFE_ENDPOINT_SOCKET` is also set |
+| `CONJUR_JWT_AUDIENCE` | JWT audience claim to request (default: `"conjur"`). Read once at construction time. |
+| `CONJUR_SPIFFE_ID` | SPIFFE ID to select when the Workload API returns multiple SVIDs. Required when multiple SVIDs are present. |
+
+###### Example: explicit JWTProvider wiring
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+
+    "github.com/cyberark/conjur-api-go/conjurapi"
+    "github.com/cyberark/conjur-api-go/conjurapi/spiffe"
+)
+
+func main() {
+    // SPIFFE_ENDPOINT_SOCKET is read from the environment.
+    // CONJUR_JWT_AUDIENCE defaults to "conjur" when unset.
+    config := conjurapi.Config{
+        ApplianceURL: "https://conjur.example.com",
+        Account:      "myorg",
+        AuthnType:    "jwt",
+        ServiceID:    "acme-spiffe-jwt",       // authn-jwt service ID
+        JWTProvider:  spiffe.NewJWTProvider(), // JWT-SVID from the Workload API
+    }
+
+    conjur, err := conjurapi.NewClientFromJwt(config)
+    if err != nil {
+        log.Fatalf("Cannot create SPIFFE JWT client: %s", err)
+    }
+
+    secretValue, err := conjur.RetrieveSecret("prod/database/password")
+    if err != nil {
+        log.Fatalf("Cannot retrieve secret: %s", err)
+    }
+
+    fmt.Printf("%s", string(secretValue))
+}
+```
+
+###### Example: auto-wire via environment
+
+```bash
+export CONJUR_APPLIANCE_URL="https://conjur.example.com"
+export CONJUR_ACCOUNT="myorg"
+export SPIFFE_ENDPOINT_SOCKET="unix:///run/spire/sockets/agent.sock"
+export CONJUR_AUTHN_JWT_SERVICE_ID="acme-spiffe-jwt"
+# No CONJUR_AUTHN_JWT_TOKEN or JWT_TOKEN_PATH — JWTProvider is wired automatically.
+```
+
+```go
+// NewClientFromEnvironment reads SPIFFE env vars and auto-wires JWTProvider.
+conjur, err := conjurapi.NewClientFromEnvironment(conjurapi.Config{})
+```
+
 ## Contributing
 
 We welcome contributions of all kinds to this repository. For instructions on how to get started and descriptions of our development workflows, please see our [contributing
