@@ -24,6 +24,8 @@ export SPIFFE_SERVICE_ID="acme-spiffe"
 export SPIFFE_WORKLOAD_SPIFFE_ID="spiffe://${SPIFFE_TRUST_DOMAIN}/vm-spiffe"
 export SPIFFE_AGENT_SPIFFE_ID="spiffe://${SPIFFE_TRUST_DOMAIN}/spire-agent"
 
+export SPIFFE_JWT_SERVICE_ID="acme-spiffe-jwt"
+
 # SPIFFE_TMPDIR is shared with the SPIRE agent container via the bind mount in
 # docker-compose.yml (${SPIFFE_TMPDIR:-/tmp/spiffe-tokens}:/run/spire/secrets).
 # It must be set before docker compose up so the compose YAML substitution works.
@@ -41,7 +43,9 @@ function start_spire_server() {
     announce "Waiting for SPIRE server to become ready..."
     local timeout=60 elapsed=0
     until docker compose --profile spiffe exec -T spire-server \
-            /opt/spire/bin/spire-server bundle show -format pem > /dev/null 2>&1; do
+            /opt/spire/bin/spire-server bundle show \
+                -socketPath /run/spire/server/private/api.sock \
+                -format pem > /dev/null 2>&1; do
         if (( elapsed >= timeout )); then
             echo "ERROR: Timed out waiting for SPIRE server to become ready"
             echo "--- SPIRE server logs ---"
@@ -59,6 +63,7 @@ function start_spire_agent() {
     local token_output
     token_output="$(docker compose --profile spiffe exec -T spire-server \
         /opt/spire/bin/spire-server token generate \
+            -socketPath /run/spire/server/private/api.sock \
             -spiffeID "$SPIFFE_AGENT_SPIFFE_ID" \
             -ttl 3600)"
     # Output format: "Token: <token>"
@@ -66,7 +71,9 @@ function start_spire_agent() {
 
     announce "Fetching SPIRE trust bundle..."
     docker compose --profile spiffe exec -T spire-server \
-        /opt/spire/bin/spire-server bundle show -format pem > "$SPIFFE_TMPDIR/bundle.crt"
+        /opt/spire/bin/spire-server bundle show \
+            -socketPath /run/spire/server/private/api.sock \
+            -format pem > "$SPIFFE_TMPDIR/bundle.crt"
 
     announce "Pulling SPIRE agent image..."
     docker compose --profile spiffe pull spire-agent
@@ -105,6 +112,7 @@ function register_workload() {
     announce "Registering SPIFFE workload entry (unix:uid:${uid})..."
     docker compose --profile spiffe exec -T spire-server \
         /opt/spire/bin/spire-server entry create \
+            -socketPath /run/spire/server/private/api.sock \
             -parentID "$SPIFFE_AGENT_SPIFFE_ID" \
             -spiffeID "$SPIFFE_WORKLOAD_SPIFFE_ID" \
             -selector "unix:uid:${uid}"
@@ -131,14 +139,53 @@ function configure_conjur_spiffe() {
     echo "Trust bundle ready for test (exported as SPIFFE_TRUST_BUNDLE)."
 }
 
+function start_spire_oidc() {
+    announce "Pulling SPIRE OIDC discovery provider..."
+    docker compose --profile spiffe pull spire-oidc
+    echo "Done!"
+
+    announce "Starting SPIRE OIDC discovery provider..."
+    docker compose --profile spiffe up --no-deps -d spire-oidc
+
+    # The OIDC provider is ready once its /keys endpoint returns a response.
+    announce "Waiting for SPIRE OIDC discovery provider to become ready..."
+    local timeout=60 elapsed=0
+    until docker run --rm \
+            --network "${COMPOSE_PROJECT_NAME}_spiffe" \
+            curlimages/curl:latest \
+            curl -sf "http://spire-oidc:8085/keys" > /dev/null 2>&1; do
+        if (( elapsed >= timeout )); then
+            echo "ERROR: Timed out waiting for SPIRE OIDC discovery provider"
+            docker compose --profile spiffe logs spire-oidc || true
+            exit 1
+        fi
+        sleep 2
+        (( elapsed += 2 ))
+    done
+    echo "SPIRE OIDC discovery provider is ready."
+
+    # SPIFFE_JWT_ISSUER_URL is the OIDC issuer URL.  The spire-oidc container is
+    # reachable from other containers on the 'spiffe' network by its hostname;
+    # the Conjur appliance (also on that network) will use this to fetch the JWKS.
+    export SPIFFE_JWT_ISSUER_URL="http://spire-oidc:8085"
+    echo "  OIDC issuer URL : $SPIFFE_JWT_ISSUER_URL"
+}
+
 start_spire_server
 start_spire_agent
 register_workload
-configure_conjur_spiffe
+# configure_conjur_spiffe requires the enterprise appliance and authn-cert setup.
+# Skip it when TEST_CERT is not true (JWT-only SPIFFE tests don't need it).
+if [[ "${TEST_CERT:-false}" == "true" ]]; then
+    configure_conjur_spiffe
+fi
+start_spire_oidc
 
 announce "SPIFFE test environment ready."
-echo "  Trust domain  : $SPIFFE_TRUST_DOMAIN"
-echo "  Service ID    : $SPIFFE_SERVICE_ID"
-echo "  Workload ID   : $SPIFFE_WORKLOAD_SPIFFE_ID"
-echo "  Token dir     : $SPIFFE_TMPDIR"
-echo "  Socket volume : ${COMPOSE_PROJECT_NAME}_spire-agent-socket"
+echo "  Trust domain    : $SPIFFE_TRUST_DOMAIN"
+echo "  X.509 service   : $SPIFFE_SERVICE_ID"
+echo "  JWT service     : $SPIFFE_JWT_SERVICE_ID"
+echo "  Workload ID     : $SPIFFE_WORKLOAD_SPIFFE_ID"
+echo "  Token dir       : $SPIFFE_TMPDIR"
+echo "  Socket volume   : ${COMPOSE_PROJECT_NAME}_spire-agent-socket"
+echo "  OIDC issuer URL : ${SPIFFE_JWT_ISSUER_URL:-<not started>}"

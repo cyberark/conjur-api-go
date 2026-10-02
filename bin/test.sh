@@ -66,12 +66,13 @@ if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
   fi
 
   if [[ "$TEST_SPIFFE" == "true" ]]; then
-    # setup-spiffe.sh configures Conjur authn-cert for SPIFFE mode, which requires the
-    # enterprise appliance to already be running with authn-cert set up. Always enable
-    # TEST_CERT=true alongside TEST_SPIFFE=true.
+    # setup-spiffe.sh starts the SPIRE server/agent and OIDC discovery provider.
+    # When TEST_CERT is also true the script additionally configures authn-cert on
+    # the enterprise appliance.  The JWT-SVID authn-jwt tests (TestAuthnSpiffeJWT)
+    # use OSS Conjur and do not require the enterprise appliance, so TEST_CERT is
+    # not a hard prerequisite for TEST_SPIFFE alone.
     if [[ "$TEST_CERT" != "true" ]]; then
-      echo "ERROR: TEST_SPIFFE=true requires TEST_CERT=true (SPIFFE tests need the enterprise appliance and authn-cert configured first)."
-      exit 1
+      echo "NOTE: TEST_SPIFFE=true without TEST_CERT=true — SPIRE OIDC provider and JWT tests will run; authn-cert SPIFFE tests will be skipped."
     fi
     source ./setup-spiffe.sh
   fi
@@ -143,6 +144,9 @@ if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
   -e TEST_SPIFFE \
   -e SPIFFE_SERVICE_ID \
   -e SPIFFE_TRUST_BUNDLE \
+  -e SPIFFE_JWT_SERVICE_ID \
+  -e SPIFFE_JWT_ISSUER_URL \
+  -e SPIFFE_WORKLOAD_SPIFFE_ID \
   -e "SPIFFE_ENDPOINT_SOCKET=unix:///run/spire/sockets/agent.sock" \
   -e GO_VERSION \
   -e PUBLIC_KEYS \
