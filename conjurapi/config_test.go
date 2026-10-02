@@ -76,7 +76,7 @@ func TestConfig_Validate(t *testing.T) {
 		assert.Error(t, err)
 
 		errString := err.Error()
-		assert.Contains(t, errString, "Must specify a ServiceID when using ldap")
+		assert.Contains(t, errString, "Must specify a service ID (CONJUR_SERVICE_ID) when using ldap authentication")
 	})
 
 	t.Run("Return error for authn-oidc configuration missing ServiceId", func(t *testing.T) {
@@ -90,7 +90,7 @@ func TestConfig_Validate(t *testing.T) {
 		assert.Error(t, err)
 
 		errString := err.Error()
-		assert.Contains(t, errString, "Must specify a ServiceID when using oidc")
+		assert.Contains(t, errString, "Must specify a service ID (CONJUR_SERVICE_ID) when using oidc authentication")
 	})
 
 	t.Run("Return error for invalid configuration unsupported AuthnType", func(t *testing.T) {
@@ -274,7 +274,7 @@ func TestConfig_Validate(t *testing.T) {
 			}
 			err := config.Validate()
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "Must specify a ServiceID when using cert")
+			assert.Contains(t, err.Error(), "Must specify a service ID (CONJUR_AUTHN_CERT_SERVICE_ID)")
 		})
 
 		t.Run("Returns error when client certificate is missing", func(t *testing.T) {
@@ -856,6 +856,60 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 				ServiceID:    "acme-vm",
 				CertHostID:   "vm-workloads/vm-01",
 			})
+		})
+	})
+
+	t.Run("When SPIFFE_ENDPOINT_SOCKET is set with cert auth and no static cert", func(t *testing.T) {
+		e := ClearEnv()
+		defer e.RestoreEnv()
+
+		os.Setenv("SPIFFE_ENDPOINT_SOCKET", "unix:///var/run/spire-agent/public/api.sock")
+		os.Setenv("CONJUR_AUTHN_CERT_SERVICE_ID", "acme-spiffe") // implies AuthnType=cert
+
+		t.Run("Auto-wires ClientCertProvider from the SPIFFE Workload API", func(t *testing.T) {
+			config := &Config{}
+			config.mergeEnv()
+
+			assert.NotNil(t, config.ClientCertProvider,
+				"ClientCertProvider must be set automatically when SPIFFE_ENDPOINT_SOCKET + cert auth are configured and no static cert is present")
+		})
+
+		t.Run("Does not auto-wire when a cert file is already configured", func(t *testing.T) {
+			os.Setenv("CONJUR_AUTHN_CERT_FILE", "/etc/ssl/client.pem")
+			defer os.Setenv("CONJUR_AUTHN_CERT_FILE", "")
+
+			config := &Config{}
+			config.mergeEnv()
+
+			assert.Nil(t, config.ClientCertProvider,
+				"ClientCertProvider must not be auto-wired when a static cert file is configured")
+		})
+
+		t.Run("Does not auto-wire when SPIFFE_ENDPOINT_SOCKET is absent", func(t *testing.T) {
+			e2 := ClearEnv()
+			defer e2.RestoreEnv()
+
+			os.Setenv("CONJUR_AUTHN_CERT_SERVICE_ID", "acme-spiffe")
+
+			config := &Config{}
+			config.mergeEnv()
+
+			assert.Nil(t, config.ClientCertProvider,
+				"ClientCertProvider must remain nil when SPIFFE_ENDPOINT_SOCKET is not set")
+		})
+
+		t.Run("Does not auto-wire when AuthnType is not cert", func(t *testing.T) {
+			e2 := ClearEnv()
+			defer e2.RestoreEnv()
+
+			os.Setenv("SPIFFE_ENDPOINT_SOCKET", "unix:///var/run/spire-agent/public/api.sock")
+			os.Setenv("CONJUR_AUTHN_TYPE", "oidc")
+
+			config := &Config{}
+			config.mergeEnv()
+
+			assert.Nil(t, config.ClientCertProvider,
+				"ClientCertProvider must not be auto-wired for non-cert authn types")
 		})
 	})
 

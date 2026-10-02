@@ -1,6 +1,7 @@
 package conjurapi
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -267,7 +268,23 @@ func (c *Client) CertAuthenticate(hostID string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return response.DataResponse(res)
+	body, err := response.DataResponse(res)
+	if err != nil {
+		return nil, err
+	}
+	// Conjur honors the Accept-Encoding: base64 request header by returning the
+	// access token body base64-encoded and setting Content-Encoding: base64.
+	// Decode the body so the caller always receives raw token bytes.
+	if res.Header.Get("Content-Encoding") == "base64" {
+		// Trim whitespace before decoding: some servers append a trailing
+		// newline to the body, and StdEncoding is strict about non-base64 bytes.
+		decoded, decErr := base64.StdEncoding.DecodeString(strings.TrimSpace(string(body)))
+		if decErr != nil {
+			return nil, fmt.Errorf("decoding base64 authenticate response: %w", decErr)
+		}
+		return decoded, nil
+	}
+	return body, nil
 }
 
 // WhoAmI obtains information on the current user.

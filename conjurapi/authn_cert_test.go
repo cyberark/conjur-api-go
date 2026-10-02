@@ -1,6 +1,10 @@
 package conjurapi
 
 import (
+	"crypto/tls"
+	"encoding/base64"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -240,4 +244,120 @@ func TestAuthnCert(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "P@ssw0rd!", string(secret))
 	})
+}
+
+// TestCertAuthenticate_Base64Response verifies that CertAuthenticate decodes a
+// base64-encoded response body when the server sets Content-Encoding: base64.
+// The test uses a plain TLS server with InsecureSkipVerify so no real Conjur
+// appliance is required.
+func TestCertAuthenticate_Base64Response(t *testing.T) {
+	rawToken := []byte("eyJwcm90ZWN0ZWQiOiJ0ZXN0In0=.fake-access-token")
+	b64Token := base64.StdEncoding.EncodeToString(rawToken)
+
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/authenticate") {
+			w.Header().Set("Content-Encoding", "base64")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(b64Token))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c := &Client{
+		config: Config{
+			ApplianceURL: server.URL,
+			Account:      "conjur",
+			AuthnType:    "cert",
+			ServiceID:    "test-svc",
+		},
+		httpClient: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
+			},
+		},
+	}
+
+	token, err := c.CertAuthenticate("")
+
+	require.NoError(t, err)
+	assert.Equal(t, rawToken, token,
+		"CertAuthenticate must decode a base64-encoded response body")
+}
+
+// TestCertAuthenticate_PlainResponse verifies that CertAuthenticate returns the
+// raw body unchanged when the server does not set Content-Encoding: base64.
+func TestCertAuthenticate_PlainResponse(t *testing.T) {
+	rawToken := []byte("plain-access-token")
+
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/authenticate") {
+			w.WriteHeader(http.StatusOK)
+			w.Write(rawToken)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c := &Client{
+		config: Config{
+			ApplianceURL: server.URL,
+			Account:      "conjur",
+			AuthnType:    "cert",
+			ServiceID:    "test-svc",
+		},
+		httpClient: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
+			},
+		},
+	}
+
+	token, err := c.CertAuthenticate("")
+
+	require.NoError(t, err)
+	assert.Equal(t, rawToken, token,
+		"CertAuthenticate must return the raw body when no base64 encoding is present")
+}
+
+// TestCertAuthenticate_Base64Response_TrailingNewline verifies that
+// CertAuthenticate still decodes correctly when the server appends a trailing
+// newline to the base64-encoded body. base64.StdEncoding rejects non-base64
+// bytes, so the decoder must trim whitespace before decoding.
+func TestCertAuthenticate_Base64Response_TrailingNewline(t *testing.T) {
+	rawToken := []byte("eyJwcm90ZWN0ZWQiOiJ0ZXN0In0=.fake-access-token")
+	b64Token := base64.StdEncoding.EncodeToString(rawToken)
+
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/authenticate") {
+			w.Header().Set("Content-Encoding", "base64")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(b64Token + "\n")) // server appends trailing newline
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c := &Client{
+		config: Config{
+			ApplianceURL: server.URL,
+			Account:      "conjur",
+			AuthnType:    "cert",
+			ServiceID:    "test-svc",
+		},
+		httpClient: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
+			},
+		},
+	}
+
+	token, err := c.CertAuthenticate("")
+
+	require.NoError(t, err)
+	assert.Equal(t, rawToken, token,
+		"CertAuthenticate must decode a base64 response that has a trailing newline")
 }

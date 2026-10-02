@@ -7,25 +7,64 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
+	"github.com/spiffe/go-spiffe/v2/spiffeid"
+	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-// svidExpirySkew is the margin before an SVID's NotAfter at which the cached
-// certificate is considered stale. Refreshing early ensures a valid SVID is
-// in hand before the current one expires at the TLS layer.
-const svidExpirySkew = 30 * time.Second
+const (
+	// svidExpirySkew is the margin before an SVID's NotAfter at which the cached
+	// certificate is considered stale. Refreshing early ensures a valid SVID is
+	// in hand before the current one expires at the TLS layer.
+	svidExpirySkew = 30 * time.Second
+
+	// retryMax is the maximum number of retries for transient Workload API
+	// failures (codes.Unavailable).
+	retryMax = 3
+
+	// envSpiffeEndpointSocket is the standard SPIFFE env var that names the
+	// Workload API socket address (unix:///path or tcp://host:port).
+	envSpiffeEndpointSocket = "SPIFFE_ENDPOINT_SOCKET"
+
+	// envConjurSpiffeID selects a specific SVID by SPIFFE ID when the Workload
+	// API returns multiple SVIDs for this workload.
+	envConjurSpiffeID = "CONJUR_SPIFFE_ID"
+
+	// envConjurSpiffeAllowRemoteEndpoint is an undocumented override that
+	// permits non-loopback tcp: addresses. Most deployments must not set this.
+	envConjurSpiffeAllowRemoteEndpoint = "CONJUR_SPIFFE_ALLOW_REMOTE_ENDPOINT"
+)
+
+// retryInitial is the delay before the first retry. Declared as a var so tests
+// can reduce it without sleeping.
+var retryInitial = 500 * time.Millisecond
+
+// svidFetcher is the function signature for fetching X.509-SVIDs from the
+// SPIFFE Workload API. The production default is workloadapi.FetchX509SVIDs;
+// tests substitute a stub to drive the retry loop without a real Workload API.
+type svidFetcher func(ctx context.Context) ([]*x509svid.SVID, error)
+
+// errRetry is returned by classifyWorkloadAPIError when the caller should retry
+// the fetch after a backoff delay.
+var errRetry = errors.New("Workload API temporarily unavailable")
 
 // provider caches an X.509-SVID fetched from the SPIFFE Workload API and re-fetches
 // when the cached certificate is within svidExpirySkew of its expiry.
 type provider struct {
-	mu     sync.Mutex
-	cached *tls.Certificate
-	expiry time.Time
-	fetch  func(ctx context.Context) (*tls.Certificate, time.Time, error)
+	mu     sync.Mutex        // serialises cache reads and writes
+	cached *tls.Certificate  // nil until the first successful fetch
+	expiry time.Time         // NotAfter of the leaf certificate in cached
+	fetch  func(ctx context.Context) (*tls.Certificate, time.Time, error) // production: fetchSVIDFromWorkloadAPI
 }
 
 // getCertificate returns the cached certificate, re-fetching from the Workload API
@@ -34,6 +73,9 @@ func (p *provider) getCertificate(ctx context.Context) (*tls.Certificate, error)
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
+	// Return the cached cert if it exists and is more than svidExpirySkew away
+	// from expiry. The skew gives the TLS handshake time to complete before the
+	// cert expires at the server.
 	if p.cached != nil && time.Now().Before(p.expiry.Add(-svidExpirySkew)) {
 		return p.cached, nil
 	}
@@ -47,46 +89,301 @@ func (p *provider) getCertificate(ctx context.Context) (*tls.Certificate, error)
 	return p.cached, nil
 }
 
-// fetchSVIDFromWorkloadAPI fetches the first X.509-SVID from the SPIFFE Workload API
-// and returns it as a *tls.Certificate together with the leaf certificate's expiry time.
-// The socket address is resolved from the SPIFFE_ENDPOINT_SOCKET environment variable
-// (go-spiffe/v2 default behaviour).
-func fetchSVIDFromWorkloadAPI(ctx context.Context) (*tls.Certificate, time.Time, error) {
-	svids, err := workloadapi.FetchX509SVIDs(ctx)
+// validateWorkloadEndpoint checks that SPIFFE_ENDPOINT_SOCKET is acceptable.
+// Unix sockets and bare paths are always allowed. TCP is restricted to loopback
+// addresses (127.0.0.1, ::1, localhost) because the Workload API uses insecure
+// gRPC credentials and X.509-SVID responses contain the private key. Any
+// unsupported scheme (e.g. http:, file:) is rejected with an actionable error.
+// Non-loopback TCP can be enabled by setting CONJUR_SPIFFE_ALLOW_REMOTE_ENDPOINT=true.
+func validateWorkloadEndpoint(socket string) error {
+	if socket == "" {
+		return nil
+	}
+	u, err := url.Parse(socket)
 	if err != nil {
-		return nil, time.Time{}, fmt.Errorf("fetching X.509-SVID from workload API: %w", err)
+		return fmt.Errorf("SPIFFE_ENDPOINT_SOCKET %q is not a valid URL: %w", socket, err)
 	}
+	switch strings.ToLower(u.Scheme) {
+	case "unix", "":
+		// Unix socket or bare path — always allowed.
+		return nil
+	case "tcp":
+		// TCP — allowed only for loopback addresses to protect the private key
+		// in transit (the Workload API uses insecure gRPC credentials).
+		host := u.Hostname()
+		ip := net.ParseIP(host)
+		if (ip != nil && ip.IsLoopback()) || strings.EqualFold(host, "localhost") {
+			return nil
+		}
+		// CONJUR_SPIFFE_ALLOW_REMOTE_ENDPOINT is an undocumented override for
+		// non-standard deployments where the SPIRE agent runs on a separate host.
+		if strings.EqualFold(os.Getenv(envConjurSpiffeAllowRemoteEndpoint), "true") {
+			return nil
+		}
+		return fmt.Errorf(
+			"SPIFFE_ENDPOINT_SOCKET uses a non-loopback tcp: address (%s): "+
+				"the Workload API uses insecure gRPC credentials and X.509-SVID responses contain the private key",
+			socket,
+		)
+	default:
+		return fmt.Errorf(
+			"SPIFFE_ENDPOINT_SOCKET has unsupported scheme %q: use unix:/// for a socket path or tcp:// for loopback TCP",
+			u.Scheme,
+		)
+	}
+}
+
+// socketPath extracts the file-system path from a SPIFFE_ENDPOINT_SOCKET value.
+// Returns an empty string for tcp: addresses or unparseable values.
+func socketPath(socket string) string {
+	if socket == "" {
+		return ""
+	}
+	u, err := url.Parse(socket)
+	if err != nil {
+		return ""
+	}
+	switch strings.ToLower(u.Scheme) {
+	case "unix":
+		// url.Parse stores the path in u.Path and any authority in u.Host.
+		// Concatenating them reconstructs the file-system path for all valid
+		// forms (unix:///abs/path, unix:/abs/path) without silently dropping
+		// the authority segment when both components are non-empty.
+		return u.Host + u.Path
+	case "":
+		// No scheme: treat the raw value as a file-system path.
+		return socket
+	}
+	// tcp: or any other scheme: not a socket path.
+	return ""
+}
+
+// classifyWorkloadAPIError maps an error from workloadapi.FetchX509SVIDs to one
+// of the four error taxonomy cases.
+//
+// Case 1 (socket not found) is handled by the pre-check in fetchSVIDFromWorkloadAPI
+// before the API call; this function covers cases 2–4:
+//
+//   - codes.PermissionDenied → fail immediately, message names the condition.
+//   - codes.Unavailable      → return errRetry; caller retries with backoff.
+//   - anything else          → gRPC handshake or transport failure, textually
+//     distinct from "socket not found".
+func classifyWorkloadAPIError(err error) error {
+	if err == nil {
+		return nil
+	}
+	switch status.Code(err) {
+	case codes.PermissionDenied:
+		// The SPIRE agent is reachable but refuses to issue an SVID for this
+		// workload. Retrying will not help. The registration or selector must
+		// be fixed by an operator.
+		return fmt.Errorf("Workload API returned PermissionDenied: " +
+			"the workload may not be registered or the SPIRE agent may not trust this process")
+	case codes.Unavailable:
+		// The SPIRE agent is temporarily unreachable (e.g. still starting up).
+		// Signal the caller to back off and retry.
+		return errRetry
+	}
+	// Any other gRPC status (or a transport error before a status is set)
+	// is treated as a non-retryable handshake or protocol failure.
+	return fmt.Errorf("Workload API request failed: %w", err)
+}
+
+// selectSVID picks the correct SVID from the slice returned by the Workload API.
+//
+// When CONJUR_SPIFFE_ID is set the SVID with a matching SPIFFE ID is returned;
+// an invalid ID format or a missing match is an error. When the env var is unset
+// exactly one SVID must be present; multiple SVIDs without a selector are an
+// error. A silent default would re-point the workload identity.
+func selectSVID(svids []*x509svid.SVID) (*x509svid.SVID, error) {
 	if len(svids) == 0 {
-		return nil, time.Time{}, errors.New("workload API returned no SVIDs")
+		return nil, errors.New("Workload API returned no SVIDs")
 	}
-	if len(svids[0].Certificates) == 0 {
+
+	wantID := os.Getenv(envConjurSpiffeID)
+
+	if wantID == "" {
+		if len(svids) > 1 {
+			candidates := make([]string, len(svids))
+			for i, s := range svids {
+				candidates[i] = s.ID.String()
+			}
+			return nil, fmt.Errorf(
+				"Workload API returned %d SVIDs; set CONJUR_SPIFFE_ID to one of: %s",
+				len(svids), strings.Join(candidates, ", "),
+			)
+		}
+		return svids[0], nil
+	}
+
+	parsedID, err := spiffeid.FromString(wantID)
+	if err != nil {
+		return nil, fmt.Errorf("CONJUR_SPIFFE_ID %q is not a valid SPIFFE ID: %w", wantID, err)
+	}
+	// spiffeid.ID is a value type (two string fields); == comparison is safe.
+	for _, s := range svids {
+		if s.ID == parsedID {
+			return s, nil
+		}
+	}
+	candidates := make([]string, len(svids))
+	for i, s := range svids {
+		candidates[i] = s.ID.String()
+	}
+	return nil, fmt.Errorf(
+		"CONJUR_SPIFFE_ID %q not found; available SVIDs: %s",
+		wantID, strings.Join(candidates, ", "),
+	)
+}
+
+// buildTLSCert marshals an x509svid.SVID into a *tls.Certificate and returns
+// it alongside the leaf certificate's expiry time.
+func buildTLSCert(svid *x509svid.SVID) (*tls.Certificate, time.Time, error) {
+	if len(svid.Certificates) == 0 {
 		return nil, time.Time{}, errors.New("X.509-SVID has no certificates")
 	}
-
 	logging.ApiLog.Debugf("spiffe: selected SVID %s (expires %s)",
-		svids[0].ID, svids[0].Certificates[0].NotAfter.Format(time.RFC3339))
+		svid.ID, svid.Certificates[0].NotAfter.Format(time.RFC3339))
 
-	certPEM, keyPEM, err := svids[0].Marshal()
+	// Marshal produces two PEM blocks: certPEM contains the certificate chain
+	// (leaf first), and keyPEM contains the private key. Both are needed to
+	// construct a tls.Certificate that can be presented in a TLS handshake.
+	certPEM, keyPEM, err := svid.Marshal()
 	if err != nil {
 		return nil, time.Time{}, fmt.Errorf("marshaling X.509-SVID: %w", err)
 	}
-
 	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	if err != nil {
 		return nil, time.Time{}, fmt.Errorf("loading X.509-SVID as TLS certificate: %w", err)
 	}
+	// Return the leaf certificate's NotAfter so the caller can schedule a refresh.
+	return &cert, svid.Certificates[0].NotAfter, nil
+}
 
-	return &cert, svids[0].Certificates[0].NotAfter, nil
+// checkSocketPath verifies that the UNIX socket at path p exists and is
+// accessible. It is called before the gRPC dial so the error message names the
+// missing path rather than surfacing a generic connection-refused message.
+func checkSocketPath(p string) error {
+	if _, err := os.Stat(p); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf(
+				"SPIFFE_ENDPOINT_SOCKET %q not found: ensure the SPIRE agent socket is available at that path", p)
+		}
+		return fmt.Errorf("SPIFFE_ENDPOINT_SOCKET %q is not accessible: %w", p, err)
+	}
+	return nil
+}
+
+// validateSocket checks that socket is an acceptable SPIFFE Workload API
+// endpoint and, for unix sockets, that the path exists on disk.
+func validateSocket(socket string) error {
+	if err := validateWorkloadEndpoint(socket); err != nil {
+		return err
+	}
+	// Pre-check: verify the socket path before dialing so the error message
+	// names the missing path rather than producing a generic handshake failure.
+	if p := socketPath(socket); p != "" {
+		return checkSocketPath(p)
+	}
+	return nil
+}
+
+// fetchSVIDsWithRetry calls fetchSVIDs, retrying on codes.Unavailable up to
+// retryMax times with exponential backoff. It returns the raw SVID list on
+// success; the caller selects the right SVID and builds the certificate.
+func fetchSVIDsWithRetry(ctx context.Context, fetchSVIDs svidFetcher) ([]*x509svid.SVID, error) {
+	// Retry loop: attempt 0 is the first try; attempts 1..retryMax are retries.
+	// Only codes.Unavailable (errRetry) triggers a retry. All other errors,
+	// including codes.PermissionDenied, exit immediately.
+	delay := retryInitial
+	for attempt := 0; attempt <= retryMax; attempt++ {
+		svids, err := fetchSVIDs(ctx)
+		if err == nil {
+			return svids, nil
+		}
+
+		// Classify the failure and decide whether to retry.
+		classified := classifyWorkloadAPIError(err)
+		if classified != errRetry {
+			return nil, classified
+		}
+		if attempt >= retryMax {
+			return nil, fmt.Errorf("SPIFFE Workload API still unavailable after %d retries", retryMax)
+		}
+
+		// Back off before the next attempt. The delay doubles on each
+		// iteration (500 ms → 1 s → 2 s for the default retryMax of 3).
+		logging.ApiLog.Debugf("spiffe: Workload API unavailable (attempt %d/%d); retrying in %s",
+			attempt+1, retryMax, delay)
+		select {
+		case <-ctx.Done():
+			// Propagate context cancellation immediately instead of sleeping.
+			return nil, ctx.Err()
+		case <-time.After(delay):
+		}
+		delay *= 2
+	}
+
+	// unreachable: the loop exits via return on every path
+	return nil, errors.New("fetchSVIDsWithRetry: unexpected loop exit")
+}
+
+// fetchSVIDFromWorkloadAPI fetches an X.509-SVID from the SPIFFE Workload API
+// and returns it as a *tls.Certificate together with the leaf certificate's
+// expiry time. It proceeds in four steps:
+//
+//  1. validateSocket — check endpoint scheme and socket existence.
+//  2. fetchSVIDsWithRetry — fetch SVIDs, retrying on transient failures.
+//  3. selectSVID — choose the right SVID (by CONJUR_SPIFFE_ID or sole result).
+//  4. buildTLSCert — marshal the SVID into a *tls.Certificate.
+//
+// fetchSVIDs is called to obtain SVIDs; in production this is
+// workloadapi.FetchX509SVIDs; tests may substitute a stub.
+func fetchSVIDFromWorkloadAPI(ctx context.Context, fetchSVIDs svidFetcher) (*tls.Certificate, time.Time, error) {
+	// Read once so validateSocket and socketPath operate on the same value;
+	// a concurrent t.Setenv in tests cannot produce inconsistency.
+	socket := os.Getenv(envSpiffeEndpointSocket)
+	if err := validateSocket(socket); err != nil {
+		return nil, time.Time{}, err
+	}
+	svids, err := fetchSVIDsWithRetry(ctx, fetchSVIDs)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+	svid, err := selectSVID(svids)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+	return buildTLSCert(svid)
 }
 
 // NewProvider returns a function that supplies the workload's X.509-SVID as a
-// *tls.Certificate. The SVID is fetched once from the SPIFFE Workload API (socket
-// address read from SPIFFE_ENDPOINT_SOCKET) and cached until the leaf certificate
-// expires; subsequent calls return the cached value without a network round-trip.
+// *tls.Certificate. The SVID is fetched from the SPIFFE Workload API (socket
+// address from SPIFFE_ENDPOINT_SOCKET) using the following selection rules:
 //
-// Wire the returned function into conjurapi.Config.ClientCertProvider to authenticate
-// a Conjur client using authn-cert in SPIFFE mode.
+//   - If CONJUR_SPIFFE_ID is set, the SVID whose SPIFFE ID matches it is used;
+//     if no SVID matches, the call fails listing the available IDs.
+//   - If CONJUR_SPIFFE_ID is unset and the Workload API returns exactly one
+//     SVID, that SVID is used.
+//   - If CONJUR_SPIFFE_ID is unset and multiple SVIDs are returned, the call
+//     fails listing the candidates so the caller can set CONJUR_SPIFFE_ID.
+//
+// The certificate is cached until svidExpirySkew before its NotAfter; subsequent
+// calls within that window return the cached value without a network round-trip.
+//
+// Wire the returned function into conjurapi.Config.ClientCertProvider to
+// authenticate a Conjur client using authn-cert in SPIFFE mode.
 func NewProvider() func(context.Context) (*tls.Certificate, error) {
-	p := &provider{fetch: fetchSVIDFromWorkloadAPI}
+	// Wrap workloadapi.FetchX509SVIDs in the svidFetcher signature so it can be
+	// swapped out by tests without changing the fetchSVIDFromWorkloadAPI call site.
+	realFetch := func(ctx context.Context) ([]*x509svid.SVID, error) {
+		return workloadapi.FetchX509SVIDs(ctx)
+	}
+	p := &provider{
+		fetch: func(ctx context.Context) (*tls.Certificate, time.Time, error) {
+			return fetchSVIDFromWorkloadAPI(ctx, realFetch)
+		},
+	}
+	// Return the bound method so each call shares the same cache.
 	return p.getCertificate
 }
