@@ -92,10 +92,6 @@ func (g Group) Validate() error {
 // CreateGroup creates a group and returns it. Only name, branch, and
 // annotations are sent — those are the fields the create endpoint permits.
 func (c *ClientV2) CreateGroup(group Group) (*Group, error) {
-	if !c.config.IsSaaS() && c.VerifyMinServerVersion(MinVersion) != nil {
-		return nil, fmt.Errorf(NotSupportedInOldVersions, "Group API", MinVersion)
-	}
-
 	req, err := c.CreateGroupRequest(group)
 	if err != nil {
 		return nil, err
@@ -106,10 +102,6 @@ func (c *ClientV2) CreateGroup(group Group) (*Group, error) {
 
 // ReadGroup fetches a single group by its full identifier (e.g. "data/my-group").
 func (c *ClientV2) ReadGroup(identifier string) (*Group, error) {
-	if !c.config.IsSaaS() && c.VerifyMinServerVersion(MinVersion) != nil {
-		return nil, fmt.Errorf(NotSupportedInOldVersions, "Group API", MinVersion)
-	}
-
 	req, err := c.ReadGroupRequest(identifier)
 	if err != nil {
 		return nil, err
@@ -121,10 +113,6 @@ func (c *ClientV2) ReadGroup(identifier string) (*Group, error) {
 // ReadGroups returns a page of groups. filter may be nil for the server default
 // page. Use GroupsResponse.HasMore to drive auto-pagination.
 func (c *ClientV2) ReadGroups(filter *GroupFilter) (GroupsResponse, error) {
-	if !c.config.IsSaaS() && c.VerifyMinServerVersion(MinVersion) != nil {
-		return GroupsResponse{}, fmt.Errorf(NotSupportedInOldVersions, "Group API", MinVersion)
-	}
-
 	req, err := c.ReadGroupsRequest(filter)
 	if err != nil {
 		return GroupsResponse{}, err
@@ -141,10 +129,6 @@ func (c *ClientV2) ReadGroups(filter *GroupFilter) (GroupsResponse, error) {
 // group update endpoint permits only annotations, so only the group's
 // identifier (Branch/Name) and group.Annotations are used.
 func (c *ClientV2) UpdateGroup(group Group) (*Group, error) {
-	if !c.config.IsSaaS() && c.VerifyMinServerVersion(MinVersion) != nil {
-		return nil, fmt.Errorf(NotSupportedInOldVersions, "Group API", MinVersion)
-	}
-
 	req, err := c.UpdateGroupRequest(group.identifier(), group.Annotations)
 	if err != nil {
 		return nil, err
@@ -155,10 +139,6 @@ func (c *ClientV2) UpdateGroup(group Group) (*Group, error) {
 
 // DeleteGroup deletes a group. The server responds 204 No Content on success.
 func (c *ClientV2) DeleteGroup(identifier string) error {
-	if !c.config.IsSaaS() && c.VerifyMinServerVersion(MinVersion) != nil {
-		return fmt.Errorf(NotSupportedInOldVersions, "Group API", MinVersion)
-	}
-
 	req, err := c.DeleteGroupRequest(identifier)
 	if err != nil {
 		return err
@@ -177,10 +157,6 @@ func (c *ClientV2) DeleteGroup(identifier string) error {
 // group: UpdateGroup's PATCH merges annotations (see UpdateGroupRequest), so
 // it can only add or overwrite a key, never remove one. Server responds with 204 No Content on success.
 func (c *ClientV2) DeleteGroupAnnotation(identifier, key string) error {
-	if !c.config.IsSaaS() && c.VerifyMinServerVersion(MinVersion) != nil {
-		return fmt.Errorf(NotSupportedInOldVersions, "Group API", MinVersion)
-	}
-
 	req, err := c.DeleteGroupAnnotationRequest(identifier, key)
 	if err != nil {
 		return err
@@ -197,10 +173,6 @@ func (c *ClientV2) DeleteGroupAnnotation(identifier, key string) error {
 // ListGroupMembers returns a page of a group's members. filter may be nil for
 // the server default page. Use GroupMembersResponse.HasMore for auto-pagination.
 func (c *ClientV2) ListGroupMembers(groupID string, filter *GroupFilter) (GroupMembersResponse, error) {
-	if !c.config.IsSaaS() && c.VerifyMinServerVersion(MinVersion) != nil {
-		return GroupMembersResponse{}, fmt.Errorf(NotSupportedInOldVersions, "Group Membership API", MinVersion)
-	}
-
 	req, err := c.ListGroupMembersRequest(groupID, filter)
 	if err != nil {
 		return GroupMembersResponse{}, err

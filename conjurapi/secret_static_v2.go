@@ -48,10 +48,6 @@ func (c *ClientV2) CreateStaticSecretRequest(secret StaticSecret) (*http.Request
 }
 
 func (c *ClientV2) CreateStaticSecret(secret StaticSecret) (*StaticSecretResponse, error) {
-	if err := c.requireSaaS(staticSecretAPIName); err != nil {
-		return nil, err
-	}
-
 	req, err := c.CreateStaticSecretRequest(secret)
 	if err != nil {
 		return nil, err
@@ -73,10 +69,6 @@ func (c *ClientV2) GetStaticSecretDetailsRequest(identifier string) (*http.Reque
 }
 
 func (c *ClientV2) GetStaticSecretDetails(identifier string) (*StaticSecretResponse, error) {
-	if err := c.requireSaaS(staticSecretAPIName); err != nil {
-		return nil, err
-	}
-
 	req, err := c.GetStaticSecretDetailsRequest(identifier)
 	if err != nil {
 		return nil, err
@@ -98,10 +90,6 @@ func (c *ClientV2) GetStaticSecretPermissionsRequest(identifier string) (*http.R
 }
 
 func (c *ClientV2) GetStaticSecretPermissions(identifier string) (*PermissionResponse, error) {
-	if err := c.requireSaaS(staticSecretAPIName); err != nil {
-		return nil, err
-	}
-
 	req, err := c.GetStaticSecretPermissionsRequest(identifier)
 	if err != nil {
 		return nil, err

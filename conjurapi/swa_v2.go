@@ -2,13 +2,13 @@ package conjurapi
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/sirupsen/logrus"
 
 	internalswa "github.com/cyberark/conjur-api-go/internal/swa-sdk-go"
 
+	"github.com/cyberark/conjur-api-go/conjurapi/contract"
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 	"github.com/cyberark/conjur-api-go/conjurapi/swa"
 )
@@ -18,8 +18,8 @@ import (
 // discovery endpoints). SWA is only supported on Conjur Cloud / SaaS
 // environments.
 func (c *ClientV2) SWA() (swa.Client, error) {
-	if !c.config.IsSaaS() {
-		return nil, fmt.Errorf(NotSupportedInConjurEnterprise, "SWA API")
+	if err := c.checkCapability(contract.CapabilitySWAManagement); err != nil {
+		return nil, err
 	}
 
 	opts := []internalswa.Option{

@@ -13,10 +13,6 @@ type GroupMember struct {
 }
 
 func (c *ClientV2) AddGroupMember(groupID string, member GroupMember) (*GroupMember, error) {
-	if !c.config.IsSaaS() && c.VerifyMinServerVersion(MinVersion) != nil {
-		return nil, fmt.Errorf(NotSupportedInOldVersions, "Group Membership API", MinVersion)
-	}
-
 	req, err := c.AddGroupMemberRequest(groupID, member)
 	if err != nil {
 		return nil, err
@@ -26,10 +22,6 @@ func (c *ClientV2) AddGroupMember(groupID string, member GroupMember) (*GroupMem
 }
 
 func (c *ClientV2) RemoveGroupMember(groupID string, member GroupMember) ([]byte, error) {
-	if !c.config.IsSaaS() && c.VerifyMinServerVersion(MinVersion) != nil {
-		return nil, fmt.Errorf(NotSupportedInOldVersions, "Group Membership API", MinVersion)
-	}
-
 	req, err := c.RemoveGroupMemberRequest(groupID, member)
 	if err != nil {
 		return nil, err

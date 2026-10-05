@@ -68,10 +68,6 @@ type WorkloadFields struct {
 }
 
 func (c *ClientV2) CreateWorkload(workload Workload) ([]byte, error) {
-	if err := c.requireSaaS(workloadAPIName); err != nil {
-		return nil, err
-	}
-
 	req, err := c.CreateWorkloadRequest(workload)
 	if err != nil {
 		return nil, err
@@ -82,10 +78,6 @@ func (c *ClientV2) CreateWorkload(workload Workload) ([]byte, error) {
 
 // DeleteWorkload deletes a workload.
 func (c *ClientV2) DeleteWorkload(workloadID string) ([]byte, error) {
-	if err := c.requireSaaS(workloadAPIName); err != nil {
-		return nil, err
-	}
-
 	req, err := c.DeleteWorkloadRequest(workloadID)
 	if err != nil {
 		return nil, err
@@ -142,10 +134,6 @@ func (c *ClientV2) DeleteWorkloadRequest(identifier string) (*http.Request, erro
 // GetWorkload reads a workload and returns it as the server has it, including
 // the attributes the server fills in itself.
 func (c *ClientV2) GetWorkload(identifier string) (*Workload, error) {
-	if err := c.requireSaaS(workloadAPIName); err != nil {
-		return nil, err
-	}
-
 	req, err := c.GetWorkloadRequest(identifier)
 	if err != nil {
 		return nil, err
@@ -166,10 +154,6 @@ func (c *ClientV2) GetWorkloadRequest(identifier string) (*http.Request, error) 
 
 // UpdateWorkload patches attributes; unset ones remain unchanged.
 func (c *ClientV2) UpdateWorkload(identifier string, update WorkloadFields) (*Workload, error) {
-	if err := c.requireSaaS(workloadAPIName); err != nil {
-		return nil, err
-	}
-
 	req, err := c.UpdateWorkloadRequest(identifier, update)
 	if err != nil {
 		return nil, err
@@ -205,10 +189,6 @@ type authnDescriptorResponse struct {
 // descriptor.Data is sent as the request body, and the server merges it into
 // the existing map rather than replacing it.
 func (c *ClientV2) UpdateAuthnDescriptor(identifier string, descriptor AuthnDescriptor) (*AuthnDescriptor, error) {
-	if err := c.requireSaaS(workloadAPIName); err != nil {
-		return nil, err
-	}
-
 	req, err := c.UpdateAuthnDescriptorRequest(identifier, descriptor)
 	if err != nil {
 		return nil, err

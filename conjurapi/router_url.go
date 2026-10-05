@@ -42,6 +42,9 @@ type routerURL string
 
 func makeRouterURL(base string, components ...string) routerURL {
 	urlBase := normalizeBaseURL(base)
+	if len(urlBase) > len(base) {
+		logging.ApiLog.Info("Detected Idira Secrets Manager, SaaS URL, adding '/api' prefix")
+	}
 	urlPath := path.Join(components...)
 	urlPath = strings.TrimPrefix(urlPath, "/")
 	return routerURL(urlBase + "/" + urlPath)
@@ -85,10 +88,13 @@ func (u routerURL) String() string {
 	return string(u)
 }
 
+// normalizeBaseURL returns baseURL's API base URL, trimmed of its trailing
+// slash. A caller that needs to know whether this added the SaaS '/api'
+// prefix (see makeRouterURL) can tell from the result growing longer -
+// trimming the trailing slash alone never does.
 func normalizeBaseURL(baseURL string) string {
 	url := strings.TrimSuffix(baseURL, "/")
 	if isConjurCloudURL(url) && !strings.Contains(url, "/api") {
-		logging.ApiLog.Info("Detected Idira Secrets Manager, SaaS URL, adding '/api' prefix")
 		return url + "/api"
 	}
 

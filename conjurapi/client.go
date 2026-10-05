@@ -47,7 +47,11 @@ type Client struct {
 	httpClient    *http.Client
 	authenticator Authenticator
 	storage       CredentialStorageProvider
-	conjurVersion string
+
+	// version is this client's view of the backend's server version. See
+	// serverVersion for the caching, concurrency, and .conjurrc persistence
+	// it hides.
+	version serverVersion
 
 	// preferCachedToken is set only when a client is reconstructed from a
 	// previously stored session (see the newClientFromStored* helpers) with
@@ -529,6 +533,9 @@ func NewClient(config Config, telemetry ...Telemetry) (*Client, error) {
 		config:     config,
 		httpClient: httpClient,
 		storage:    storageProvider,
+	}
+	if !config.IsSaaS() && config.ServerVersion != "" {
+		c.version.preload(config.ServerVersion)
 	}
 
 	return c, nil

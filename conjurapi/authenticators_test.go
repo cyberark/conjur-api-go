@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/cyberark/conjur-api-go/conjurapi/contract"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -279,6 +280,7 @@ func TestClient_AuthenticatorCRUD(t *testing.T) {
 
 			utils, err := NewTestUtils(&Config{})
 			require.NoError(t, err)
+			SkipIfUnsupported(t, utils.Client(), contract.CapabilityAuthenticatorsV2)
 
 			// Ensure there is a conjur/authn-jwt branch by creating an arbitrary authenticator
 			err = utils.SetupWithAuthenticator("jwt", jwtAuthenticatorPolicy, jwtRolePolicy)

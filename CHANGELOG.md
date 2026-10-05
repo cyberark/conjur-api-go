@@ -6,6 +6,54 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- `conjurapi/contract` package holding the SDK's compatibility matrix: which
+  APIs each platform supports, and from which server version on Self-Hosted.
+  An unsupported call fails with `*contract.FeatureNotSupportedError`, and
+  `Client.CapabilityStatus` reports whether an API is available (supported,
+  unsupported, or unknown when the server version can't be retrieved).
+- The Self-Hosted server version is saved to `.conjurrc` as `server_version`
+  once retrieved, so later runs don't look it up again. A saved version that
+  would refuse a call is checked with the server again first, in case the
+  server was upgraded since.
+- Requests carry the server version the client knows in a `Contract-Version`
+  header. If the server refuses a request because that version is stale, the
+  client retrieves the current version and resends the request once.
+
+### Changed
+- On Self-Hosted, the V2 Authenticators, Branches and Groups APIs now need
+  server version 1.29.0 or later, up from 1.23.0. `MinVersion` and
+  `AuthenticatorsMinVersion` are now "1.29.0".
+- The group member calls' not-supported error now names the "Group API", like
+  the other group calls, instead of the "Group Membership API".
+- Platform and version checks now run in `SubmitRequest`, keyed by the
+  request's route, so they also apply to requests built with the `*Request`
+  methods and submitted directly. Previously only the convenience methods
+  checked.
+- The Authenticators API error now reads "Authenticators API is not supported
+  in Idira Secrets Manager versions older than 1.29.0", matching the other APIs.
+- The LDAP JIT mappings, policy fetch/dry run and public keys checks detect
+  SaaS from the configured `Environment`, like the other APIs, instead of the
+  appliance URL.
+- When a Self-Hosted server's version can't be retrieved, a version-gated
+  call's error now includes the reason, e.g. "Branch API is not supported in
+  Idira Secrets Manager versions older than 1.29.0 (server version
+  unavailable: ...)", and wraps it for `errors.Is`/`errors.As`.
+- Public Keys on Self-Hosted 1.27.0 and later now fails client-side with
+  "Public Keys is not supported in Idira Secrets Manager versions 1.27.0 and
+  later", instead of the "public keys endpoint is not available on this
+  server" error built from the server's 404. On Self-Hosted it now needs the
+  server version, so it's refused when that can't be retrieved.
+- Route matching for the platform and version checks uses `http.ServeMux`
+  patterns, so an escaped or unclean path is matched the way a server would
+  route it.
+- `Config.AddToConjurRc` replaces the key's value if the file already has it,
+  instead of appending a duplicate line.
+
+### Fixed
+- Concurrent requests on a shared client no longer race on the cached server
+  version, and share one version lookup instead of each making their own.
+
 ## [0.15.10] - 2026-09-24
 
 ### Added

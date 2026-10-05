@@ -30,10 +30,6 @@ type BranchFilter struct {
 }
 
 func (c *ClientV2) CreateBranch(branch Branch) (*Branch, error) {
-	if !c.config.IsSaaS() && c.VerifyMinServerVersion(MinVersion) != nil {
-		return nil, fmt.Errorf(NotSupportedInOldVersions, "Branch API", MinVersion)
-	}
-
 	req, err := c.CreateBranchRequest(branch)
 	if err != nil {
 		return nil, err
@@ -43,10 +39,6 @@ func (c *ClientV2) CreateBranch(branch Branch) (*Branch, error) {
 }
 
 func (c *ClientV2) ReadBranch(identifier string) (*Branch, error) {
-	if !c.config.IsSaaS() && c.VerifyMinServerVersion(MinVersion) != nil {
-		return nil, fmt.Errorf(NotSupportedInOldVersions, "Branch API", MinVersion)
-	}
-
 	req, err := c.ReadBranchRequest(identifier)
 	if err != nil {
 		return nil, err
@@ -56,10 +48,6 @@ func (c *ClientV2) ReadBranch(identifier string) (*Branch, error) {
 }
 
 func (c *ClientV2) ReadBranches(filter *BranchFilter) (BranchesResponse, error) {
-	if !c.config.IsSaaS() && c.VerifyMinServerVersion(MinVersion) != nil {
-		return BranchesResponse{}, fmt.Errorf(NotSupportedInOldVersions, "Branch API", MinVersion)
-	}
-
 	req, err := c.ReadBranchesRequest(filter)
 	if err != nil {
 		return BranchesResponse{}, err
@@ -73,9 +61,6 @@ func (c *ClientV2) ReadBranches(filter *BranchFilter) (BranchesResponse, error) 
 }
 
 func (c *ClientV2) UpdateBranch(branch Branch) ([]byte, error) {
-	if !c.config.IsSaaS() && c.VerifyMinServerVersion(MinVersion) != nil {
-		return nil, fmt.Errorf(NotSupportedInOldVersions, "Branch API", MinVersion)
-	}
 	req, err := c.UpdateBranchRequest(branch.Name, branch.Owner, branch.Annotations)
 	if err != nil {
 		return nil, err
@@ -85,10 +70,6 @@ func (c *ClientV2) UpdateBranch(branch Branch) ([]byte, error) {
 }
 
 func (c *ClientV2) DeleteBranch(identifier string) ([]byte, error) {
-	if !c.config.IsSaaS() && c.VerifyMinServerVersion(MinVersion) != nil {
-		return nil, fmt.Errorf(NotSupportedInOldVersions, "Branch API", MinVersion)
-	}
-
 	req, err := c.DeleteBranchRequest(identifier)
 	if err != nil {
 		return nil, err

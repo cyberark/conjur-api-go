@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
+	"github.com/cyberark/conjur-api-go/conjurapi/contract"
 )
 
 // SkipIfCloud skips the current test when running against Secrets Manager SaaS.
@@ -15,6 +16,14 @@ func SkipIfCloud(t *testing.T, reason string) {
 	t.Helper()
 	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
 		t.Skipf("Skipping test on Secrets Manager SaaS: %s", reason)
+	}
+}
+
+// SkipIfUnsupported skips the current test when the server doesn't support cap.
+func SkipIfUnsupported(t *testing.T, c *Client, cap contract.Capability) {
+	t.Helper()
+	if c.CapabilityStatus(cap) == contract.StatusUnsupported {
+		t.Skipf("Skipping test: the server doesn't support %s", cap)
 	}
 }
 

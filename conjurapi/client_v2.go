@@ -3,36 +3,17 @@ package conjurapi
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
+	"github.com/cyberark/conjur-api-go/conjurapi/contract"
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
-const MinVersion = "1.23.0"
-const NotSupportedInConjurCloud = "%s is not supported in Idira Secrets Manager, SaaS"
-const NotSupportedInConjurEnterprise = "%s is not supported in Idira Secrets Manager/Conjur OSS"
-const NotSupportedInOldVersions = "%s is not supported in Idira Secrets Manager versions older than %s"
-
-// API name labels used in SaaS-support error messages.
-const (
-	workloadAPIName             = "Workload API"
-	issueAPIName                = "Issue API"
-	staticSecretAPIName         = "StaticSecret API"
-	batchRetrieveSecretsAPIName = "V2 Batch Retrieve Secrets API"
-)
+// MinVersion is the first self-hosted version supporting the V2 APIs.
+const MinVersion = contract.V2MinVersion
 
 type ClientV2 struct {
 	*Client
-}
-
-// requireSaaS returns an error naming apiName if the client is not
-// configured against a SaaS appliance.
-func (c *ClientV2) requireSaaS(apiName string) error {
-	if !c.config.IsSaaS() {
-		return fmt.Errorf(NotSupportedInConjurEnterprise, apiName)
-	}
-	return nil
 }
 
 // submitAndUnmarshal submits req and unmarshals the JSON response body into T.
