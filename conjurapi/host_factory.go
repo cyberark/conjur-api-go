@@ -75,7 +75,7 @@ func (c *Client) createToken(data url.Values) ([]HostFactoryTokenResponse, error
 	if err != nil {
 		return nil, err
 	}
-	return jsonResponse, response.EmptyResponse(resp)
+	return jsonResponse, nil
 }
 
 func (c *Client) DeleteToken(token string) error {
