@@ -71,7 +71,7 @@ var capabilityTable = map[Capability]capabilityEntry{
 		Ranges:     []capabilityRange{{fromVersion: V2MinVersion}},
 	},
 	CapabilityLdapMappings: {
-		SaaSPolicy: SaaSAlwaysSupported,
+		SaaSPolicy: SaaSUnsupported,
 		Ranges:     []capabilityRange{{fromVersion: "1.28.0"}},
 	},
 	CapabilityBranchesV2: {

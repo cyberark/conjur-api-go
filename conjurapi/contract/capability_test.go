@@ -69,6 +69,11 @@ func TestCheckCapability(t *testing.T) {
 		assert.Equal(t, "Policy Dry Run is not supported in Idira Secrets Manager, SaaS", target.Error())
 	})
 
+	t.Run("LDAP mappings are blocked on SaaS", func(t *testing.T) {
+		target := requireNotSupported(t, CheckCapability(CapabilityLdapMappings, true, versionNotNeeded(t)))
+		assert.Equal(t, "LDAP JIT mappings is not supported in Idira Secrets Manager, SaaS", target.Error())
+	})
+
 	t.Run("SaaS-unsupported capability is fine on self-hosted once version is new enough", func(t *testing.T) {
 		assert.NoError(t, CheckCapability(CapabilityPolicyDryRun, false, knownVersion("1.21.1")))
 		target := requireNotSupported(t, CheckCapability(CapabilityPolicyDryRun, false, knownVersion("1.21.0")))
