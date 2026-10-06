@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
-## [0.17.0] - 2026-10-23
+## [0.17.0] - 2026-10-29
 
 ### Added
 - `ClientV2.DeleteAnnotation` removes one annotation from a workload, group or
@@ -45,6 +45,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   empty fields are kept and annotations merge), `ReplaceSafe` (PUT: empty
   fields are cleared) and `DeleteSafe`. `SafeFilter.SafeType` filters
   `ListSafes` by safe type.
+- `ClientV2` safe secret methods for Secrets Manager SaaS, with their request
+  builders. Managed safes: `CreateManagedSecret`, `ListManagedSecrets`,
+  `GetManagedSecretMetadata`, `GetManagedSecretValue` (latest or a given
+  version), `SetManagedSecretValue`, `PatchManagedSecret` (PATCH: omitted fields
+  are kept) and `ReplaceManagedSecret` (PUT: omitted optional fields are
+  cleared). Dynamic safes: `CreateDynamicSecret`, `ListDynamicSecrets`,
+  `GetDynamicSecretMetadata`, `GetDynamicSecretValue`, `PatchDynamicSecret` and
+  `ReplaceDynamicSecret`. `DeleteSecret` deletes a secret from either type.
+  `ListSafeSecretParams` pages the listings. `SetManagedSecretValue` sends the
+  value raw, so binary, non-UTF-8 and surrounding whitespace are stored exactly,
+  whereas the create, patch and replace methods send it as JSON, which must be
+  valid UTF-8 and has surrounding whitespace trimmed by the server.
 
 ### Changed
 - `ClientV2.UpdateBranch` and `ClientV2.DeleteBranch` return typed results

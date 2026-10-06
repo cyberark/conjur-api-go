@@ -43,7 +43,6 @@ func TestRouteCapability(t *testing.T) {
 		{"static secret delete", http.MethodDelete, "/secrets/static/data%2Fdb", CapabilityStaticSecretV2},
 		{"batch secrets, SaaS", http.MethodPost, "/secrets/values", CapabilityBatchRetrieveSecretsV2},
 		{"batch secrets, self-hosted", http.MethodPost, "/secrets/conjur/values", CapabilityBatchRetrieveSecretsV2},
-
 		// Ungated routes, including ones whose identifiers contain a gated
 		// route's name.
 		{"v1 authenticators listing", http.MethodGet, "/authenticators", ""},
