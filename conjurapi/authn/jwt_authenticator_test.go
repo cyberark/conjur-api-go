@@ -1,6 +1,8 @@
 package authn
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -99,5 +101,47 @@ func TestJWTAuthenticator_NeedsTokenRefresh(t *testing.T) {
 		authenticator := JWTAuthenticator{}
 
 		assert.False(t, authenticator.NeedsTokenRefresh())
+	})
+}
+
+// ---------------------------------------------------------------------------
+// JWTProvider field
+// ---------------------------------------------------------------------------
+
+func TestJWTAuthenticator_RefreshJWT_WithProvider(t *testing.T) {
+	t.Run("provider result is stored in JWT field", func(t *testing.T) {
+		authenticator := JWTAuthenticator{
+			JWTProvider: func(_ context.Context) (string, error) {
+				return "provider-token", nil
+			},
+		}
+
+		err := authenticator.RefreshJWT()
+		assert.NoError(t, err)
+		assert.Equal(t, "provider-token", authenticator.JWT)
+	})
+
+	t.Run("JWTProvider takes precedence over stored JWT", func(t *testing.T) {
+		authenticator := JWTAuthenticator{
+			JWT: "static-jwt",
+			JWTProvider: func(_ context.Context) (string, error) {
+				return "dynamic-provider-token", nil
+			},
+		}
+
+		err := authenticator.RefreshJWT()
+		assert.NoError(t, err)
+		assert.Equal(t, "dynamic-provider-token", authenticator.JWT)
+	})
+
+	t.Run("provider error is propagated", func(t *testing.T) {
+		authenticator := JWTAuthenticator{
+			JWTProvider: func(_ context.Context) (string, error) {
+				return "", errors.New("workload API unavailable")
+			},
+		}
+
+		err := authenticator.RefreshJWT()
+		assert.ErrorContains(t, err, "workload API unavailable")
 	})
 }

@@ -51,11 +51,11 @@ func TestNewClientFromKey(t *testing.T) {
 	t.Run("Normalizes cloud AuthnType to standard authn for API key auth", func(t *testing.T) {
 		client, err := NewClientFromKey(
 			Config{Account: "account", ApplianceURL: "appliance-url", AuthnType: AuthnTypeCloud},
-			authn.LoginPair{Login: "host/data/my-host", APIKey: "api-key"},
+			authn.LoginPair{Login: "host/data/my-host", APIKey: "api-key"}, //nolint:gosec
 		)
 
 		require.NoError(t, err)
-		req, err := client.AuthenticateRequest(authn.LoginPair{Login: "host/data/my-host", APIKey: "api-key"})
+		req, err := client.AuthenticateRequest(authn.LoginPair{Login: "host/data/my-host", APIKey: "api-key"}) //nolint:gosec
 		require.NoError(t, err)
 		assert.Equal(t, "appliance-url/authn/account/host%2Fdata%2Fmy-host/authenticate", req.URL.String())
 	})
@@ -248,6 +248,38 @@ func TestNewClientFromJwt(t *testing.T) {
 		// Verify that the JWT token is read correctly
 		client.authenticator.(*authn.JWTAuthenticator).RefreshJWT()
 		assert.Equal(t, "jwt-token", client.authenticator.(*authn.JWTAuthenticator).JWT)
+	})
+
+	t.Run("Threads JWTProvider from Config to JWTAuthenticator", func(t *testing.T) {
+		// Verifies that Config.JWTProvider is wired into the JWTAuthenticator so that
+		// RefreshJWT calls the provider and stores the resulting token.
+		mockConjurServer := mockConjurServerWithJWT()
+		defer mockConjurServer.Close()
+
+		provider := func(_ context.Context) (string, error) {
+			return "provider-jwt-token", nil
+		}
+
+		config := Config{
+			Account:      "myaccount",
+			ApplianceURL: mockConjurServer.URL,
+			AuthnType:    "jwt",
+			ServiceID:    "jwt-service",
+			JWTProvider:  provider,
+		}
+
+		client, err := NewClientFromJwt(config)
+		require.NoError(t, err)
+		require.NotNil(t, client)
+
+		jwtAuth := client.authenticator.(*authn.JWTAuthenticator)
+		assert.NotNil(t, jwtAuth.JWTProvider,
+			"JWTProvider must be threaded from Config into JWTAuthenticator")
+
+		err = jwtAuth.RefreshJWT()
+		require.NoError(t, err)
+		assert.Equal(t, "provider-jwt-token", jwtAuth.JWT,
+			"RefreshJWT must call JWTProvider and store the token")
 	})
 
 	t.Run("Fetches config and fails with incorrect JWT", func(t *testing.T) {

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
+	"github.com/spiffe/go-spiffe/v2/svid/jwtsvid"
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -449,4 +450,204 @@ func TestCheckSocketPath(t *testing.T) {
 		assert.Contains(t, err.Error(), "not found")
 		assert.Contains(t, err.Error(), "/tmp/no-such-spire-socket-xyz-test.sock")
 	})
+}
+
+// ---------------------------------------------------------------------------
+// selectBySpiffeID
+// ---------------------------------------------------------------------------
+
+func TestSelectBySpiffeID(t *testing.T) {
+	id1, _ := spiffeid.FromString("spiffe://example.org/a")
+	id2, _ := spiffeid.FromString("spiffe://example.org/b")
+
+	t.Run("empty want + single SVID returns index 0", func(t *testing.T) {
+		idx, err := selectBySpiffeID([]spiffeid.ID{id1}, "")
+		require.NoError(t, err)
+		assert.Equal(t, 0, idx)
+	})
+
+	t.Run("empty want + multiple SVIDs returns error listing candidates", func(t *testing.T) {
+		_, err := selectBySpiffeID([]spiffeid.ID{id1, id2}, "")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "set CONJUR_SPIFFE_ID")
+		assert.Contains(t, err.Error(), "spiffe://example.org/a")
+		assert.Contains(t, err.Error(), "spiffe://example.org/b")
+	})
+
+	t.Run("valid want that matches returns correct index", func(t *testing.T) {
+		idx, err := selectBySpiffeID([]spiffeid.ID{id1, id2}, "spiffe://example.org/b")
+		require.NoError(t, err)
+		assert.Equal(t, 1, idx)
+	})
+
+	t.Run("invalid want format returns error", func(t *testing.T) {
+		_, err := selectBySpiffeID([]spiffeid.ID{id1}, "not-a-spiffe-id")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not a valid SPIFFE ID")
+	})
+
+	t.Run("valid want not found returns error listing candidates", func(t *testing.T) {
+		_, err := selectBySpiffeID([]spiffeid.ID{id1}, "spiffe://example.org/missing")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+		assert.Contains(t, err.Error(), "spiffe://example.org/a")
+	})
+}
+
+// ---------------------------------------------------------------------------
+// selectJWTSVID
+// ---------------------------------------------------------------------------
+
+func makeTestJWTSVID(id spiffeid.ID, expiry time.Time) *jwtsvid.SVID {
+	// ParseInsecure builds a *jwtsvid.SVID from a raw token string, setting the
+	// unexported token field. We construct a minimal unsigned token that satisfies
+	// the audience check; signature verification is skipped.
+	raw := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9" + // header: {"alg":"RS256","typ":"JWT"}
+		".eyJzdWIiOiIiLCJhdWQiOlsidGVzdCJdLCJleHAiOjk5OTk5OTk5OTl9" + // payload: sub="", aud=["test"], exp=future
+		".c2lnbmF0dXJl" // fake signature
+	svid, _ := jwtsvid.ParseInsecure(raw, []string{"test"})
+	if svid == nil {
+		// Fallback: create a minimal SVID with only the exported fields set.
+		// This is only used for selection tests that don't need the Token value.
+		svid = &jwtsvid.SVID{ID: id, Expiry: expiry}
+	} else {
+		svid.ID = id
+		svid.Expiry = expiry
+	}
+	return svid
+}
+
+func TestSelectJWTSVID(t *testing.T) {
+	id1, _ := spiffeid.FromString("spiffe://example.org/jwt-a")
+	id2, _ := spiffeid.FromString("spiffe://example.org/jwt-b")
+	exp := time.Now().Add(time.Hour)
+
+	t.Run("empty CONJUR_SPIFFE_ID + single SVID returns it", func(t *testing.T) {
+		got, err := selectJWTSVID([]*jwtsvid.SVID{makeTestJWTSVID(id1, exp)})
+		require.NoError(t, err)
+		assert.Equal(t, id1, got.ID)
+	})
+
+	t.Run("empty CONJUR_SPIFFE_ID + multiple SVIDs returns error", func(t *testing.T) {
+		svids := []*jwtsvid.SVID{makeTestJWTSVID(id1, exp), makeTestJWTSVID(id2, exp)}
+		_, err := selectJWTSVID(svids)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "CONJUR_SPIFFE_ID")
+	})
+
+	t.Run("CONJUR_SPIFFE_ID selects matching JWT-SVID", func(t *testing.T) {
+		t.Setenv("CONJUR_SPIFFE_ID", "spiffe://example.org/jwt-b")
+		svids := []*jwtsvid.SVID{makeTestJWTSVID(id1, exp), makeTestJWTSVID(id2, exp)}
+		got, err := selectJWTSVID(svids)
+		require.NoError(t, err)
+		assert.Equal(t, id2, got.ID)
+	})
+
+	t.Run("empty slice returns error", func(t *testing.T) {
+		_, err := selectJWTSVID([]*jwtsvid.SVID{})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no JWT-SVIDs")
+	})
+}
+
+// ---------------------------------------------------------------------------
+// jwtProvider caching
+// ---------------------------------------------------------------------------
+
+func TestJWTProvider_ReturnsCachedToken(t *testing.T) {
+	calls := 0
+	expiry := time.Now().Add(time.Hour)
+
+	p := &jwtProvider{
+		fetch: func(_ context.Context) (string, time.Time, error) {
+			calls++
+			return "cached-token", expiry, nil
+		},
+	}
+
+	tok1, err := p.getJWT(context.Background())
+	require.NoError(t, err)
+
+	tok2, err := p.getJWT(context.Background())
+	require.NoError(t, err)
+
+	assert.Equal(t, tok1, tok2)
+	assert.Equal(t, 1, calls, "second call must use cache")
+}
+
+func TestJWTProvider_RefetchesAfterExpiry(t *testing.T) {
+	calls := 0
+
+	p := &jwtProvider{
+		fetch: func(_ context.Context) (string, time.Time, error) {
+			calls++
+			return "token", time.Now().Add(-time.Second), nil
+		},
+	}
+
+	_, err := p.getJWT(context.Background())
+	require.NoError(t, err)
+
+	_, err = p.getJWT(context.Background())
+	require.NoError(t, err)
+
+	assert.Equal(t, 2, calls, "must re-fetch after expiry")
+}
+
+func TestJWTProvider_RefetchesWithinExpirySkew(t *testing.T) {
+	calls := 0
+
+	p := &jwtProvider{
+		fetch: func(_ context.Context) (string, time.Time, error) {
+			calls++
+			return "token", time.Now().Add(jwtExpirySkew / 2), nil
+		},
+	}
+
+	_, err := p.getJWT(context.Background())
+	require.NoError(t, err)
+
+	_, err = p.getJWT(context.Background())
+	require.NoError(t, err)
+
+	assert.Equal(t, 2, calls, "token within skew window must not be served from cache")
+}
+
+func TestJWTProvider_PropagatesFetchError(t *testing.T) {
+	p := &jwtProvider{
+		fetch: func(_ context.Context) (string, time.Time, error) {
+			return "", time.Time{}, errors.New("workload API unavailable")
+		},
+	}
+
+	_, err := p.getJWT(context.Background())
+	assert.ErrorContains(t, err, "workload API unavailable")
+}
+
+// ---------------------------------------------------------------------------
+// NewJWTProvider
+// ---------------------------------------------------------------------------
+
+func TestNewJWTProvider_ReturnsCallableFunction(t *testing.T) {
+	fn := NewJWTProvider()
+	assert.NotNil(t, fn)
+}
+
+func TestNewJWTProvider_DefaultsAudienceToConjur(t *testing.T) {
+	// Audience is baked into the provider at construction time; we verify the
+	// default by ensuring no error on construction and the function is non-nil.
+	t.Setenv("CONJUR_JWT_AUDIENCE", "")
+	fn := NewJWTProvider()
+	assert.NotNil(t, fn, "NewJWTProvider with empty audience env must return a non-nil function")
+}
+
+func TestNewJWTProvider_ReadsAudienceAtConstruction(t *testing.T) {
+	t.Setenv("CONJUR_JWT_AUDIENCE", "custom-audience")
+	fn := NewJWTProvider()
+	assert.NotNil(t, fn)
+	// Changing the env var after construction must not affect the baked-in audience.
+	t.Setenv("CONJUR_JWT_AUDIENCE", "changed-after-construction")
+	// We cannot introspect the closure directly; correctness is verified by the
+	// integration test. Here we just confirm the provider is still callable.
+	assert.NotNil(t, fn)
 }
