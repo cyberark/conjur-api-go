@@ -17,13 +17,13 @@ exec_on() {
 }
 
 function teardown {
-  output_dir="../output/${GO_VERSION}"
+  output_dir="../output/${OUTPUT_SUBDIR:-$GO_VERSION}"
   mkdir -p "$output_dir"
 
   # Always capture OSS Conjur logs when available.
   docker compose logs conjur > "$output_dir/conjur-logs.txt" 2>&1 || true
 
-  if [[ "${TEST_CERT:-false}" == "true" ]]; then
+  if [[ "${TEST_CERT:-false}" == "true" || "${TEST_ENTERPRISE:-false}" == "true" ]]; then
     # In cert profile runs, authn-cert traffic goes to the Enterprise appliance
     docker compose --profile cert logs conjur-leader > "$output_dir/conjur-leader-logs.txt" 2>&1 || true
   fi
@@ -35,7 +35,7 @@ function teardown {
 
   # Build profile args for down, then tear everything down in one call.
   local down_profiles=()
-  [[ "${TEST_CERT:-false}"   == "true" ]] && down_profiles+=(--profile cert)
+  [[ "${TEST_CERT:-false}" == "true" || "${TEST_ENTERPRISE:-false}" == "true" ]] && down_profiles+=(--profile cert)
   [[ "${TEST_SPIFFE:-false}" == "true" ]] && down_profiles+=(--profile spiffe)
 
   docker compose "${down_profiles[@]}" down -v --remove-orphans

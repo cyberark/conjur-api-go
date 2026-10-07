@@ -19,6 +19,29 @@ func SkipIfCloud(t *testing.T, reason string) {
 	}
 }
 
+// isEnterprise reports whether c talks to Conjur Enterprise, detected by the
+// server answering on the Enterprise-only '/info' endpoint.
+func isEnterprise(c *Client) bool {
+	_, success := c.probeEnterpriseInfoEndpoint()
+	return success
+}
+
+// SkipIfEnterprise skips the current test when running against Conjur Enterprise.
+func SkipIfEnterprise(t *testing.T, c *Client, reason string) {
+	t.Helper()
+	if isEnterprise(c) {
+		t.Skipf("Skipping test on Conjur Enterprise: %s", reason)
+	}
+}
+
+// SkipIfNotEnterprise skips the current test unless running against Conjur Enterprise.
+func SkipIfNotEnterprise(t *testing.T, c *Client, reason string) {
+	t.Helper()
+	if !isEnterprise(c) {
+		t.Skipf("Skipping test off Conjur Enterprise: %s", reason)
+	}
+}
+
 // SkipIfUnsupported skips the current test when the server doesn't support cap.
 func SkipIfUnsupported(t *testing.T, c *Client, cap contract.Capability) {
 	t.Helper()

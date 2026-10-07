@@ -34,6 +34,15 @@ export TEST_AZURE="${INFRAPOOL_TEST_AZURE:-false}"
 export TEST_GCP="${INFRAPOOL_TEST_GCP:-false}"
 export TEST_CERT="${TEST_CERT:-${INFRAPOOL_TEST_CERT:-false}}"
 export TEST_SPIFFE="${TEST_SPIFFE:-${INFRAPOOL_TEST_SPIFFE:-false}}"
+# Run the main suite against the Conjur Enterprise appliance instead of OSS.
+export TEST_ENTERPRISE="${TEST_ENTERPRISE:-${INFRAPOOL_TEST_ENTERPRISE:-false}}"
+# Results go to output/<OUTPUT_SUBDIR>; Enterprise runs get their own dir so they
+# can run in parallel with the OSS run for the same Go version.
+if [[ "$TEST_ENTERPRISE" == "true" ]]; then
+  export OUTPUT_SUBDIR="enterprise-$GO_VERSION"
+else
+  export OUTPUT_SUBDIR="$GO_VERSION"
+fi
 
 if [[ "$TEST_GCP" == "true" ]]; then
   export GCP_CTX_DIR="${3:-gcp}"
@@ -59,7 +68,14 @@ init_jwt_server
 
 if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
   # Spin up Conjur environment
-  source ./start-conjur.sh
+  if [[ "$TEST_ENTERPRISE" == "true" ]]; then
+    source ./start-conjur-enterprise.sh
+    export CONJUR_APPLIANCE_URL="$CONJUR_CERT_APPLIANCE_URL"
+    export CONJUR_AUTHN_API_KEY="$CONJUR_CERT_AUTHN_API_KEY"
+    export CONJUR_SSL_CERTIFICATE="$CONJUR_CERT_SSL_CERTIFICATE"
+  else
+    source ./start-conjur.sh
+  fi
 
   if [[ "$TEST_CERT" == "true" ]]; then
     source ./setup-cert-auth.sh
@@ -81,7 +97,7 @@ if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
   echo "Done!"
 
   # generate output folder locally, if needed
-  output_dir="../output/$GO_VERSION"
+  output_dir="../output/$OUTPUT_SUBDIR"
   mkdir -p "$output_dir"
 
   # We are using package list mode of 'go test'
@@ -108,6 +124,13 @@ if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
     SPIFFE_EXTRA_ARGS+=("-v" "${COMPOSE_PROJECT_NAME}_spire-agent-socket:/run/spire/sockets:ro")
   fi
 
+  # When TEST_ENTERPRISE is true, point the main suite at the appliance; otherwise
+  # the compose defaults (http://conjur, OSS) apply.
+  ENTERPRISE_EXTRA_ARGS=()
+  if [[ "$TEST_ENTERPRISE" == "true" ]]; then
+    ENTERPRISE_EXTRA_ARGS+=("-e" "CONJUR_APPLIANCE_URL" "-e" "CONJUR_SSL_CERTIFICATE")
+  fi
+
   docker compose run \
   --rm \
   --no-deps \
@@ -117,6 +140,7 @@ if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
   -e GOCACHE=/tmp/go-cache \
   "${CERT_EXTRA_ARGS[@]}" \
   "${SPIFFE_EXTRA_ARGS[@]}" \
+  "${ENTERPRISE_EXTRA_ARGS[@]}" \
   -e CONJUR_AUTHN_API_KEY \
   -e TEST_AWS \
   -e AWS_ACCESS_KEY_ID \
@@ -145,12 +169,13 @@ if [ -z "$INFRAPOOL_TEST_CLOUD" ]; then
   -e SPIFFE_TRUST_BUNDLE \
   -e "SPIFFE_ENDPOINT_SOCKET=unix:///run/spire/sockets/agent.sock" \
   -e GO_VERSION \
+  -e OUTPUT_SUBDIR \
   -e PUBLIC_KEYS \
   -e JWT \
   -e TEST_PKGS \
   "test-$GO_VERSION" bash -c 'set -o pipefail;
            echo "Go version: $(go version)"
-           output_dir="./output/$GO_VERSION"
+           output_dir="./output/$OUTPUT_SUBDIR"
            go test -coverprofile="$output_dir/c.out" $TEST_PKGS | tee "$output_dir/junit.output";
            exit_code=$?;
            echo "Tests finished - aggregating results...";
@@ -199,7 +224,7 @@ else
             echo "Tests finished - aggregating results...";
             cat "$output_dir/junit.output" | go-junit-report > "$output_dir/junit.xml";
             gocov convert "$output_dir/c.out" | gocov-xml > "$output_dir/coverage.xml";
-            gocovmerge "./output/1.26/c.out" "$output_dir/c.out" > "$output_dir/merged-coverage.out";
+            gocovmerge ./output/*/c.out > "$output_dir/merged-coverage.out";
             gocov convert "$output_dir/merged-coverage.out" | gocov-xml > "$output_dir/merged-coverage.xml";
             [ "$exit_code" -eq 0 ]' || failed
 fi

@@ -54,6 +54,8 @@ pipeline {
     booleanParam(name: 'TEST_CERT', defaultValue: true, description: 'Run authn-cert integration tests (requires enterprise appliance)')
 
     booleanParam(name: 'TEST_SPIFFE', defaultValue: true, description: 'Run SPIFFE/SPIRE X.509-SVID integration tests (requires cert-authn appliance)')
+
+    booleanParam(name: 'TEST_ENTERPRISE', defaultValue: true, description: 'Run the integration test suite against the Conjur Enterprise appliance')
   }
 
   stages {
@@ -180,6 +182,30 @@ pipeline {
               script { archiveArtifacts artifacts: 'output/1.26/conjur-leader-logs.txt', allowEmptyArchive: true }
               script { archiveArtifacts artifacts: 'output/1.26/spire-server-logs.txt', allowEmptyArchive: true }
               script { archiveArtifacts artifacts: 'output/1.26/spire-agent-logs.txt', allowEmptyArchive: true }
+            }
+          }
+        }
+
+        stage('Golang 1.27 (Enterprise)') {
+          when {
+            expression { params.TEST_ENTERPRISE }
+          }
+          environment {
+            INFRAPOOL_TEST_ENTERPRISE = "true"
+            // Cert, SPIFFE and AWS IAM coverage already comes from the OSS stages.
+            INFRAPOOL_TEST_AWS = "false"
+            INFRAPOOL_TEST_CERT = "false"
+            INFRAPOOL_TEST_SPIFFE = "false"
+          }
+          steps {
+            script {
+              sh "./bin/test.sh 1.27 $REGISTRY_URL"
+            }
+          }
+          post {
+            always {
+              script { archiveArtifacts artifacts: 'output/enterprise-1.27/conjur-leader-logs.txt', allowEmptyArchive: true }
+              junit 'output/enterprise-1.27/junit.xml'
             }
           }
         }

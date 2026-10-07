@@ -281,6 +281,10 @@ func TestClassifyWorkloadAPIError(t *testing.T) {
 }
 
 func TestFetchSVIDFromWorkloadAPI(t *testing.T) {
+	// The fetcher is stubbed; don't let an inherited SPIFFE_ENDPOINT_SOCKET
+	// (test.sh always sets one) trigger the socket existence pre-check.
+	t.Setenv(envSpiffeEndpointSocket, "")
+
 	unavailErr := status.Error(codes.Unavailable, "temporarily unavailable")
 	permDeniedErr := status.Error(codes.PermissionDenied, "access denied")
 
