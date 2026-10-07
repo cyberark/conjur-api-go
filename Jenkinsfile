@@ -317,7 +317,9 @@ pipeline {
               if (params.TEST_GCP) {
                 unstash 'token-out'
               }
-              sh "./bin/test.sh"
+              withConjurAwsIamRole {
+                sh "./bin/test.sh"
+              }
               stash name: 'merged-out', includes: 'output/cloud/*.xml'
               unstash 'merged-out'
               recordCoverage(
