@@ -131,6 +131,9 @@ pipeline {
         INFRAPOOL_TEST_CERT="${params.TEST_CERT}"
         // SPIFFE tests require the cert-authn appliance; guaranteed by TEST_CERT=true above.
         INFRAPOOL_TEST_SPIFFE="${params.TEST_SPIFFE}"
+        // Only the Enterprise stage overrides this; the TEST_ENTERPRISE param
+        // just gates that stage.
+        INFRAPOOL_TEST_ENTERPRISE = "false"
       }
       parallel {
         stage('Golang 1.27') {

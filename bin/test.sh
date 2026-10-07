@@ -32,10 +32,12 @@ export REGISTRY_URL="${2:-docker.io}"
 export TEST_AWS="${INFRAPOOL_TEST_AWS:-false}"
 export TEST_AZURE="${INFRAPOOL_TEST_AZURE:-false}"
 export TEST_GCP="${INFRAPOOL_TEST_GCP:-false}"
-export TEST_CERT="${TEST_CERT:-${INFRAPOOL_TEST_CERT:-false}}"
-export TEST_SPIFFE="${TEST_SPIFFE:-${INFRAPOOL_TEST_SPIFFE:-false}}"
+# INFRAPOOL_* (set per Jenkins stage) wins over the bare names, which Jenkins
+# also exports from the build parameters of the same name.
+export TEST_CERT="${INFRAPOOL_TEST_CERT:-${TEST_CERT:-false}}"
+export TEST_SPIFFE="${INFRAPOOL_TEST_SPIFFE:-${TEST_SPIFFE:-false}}"
 # Run the main suite against the Conjur Enterprise appliance instead of OSS.
-export TEST_ENTERPRISE="${TEST_ENTERPRISE:-${INFRAPOOL_TEST_ENTERPRISE:-false}}"
+export TEST_ENTERPRISE="${INFRAPOOL_TEST_ENTERPRISE:-${TEST_ENTERPRISE:-false}}"
 # Results go to output/<OUTPUT_SUBDIR>; Enterprise runs get their own dir so they
 # can run in parallel with the OSS run for the same Go version.
 if [[ "$TEST_ENTERPRISE" == "true" ]]; then
