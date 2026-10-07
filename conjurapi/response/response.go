@@ -4,13 +4,16 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"slices"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
+	"github.com/cyberark/conjur-api-go/internal/httputil"
 )
 
 func readBody(resp *http.Response) ([]byte, error) {
 	defer resp.Body.Close()
-
 	responseText, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -20,6 +23,9 @@ func readBody(resp *http.Response) ([]byte, error) {
 }
 
 func logResponse(resp *http.Response) {
+	if logging.ApiLog.Level < logrus.DebugLevel {
+		return
+	}
 	req := resp.Request
 	redactedHeaders := redactHeaders(req.Header)
 	logging.ApiLog.Debugf("%d %s %s %+v", resp.StatusCode, req.Method, req.URL, redactedHeaders)
@@ -78,9 +84,9 @@ func JSONResponse(resp *http.Response, obj any) error {
 // JSONResponseWithAllowedStatusCodes checks the HTTP status of the response. If it's less than
 // 300 or equal to one of the provided values, it returns the response body as JSON. Otherwise it
 // returns a NewConjurError.
-func JSONResponseWithAllowedStatusCodes(resp *http.Response, obj interface{}, allowedStatusCodes []int) error {
+func JSONResponseWithAllowedStatusCodes(resp *http.Response, obj any, allowedStatusCodes []int) error {
 	logResponse(resp)
-	if resp.StatusCode < 300 || contains(allowedStatusCodes, resp.StatusCode) {
+	if resp.StatusCode < 300 || slices.Contains(allowedStatusCodes, resp.StatusCode) {
 		body, err := readBody(resp)
 		if err != nil {
 			return err
@@ -90,21 +96,13 @@ func JSONResponseWithAllowedStatusCodes(resp *http.Response, obj interface{}, al
 	return NewConjurError(resp)
 }
 
-func contains(allowedStatusCodes []int, i int) bool {
-	for _, v := range allowedStatusCodes {
-		if v == i {
-			return true
-		}
-	}
-	return false
-}
-
 // EmptyResponse checks the HTTP status of the response. If it's less than
 // 300, it returns without an error. Otherwise it returns
 // a NewConjurError.
 func EmptyResponse(resp *http.Response) error {
 	logResponse(resp)
 	if resp.StatusCode < 300 {
+		httputil.DrainClose(resp)
 		return nil
 	}
 	return NewConjurError(resp)
@@ -113,6 +111,6 @@ func EmptyResponse(resp *http.Response) error {
 // DryRunPolicyJSONResponse checks the HTTP status of the response. If it's less than
 // 300 or equal to 422, it returns the response body as JSON. Otherwise it
 // returns a NewConjurError.
-func DryRunPolicyJSONResponse(resp *http.Response, obj interface{}) error {
+func DryRunPolicyJSONResponse(resp *http.Response, obj any) error {
 	return JSONResponseWithAllowedStatusCodes(resp, obj, []int{422})
 }
