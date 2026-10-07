@@ -43,7 +43,7 @@ func TestCreateStorageProvider(t *testing.T) {
 	testCases := []struct {
 		name   string
 		config Config
-		action func()
+		action func(t *testing.T)
 		assert func(t *testing.T, storageProvider CredentialStorageProvider, err error)
 	}{
 		{
@@ -74,7 +74,10 @@ func TestCreateStorageProvider(t *testing.T) {
 			config: Config{
 				ApplianceURL: "https://conjur",
 			},
-			action: func() {
+			action: func(t *testing.T) {
+				// Set DBUS_SESSION_BUS_ADDRESS so the Linux headless guard does
+				// not fire — we want to exercise the mock-keyring path here.
+				t.Setenv("DBUS_SESSION_BUS_ADDRESS", "unix:abstract=/tmp/dbus-test-mock")
 				// Enable a mock memory-based keyring storage
 				keyring.MockInit()
 			},
@@ -90,7 +93,10 @@ func TestCreateStorageProvider(t *testing.T) {
 				ApplianceURL:      "https://conjur",
 				CredentialStorage: "keyring",
 			},
-			action: func() {
+			action: func(t *testing.T) {
+				// Set DBUS_SESSION_BUS_ADDRESS so the Linux headless guard does
+				// not fire — we want to exercise the mock-keyring path here.
+				t.Setenv("DBUS_SESSION_BUS_ADDRESS", "unix:abstract=/tmp/dbus-test-mock")
 				// Enable a mock memory-based keyring storage
 				keyring.MockInit()
 			},
@@ -138,7 +144,7 @@ func TestCreateStorageProvider(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.action != nil {
-				tc.action()
+				tc.action(t)
 			}
 
 			storage, err := createStorageProvider(tc.config)

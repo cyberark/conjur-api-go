@@ -15,8 +15,14 @@ import (
 // initMockKeyring installs an in-memory keyring for the test and restores an
 // unavailable keyring provider afterward so other tests can assert default
 // storage behavior when the OS keyring is absent.
+//
+// On Linux, DBUS_SESSION_BUS_ADDRESS must be non-empty for IsKeyringAvailable()
+// to reach the mock (the headless guard short-circuits to false when the var is
+// unset). initMockKeyring sets a dummy value for the duration of the test so
+// mock-keyring tests can exercise the keyring code path on CI agents.
 func initMockKeyring(t *testing.T) {
 	t.Helper()
+	t.Setenv("DBUS_SESSION_BUS_ADDRESS", "unix:abstract=/tmp/dbus-test-mock")
 	keyring.MockInit()
 	t.Cleanup(func() {
 		keyring.MockInitWithError(errors.New("keyring unavailable for test isolation"))
@@ -329,6 +335,10 @@ func TestNewClientFromEnvironment_KeychainNamespace(t *testing.T) {
 	os.Setenv("CONJUR_ACCOUNT", "account")
 	os.Setenv("CONJUR_APPLIANCE_URL", "https://conjur.example.com")
 	os.Setenv("CONJUR_CREDENTIAL_STORAGE", "keyring")
+	// ClearEnv sets DBUS_SESSION_BUS_ADDRESS to "" which triggers the Linux
+	// headless guard in IsKeyringAvailable. Re-set a non-empty dummy value so
+	// the mock-keyring path is exercised.
+	os.Setenv("DBUS_SESSION_BUS_ADDRESS", "unix:abstract=/tmp/dbus-test-mock")
 	t.Setenv(keychainNamespaceEnvVar, "tenant-a")
 	os.Setenv("CONJUR_AUTHN_LOGIN", "user")
 	os.Setenv("CONJUR_AUTHN_API_KEY", "password")

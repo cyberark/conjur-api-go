@@ -62,6 +62,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - Concurrent requests on a shared client no longer race on the cached server
   version, and share one version lookup instead of each making their own.
+- `IsKeyringAvailable()` now returns `false` on Linux and other platforms that
+  use go-keyring's Secret Service backend (FreeBSD+cgo, DragonFly+cgo, NetBSD,
+  OpenBSD) when no D-Bus session is reachable without autolaunching a daemon.
+  It mirrors the godbus discovery order: checks `DBUS_SESSION_BUS_ADDRESS`,
+  then the per-user socket at `/run/user/<uid>/bus` (systemd), then
+  `/run/user/<uid>/dbus-session`. Only when all three are absent does it return
+  `false`, preventing `dbus-daemon` from being autolaunched as an orphan process
+  in headless environments (cron jobs, CI/CD, SSH sessions without a desktop).
+  When credential storage is not explicitly configured, clients that would have
+  selected keyring fall through to file-based storage automatically. When
+  `credential_storage: keyring` is explicitly set and the keyring is
+  unavailable, an error is returned. (CNJR-15474)
 
 ## [0.15.10] - 2026-09-24
 
