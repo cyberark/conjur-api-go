@@ -1,11 +1,14 @@
 package conjurapi
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/cyberark/conjur-api-go/conjurapi/response"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -69,6 +72,27 @@ func getAuthIamRolesPolicy(role string) string {
 `, role, role)
 }
 
+// retryOn401 retries fn up to attempts times, sleeping delay between tries,
+// as long as it keeps failing with a 401. Any other error returns
+// immediately.
+func retryOn401(attempts int, delay time.Duration, fn func() error) error {
+	var err error
+	for i := 0; i < attempts; i++ {
+		err = fn()
+		if err == nil {
+			return nil
+		}
+
+		var conjurErr *response.ConjurError
+		if !errors.As(err, &conjurErr) || conjurErr.Code != 401 {
+			return err
+		}
+
+		time.Sleep(delay)
+	}
+	return err
+}
+
 func TestAuthnIam(t *testing.T) {
 	// Only run this if running on AWS
 	if strings.ToLower(os.Getenv("TEST_AWS")) != "true" {
@@ -85,7 +109,8 @@ func TestAuthnIam(t *testing.T) {
 		err = utils.SetupWithAuthenticator("iam", getAuthnIamPolicy(role), getAuthIamRolesPolicy(role))
 		require.NoError(t, err)
 		conjur := utils.Client()
-		conjur.EnableAuthenticator("iam", "prod", true)
+		err = conjur.EnableAuthenticator("iam", "prod", true)
+		require.NoError(t, err)
 
 		err = conjur.AddSecret("data/test/myspace/database/username", "secret")
 		require.NoError(t, err)
@@ -103,7 +128,15 @@ func TestAuthnIam(t *testing.T) {
 		iamConjur, err := NewClientFromAWSCredentials(config)
 		require.NoError(t, err)
 
-		_, err = iamConjur.GetAuthenticator().RefreshToken()
+		// Secrets Manager SaaS's authenticator-enable and policy-grant writes
+		// can lag their read path by a moment (replication/caching), unlike
+		// the immediately-consistent OSS/Enterprise appliance. Retry briefly
+		// on 401 so a freshly-enabled authenticator isn't flagged as broken
+		// just because the first attempt landed in that window.
+		err = retryOn401(10, 500*time.Millisecond, func() error {
+			_, err := iamConjur.GetAuthenticator().RefreshToken()
+			return err
+		})
 		require.NoError(t, err)
 
 		whoami, err := iamConjur.WhoAmI()
