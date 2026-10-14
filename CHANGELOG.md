@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
+## [0.16.1] - 2026-10-14
+
+### Fixed
+- `CertAuthenticate` now decodes the access token response body even when the
+  server omits the `Content-Encoding: base64` response header. Conjur Cloud
+  Edge honours `Accept-Encoding: base64` by encoding the body but does not set
+  the response header; the client now handles both behaviours. (CNJR-15383)
+
 ## [0.16.0] - 2026-10-05
 
 ### Added
@@ -630,7 +638,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.16.1...HEAD
+[0.16.1]: https://github.com/cyberark/conjur-api-go/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/cyberark/conjur-api-go/compare/v0.15.10...v0.16.0
 [0.15.10]: https://github.com/cyberark/conjur-api-go/compare/v0.15.9...v0.15.10
 [0.15.9]: https://github.com/cyberark/conjur-api-go/compare/v0.15.8...v0.15.9
