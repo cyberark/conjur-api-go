@@ -251,7 +251,7 @@ func TestAuthnCert(t *testing.T) {
 // The test uses a plain TLS server with InsecureSkipVerify so no real Conjur
 // appliance is required.
 func TestCertAuthenticate_Base64Response(t *testing.T) {
-	rawToken := []byte("eyJwcm90ZWN0ZWQiOiJ0ZXN0In0=.fake-access-token")
+	rawToken := []byte(`{"protected":"test","payload":"dGVzdA==","signature":"sig"}`)
 	b64Token := base64.StdEncoding.EncodeToString(rawToken)
 
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -327,7 +327,7 @@ func TestCertAuthenticate_PlainResponse(t *testing.T) {
 // newline to the base64-encoded body. base64.StdEncoding rejects non-base64
 // bytes, so the decoder must trim whitespace before decoding.
 func TestCertAuthenticate_Base64Response_TrailingNewline(t *testing.T) {
-	rawToken := []byte("eyJwcm90ZWN0ZWQiOiJ0ZXN0In0=.fake-access-token")
+	rawToken := []byte(`{"protected":"test","payload":"dGVzdA==","signature":"sig"}`)
 	b64Token := base64.StdEncoding.EncodeToString(rawToken)
 
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -360,4 +360,45 @@ func TestCertAuthenticate_Base64Response_TrailingNewline(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, rawToken, token,
 		"CertAuthenticate must decode a base64 response that has a trailing newline")
+}
+
+// TestCertAuthenticate_Base64Response_NoContentEncoding verifies that
+// CertAuthenticate decodes a base64-encoded response body even when the server
+// omits the Content-Encoding: base64 response header.  Conjur Cloud Edge
+// honours Accept-Encoding: base64 by encoding the body but does not set
+// Content-Encoding in the response; the client must handle both cases.
+func TestCertAuthenticate_Base64Response_NoContentEncoding(t *testing.T) {
+	rawToken := []byte(`{"protected":"test","payload":"dGVzdA==","signature":"sig"}`)
+	b64Token := base64.StdEncoding.EncodeToString(rawToken)
+
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/authenticate") {
+			// Deliberately omit Content-Encoding: base64 to simulate Edge behaviour.
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(b64Token))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c := &Client{
+		config: Config{
+			ApplianceURL: server.URL,
+			Account:      "conjur",
+			AuthnType:    "cert",
+			ServiceID:    "test-svc",
+		},
+		httpClient: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
+			},
+		},
+	}
+
+	token, err := c.CertAuthenticate("")
+
+	require.NoError(t, err)
+	assert.Equal(t, rawToken, token,
+		"CertAuthenticate must decode a base64-encoded body even without Content-Encoding: base64")
 }
