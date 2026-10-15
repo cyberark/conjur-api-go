@@ -1,13 +1,18 @@
 package conjurapi
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/cyberark/conjur-api-go/conjurapi/authn"
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -93,6 +98,77 @@ func retryOn401(attempts int, delay time.Duration, fn func() error) error {
 	return err
 }
 
+// logAuthnIamDiagnostics logs what Conjur and STS each return for a freshly
+// signed authn-iam login, to debug the SaaS-only 401 (CNJR-15516). Signed
+// header values carry the AWS session token and signature, so only their
+// names are logged.
+func logAuthnIamDiagnostics(t *testing.T, c *Client) {
+	signedHeaders, err := authn.IAMAuthenticateHeaders()
+	if err != nil {
+		t.Logf("authn-iam debug: signing failed: %v", err)
+		return
+	}
+
+	var headers map[string]string
+	if err := json.Unmarshal(signedHeaders, &headers); err != nil {
+		t.Logf("authn-iam debug: can't parse signed headers: %v", err)
+		return
+	}
+	names := make([]string, 0, len(headers))
+	for name := range headers {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	t.Logf("authn-iam debug: signed for STS host %q, header names %v", headers["Host"], names)
+
+	// What Conjur returns for the login.
+	req, err := c.IAMAuthenticateRequest(signedHeaders)
+	if err != nil {
+		t.Logf("authn-iam debug: building Conjur request failed: %v", err)
+		return
+	}
+	t.Logf("authn-iam debug: Conjur request: %s %s", req.Method, req.URL)
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		t.Logf("authn-iam debug: Conjur request failed: %v", err)
+	} else {
+		body, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		t.Logf("authn-iam debug: Conjur status: %s", res.Status)
+		for name, values := range res.Header {
+			t.Logf("authn-iam debug: Conjur header %s: %v", name, values)
+		}
+		// A 200 body is an access token; only log error bodies.
+		if res.StatusCode != http.StatusOK {
+			t.Logf("authn-iam debug: Conjur body: %q", body)
+		}
+	}
+
+	// What STS returns for the same signed request, i.e. the identity Conjur
+	// should see when it forwards it.
+	host := headers["Host"]
+	if !strings.HasSuffix(host, ".amazonaws.com") {
+		t.Logf("authn-iam debug: unexpected STS host %q, not calling it", host)
+		return
+	}
+	stsReq, err := http.NewRequest(http.MethodGet, "https://"+host+"/?Action=GetCallerIdentity&Version=2011-06-15", nil)
+	if err != nil {
+		t.Logf("authn-iam debug: building STS request failed: %v", err)
+		return
+	}
+	for name, value := range headers {
+		stsReq.Header.Set(name, value)
+	}
+	stsRes, err := http.DefaultClient.Do(stsReq)
+	if err != nil {
+		t.Logf("authn-iam debug: STS request failed: %v", err)
+		return
+	}
+	stsBody, _ := io.ReadAll(stsRes.Body)
+	stsRes.Body.Close()
+	t.Logf("authn-iam debug: STS status: %s, body: %s", stsRes.Status, stsBody)
+}
+
 func TestAuthnIam(t *testing.T) {
 	// Only run this if running on AWS
 	if strings.ToLower(os.Getenv("TEST_AWS")) != "true" {
@@ -137,6 +213,9 @@ func TestAuthnIam(t *testing.T) {
 			_, err := iamConjur.GetAuthenticator().RefreshToken()
 			return err
 		})
+		if err != nil {
+			logAuthnIamDiagnostics(t, iamConjur)
+		}
 		require.NoError(t, err)
 
 		whoami, err := iamConjur.WhoAmI()
