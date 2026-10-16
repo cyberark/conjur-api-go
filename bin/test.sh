@@ -230,6 +230,7 @@ else
     -e PUBLIC_KEYS \
     -e JWT \
     -e IDENTITY_TOKEN \
+    -e GO_VERSION \
     -v "$(pwd)/../output:/conjur-api-go/output" \
     "test-$GO_VERSION" bash -c 'set -xo pipefail;
             output_dir="./output/cloud"
@@ -238,7 +239,13 @@ else
             echo "Tests finished - aggregating results...";
             cat "$output_dir/junit.output" | go-junit-report > "$output_dir/junit.xml";
             gocov convert "$output_dir/c.out" | gocov-xml > "$output_dir/coverage.xml";
-            gocovmerge ./output/*/c.out > "$output_dir/merged-coverage.out";
+            # Only merge profiles built with this Go version: gocovmerge dies on
+            # the differing block boundaries other versions produce.
+            profiles="";
+            for d in cloud "$GO_VERSION" "enterprise-$GO_VERSION"; do
+              [ -f "./output/$d/c.out" ] && profiles="$profiles ./output/$d/c.out";
+            done;
+            gocovmerge $profiles > "$output_dir/merged-coverage.out";
             gocov convert "$output_dir/merged-coverage.out" | gocov-xml > "$output_dir/merged-coverage.xml";
             [ "$exit_code" -eq 0 ]' || failed
 fi
