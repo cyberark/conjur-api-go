@@ -45,8 +45,6 @@ pipeline {
   parameters {
     booleanParam(name: 'TEST_CLOUD', defaultValue: false, description: 'Run integration tests against a Conjur Cloud tenant')
 
-    booleanParam(name: 'KEEP_CLOUD_TENANT_ON_FAILURE', defaultValue: false, description: 'Do not delete the Conjur Cloud tenant if the SaaS tests fail, so it can be debugged. Delete it manually afterwards.')
-
     booleanParam(name: 'TEST_AZURE', defaultValue: false, description: 'Run integration tests against Azure')
 
     booleanParam(name: 'TEST_GCP', defaultValue: false, description: 'Run integration tests against GCP')
@@ -344,11 +342,7 @@ pipeline {
         always {
           junit 'output/cloud/junit.xml'
           script {
-            if (params.KEEP_CLOUD_TENANT_ON_FAILURE && currentBuild.currentResult != 'SUCCESS') {
-              echo "KEEP_CLOUD_TENANT_ON_FAILURE is set; keeping tenant ${TENANT.id} (${TENANT.conjur_cloud_url}). Delete it manually when done."
-            } else {
-              deleteConjurCloudTenant("${TENANT.id}")
-            }
+            deleteConjurCloudTenant("${TENANT.id}")
           }
         }
       }
