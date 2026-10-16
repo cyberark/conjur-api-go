@@ -241,11 +241,15 @@ else
             gocov convert "$output_dir/c.out" | gocov-xml > "$output_dir/coverage.xml";
             # Only merge profiles built with this Go version: gocovmerge dies on
             # the differing block boundaries other versions produce.
-            profiles="";
+            profiles=();
             for d in cloud "$GO_VERSION" "enterprise-$GO_VERSION"; do
-              [ -f "./output/$d/c.out" ] && profiles="$profiles ./output/$d/c.out";
+              [ -f "./output/$d/c.out" ] && profiles+=("./output/$d/c.out");
             done;
-            gocovmerge $profiles > "$output_dir/merged-coverage.out";
-            gocov convert "$output_dir/merged-coverage.out" | gocov-xml > "$output_dir/merged-coverage.xml";
+            if [ "${#profiles[@]}" -gt 0 ]; then
+              gocovmerge "${profiles[@]}" > "$output_dir/merged-coverage.out";
+              gocov convert "$output_dir/merged-coverage.out" | gocov-xml > "$output_dir/merged-coverage.xml";
+            else
+              echo "No coverage profiles to merge";
+            fi;
             [ "$exit_code" -eq 0 ]' || failed
 fi

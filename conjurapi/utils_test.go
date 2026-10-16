@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
@@ -19,10 +20,22 @@ func SkipIfCloud(t *testing.T, reason string) {
 	}
 }
 
+// enterpriseByURL caches isEnterprise results per appliance URL so the
+// Skip helpers don't probe '/info' on every call.
+var enterpriseByURL sync.Map
+
 // isEnterprise reports whether c talks to Conjur Enterprise, detected by the
-// server answering on the Enterprise-only '/info' endpoint.
+// server answering on the Enterprise-only '/info' endpoint. Only answers from
+// a reachable server are cached, so a transient failure isn't sticky.
 func isEnterprise(c *Client) bool {
-	_, success := c.probeEnterpriseInfoEndpoint()
+	url := c.config.ApplianceURL
+	if cached, ok := enterpriseByURL.Load(url); ok {
+		return cached.(bool)
+	}
+	reachable, success := c.probeEnterpriseInfoEndpoint()
+	if reachable {
+		enterpriseByURL.Store(url, success)
+	}
 	return success
 }
 
