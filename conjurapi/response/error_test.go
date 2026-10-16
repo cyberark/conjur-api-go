@@ -169,3 +169,89 @@ func TestConjurError_Error(t *testing.T) {
 		})
 	}
 }
+
+func TestNewConjurError_BodyShapes(t *testing.T) {
+	validationFailed := `{"error":{"code":"validation_failed","message":"value is not present","details":[{"code":"validation_failed","target":"value","message":"is not present"}]}}`
+
+	testCases := []struct {
+		name        string
+		status      string
+		code        int
+		body        string
+		wantError   string
+		wantDetails any
+	}{
+		{
+			name:      "validation error with a details list",
+			status:    "422 Unprocessable Entity",
+			code:      422,
+			body:      validationFailed,
+			wantError: "422 Unprocessable Entity. value is not present.",
+			wantDetails: []any{map[string]any{
+				"code": "validation_failed", "target": "value", "message": "is not present",
+			}},
+		},
+		{
+			name:        "details object",
+			status:      "404 Not Found",
+			code:        404,
+			body:        `{"error":{"code":"not_found","message":"Group 'data/g' not found","details":{"code":"not_found","target":"id","message":"data/g"}}}`,
+			wantError:   "404 Not Found. Group 'data/g' not found.",
+			wantDetails: map[string]any{"code": "not_found", "target": "id", "message": "data/g"},
+		},
+		{
+			name:      "no details",
+			status:    "422 Unprocessable Entity",
+			code:      422,
+			body:      `{"error":{"code":"unprocessable_entity","message":"Cannot have more than 20 annotations"}}`,
+			wantError: "422 Unprocessable Entity. Cannot have more than 20 annotations.",
+		},
+		{
+			name:      "flat body",
+			status:    "404 Not Found",
+			code:      404,
+			body:      `{"code":"404","message":"Branch 'data/b' not found"}`,
+			wantError: `{"code":"404","message":"Branch 'data/b' not found"}`,
+		},
+		{
+			name:      "string error",
+			status:    "401 Unauthorized",
+			code:      401,
+			body:      `{"error":"invalid credentials"}`,
+			wantError: `{"error":"invalid credentials"}`,
+		},
+		{
+			name:      "plain text",
+			status:    "502 Bad Gateway",
+			code:      502,
+			body:      "Bad Gateway",
+			wantError: "Bad Gateway",
+		},
+		{
+			name:      "empty body",
+			status:    "403 Forbidden",
+			code:      403,
+			body:      "",
+			wantError: "403 Forbidden",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := NewConjurError(&http.Response{
+				StatusCode: tc.code,
+				Status:     tc.status,
+				Body:       io.NopCloser(strings.NewReader(tc.body)),
+			})
+
+			var cerr *ConjurError
+			require.True(t, errors.As(err, &cerr))
+			assert.Equal(t, tc.code, cerr.Code)
+			assert.Equal(t, tc.wantError, err.Error())
+			if tc.wantDetails != nil {
+				require.NotNil(t, cerr.Details)
+				assert.Equal(t, tc.wantDetails, cerr.Details.Details)
+			}
+		})
+	}
+}

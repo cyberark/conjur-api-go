@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-
-	"github.com/cyberark/conjur-api-go/conjurapi/response"
 )
 
 // Group is a v2 group resource. Its shape mirrors Branch (the service returns
@@ -144,12 +142,7 @@ func (c *ClientV2) DeleteGroup(identifier string) error {
 		return err
 	}
 
-	resp, err := c.SubmitRequest(req)
-	if err != nil {
-		return err
-	}
-
-	return response.EmptyResponse(resp)
+	return submitAndEmpty(c, req)
 }
 
 // DeleteGroupAnnotation removes a single annotation key from a group. This is
@@ -162,12 +155,7 @@ func (c *ClientV2) DeleteGroupAnnotation(identifier, key string) error {
 		return err
 	}
 
-	resp, err := c.SubmitRequest(req)
-	if err != nil {
-		return err
-	}
-
-	return response.EmptyResponse(resp)
+	return submitAndEmpty(c, req)
 }
 
 // ListGroupMembers returns a page of a group's members. filter may be nil for
