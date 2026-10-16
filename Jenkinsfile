@@ -43,7 +43,7 @@ pipeline {
   }
 
   parameters {
-    booleanParam(name: 'TEST_CLOUD', defaultValue: false, description: 'Run integration tests against a Conjur Cloud tenant')
+    booleanParam(name: 'TEST_CLOUD', defaultValue: true, description: 'Run integration tests against a Conjur Cloud tenant')
 
     booleanParam(name: 'TEST_AZURE', defaultValue: false, description: 'Run integration tests against Azure')
 
