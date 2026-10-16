@@ -201,7 +201,13 @@ else
 
   announce "Running Secrets Manager SaaS tests for Go version: $GO_VERSION...";
   # NOTE: Skipping hostfactory token tests as hostfactory endpoints seem to be disabled by default now
+  # Run as the Jenkins user so output/cloud isn't root-owned (Jenkins has to
+  # overwrite it on unstash). The image's module cache under /go stays
+  # readable; HOME and the build cache move to /tmp, which is writable.
   docker run \
+    --user "$(id -u):$(id -g)" \
+    -e HOME=/tmp \
+    -e GOCACHE=/tmp/go-cache \
     -e CONJUR_APPLIANCE_URL \
     -e CONJUR_ACCOUNT \
     -e CONJUR_AUTHN_LOGIN \
