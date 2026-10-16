@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
+	"github.com/cyberark/conjur-api-go/internal/httputil"
 )
 
 // RoleExists checks whether or not a role exists
@@ -15,6 +16,7 @@ func (c *Client) RoleExists(roleID string) (bool, error) {
 	}
 
 	resp, err := c.SubmitRequest(req)
+	defer httputil.DrainClose(resp)
 	if err != nil {
 		return false, err
 	}

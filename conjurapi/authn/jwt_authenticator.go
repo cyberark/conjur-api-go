@@ -1,6 +1,7 @@
 package authn
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -10,6 +11,11 @@ import (
 type JWTAuthenticator struct {
 	JWT          string
 	JWTFilePath  string
+	// JWTProvider, when non-nil, is called on every RefreshJWT to obtain a
+	// fresh JWT string from the SPIFFE Workload API. It takes precedence over
+	// JWTFilePath and the Kubernetes service-account token path. Use
+	// conjurapi/spiffe.NewJWTProvider() to source the token from a SPIRE agent.
+	JWTProvider  func(context.Context) (string, error)
 	// K8sTokenPath overrides the default Kubernetes service-account token path.
 	// When empty, the well-known path is used. Intended for testing.
 	K8sTokenPath string
@@ -32,6 +38,18 @@ func (a *JWTAuthenticator) NeedsTokenRefresh() bool {
 }
 
 func (a *JWTAuthenticator) RefreshJWT() error {
+	// SPIFFE Workload API path: call the provider on every refresh so the
+	// provider's internal cache decides whether a new fetch is needed.
+	if a.JWTProvider != nil {
+		logging.ApiLog.Debugf("Fetching JWT from SPIFFE Workload API")
+		token, err := a.JWTProvider(context.Background())
+		if err != nil {
+			return fmt.Errorf("SPIFFE JWT-SVID fetch failed: %w", err)
+		}
+		a.JWT = token
+		return nil
+	}
+
 	// If a JWT token is already set or retrieved, do nothing.
 	if a.JWT != "" {
 		logging.ApiLog.Debugf("Using stored JWT")

@@ -104,13 +104,7 @@ func (c *ClientV2) CreateAuthenticator(authenticator *AuthenticatorBase) (*Authe
 		return nil, err
 	}
 
-	res, err := c.SubmitRequest(req)
-	if err != nil {
-		return nil, err
-	}
-
-	obj := AuthenticatorResponse{}
-	return &obj, response.JSONResponse(res, &obj)
+	return submitAndUnmarshal[AuthenticatorResponse](c, req)
 }
 
 // GetAuthenticator gets an existing authenticator instance using the V2 API.
@@ -122,13 +116,7 @@ func (c *ClientV2) GetAuthenticator(authenticatorType string, authenticatorName 
 		return nil, err
 	}
 
-	res, err := c.SubmitRequest(req)
-	if err != nil {
-		return nil, err
-	}
-
-	obj := AuthenticatorResponse{}
-	return &obj, response.JSONResponse(res, &obj)
+	return submitAndUnmarshal[AuthenticatorResponse](c, req)
 }
 
 // UpdateAuthenticator updates an existing authenticator instance using the V2 API.
@@ -141,13 +129,7 @@ func (c *ClientV2) UpdateAuthenticator(authenticatorType string, authenticatorNa
 		return nil, err
 	}
 
-	res, err := c.SubmitRequest(req)
-	if err != nil {
-		return nil, err
-	}
-
-	obj := AuthenticatorResponse{}
-	return &obj, response.JSONResponse(res, &obj)
+	return submitAndUnmarshal[AuthenticatorResponse](c, req)
 }
 
 // DeleteAuthenticator deletes an existing authenticator instance using the V2 API.
@@ -159,17 +141,7 @@ func (c *ClientV2) DeleteAuthenticator(authenticatorType string, authenticatorNa
 		return err
 	}
 
-	resp, err := c.SubmitRequest(req)
-	if err != nil {
-		return err
-	}
-
-	err = response.EmptyResponse(resp)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return submitAndEmpty(c, req)
 }
 
 // ListAuthenticators gets a list of existing authenticators using the V2 API.
@@ -181,11 +153,5 @@ func (c *ClientV2) ListAuthenticators() (*AuthenticatorListResponse, error) {
 		return nil, err
 	}
 
-	res, err := c.SubmitRequest(req)
-	if err != nil {
-		return nil, err
-	}
-
-	obj := AuthenticatorListResponse{}
-	return &obj, response.JSONResponse(res, &obj)
+	return submitAndUnmarshal[AuthenticatorListResponse](c, req)
 }

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/response"
+	"github.com/cyberark/conjur-api-go/internal/httputil"
 )
 
 // Resource contains information about the Conjur Resource
@@ -80,6 +81,7 @@ func (c *Client) CheckPermissionForRole(resourceID string, roleID string, privil
 
 func (c *Client) processPermissionCheck(req *http.Request) (bool, error) {
 	resp, err := c.SubmitRequest(req)
+	defer httputil.DrainClose(resp)
 	if err != nil {
 		return false, err
 	}
@@ -101,6 +103,7 @@ func (c *Client) ResourceExists(resourceID string) (bool, error) {
 	}
 
 	resp, err := c.SubmitRequest(req)
+	defer httputil.DrainClose(resp)
 	if err != nil {
 		return false, err
 	}

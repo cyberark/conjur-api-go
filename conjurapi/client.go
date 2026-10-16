@@ -315,6 +315,7 @@ func NewClientFromJwt(config Config, telemetry ...Telemetry) (*Client, error) {
 	authenticator := &authn.JWTAuthenticator{
 		JWT:         config.JWTContent,
 		JWTFilePath: config.JWTFilePath,
+		JWTProvider: config.JWTProvider,
 		HostID:      config.JWTHostID,
 	}
 	client, err := newClientWithAuthenticator(config, authenticator, telemetry...)

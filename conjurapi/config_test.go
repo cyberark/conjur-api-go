@@ -93,6 +93,23 @@ func TestConfig_Validate(t *testing.T) {
 		assert.Contains(t, errString, "Must specify a service ID (CONJUR_SERVICE_ID) when using oidc authentication")
 	})
 
+	// When AuthnType is jwt and no ServiceID is set, the error
+	// must name CONJUR_AUTHN_JWT_SERVICE_ID so the user knows which env var to set.
+	t.Run("Return error for authn-jwt configuration missing ServiceId", func(t *testing.T) {
+		config := Config{
+			Account:      "account",
+			ApplianceURL: "appliance-url",
+			AuthnType:    "jwt",
+			JWTContent:   "some-token",
+			// ServiceID intentionally omitted
+		}
+
+		err := config.Validate()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(),
+			"Must specify a service ID (CONJUR_AUTHN_JWT_SERVICE_ID) when using jwt authentication")
+	})
+
 	t.Run("Return error for invalid configuration unsupported AuthnType", func(t *testing.T) {
 		config := Config{
 			Account:      "account",
@@ -927,6 +944,49 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 
 			assert.Equal(t, "/path/to/cert.pem", config.ClientCertFile)
 			assert.Equal(t, "/path/to/key.pem", config.ClientCertKeyFile)
+		})
+	})
+
+	t.Run("When SPIFFE_ENDPOINT_SOCKET and CONJUR_AUTHN_JWT_SERVICE_ID are set", func(t *testing.T) {
+		t.Run("auto-wires JWTProvider when no static token is configured", func(t *testing.T) {
+			e := ClearEnv()
+			defer e.RestoreEnv()
+
+			os.Setenv("SPIFFE_ENDPOINT_SOCKET", "unix:///run/spire/sockets/agent.sock")
+			os.Setenv("CONJUR_AUTHN_JWT_SERVICE_ID", "acme-spiffe-jwt")
+
+			config := &Config{}
+			config.mergeEnv()
+
+			assert.NotNil(t, config.JWTProvider, "JWTProvider must be auto-wired when SPIFFE vars are set")
+		})
+
+		t.Run("does NOT auto-wire JWTProvider when CONJUR_AUTHN_JWT_TOKEN is set", func(t *testing.T) {
+			e := ClearEnv()
+			defer e.RestoreEnv()
+
+			os.Setenv("SPIFFE_ENDPOINT_SOCKET", "unix:///run/spire/sockets/agent.sock")
+			os.Setenv("CONJUR_AUTHN_JWT_SERVICE_ID", "acme-spiffe-jwt")
+			os.Setenv("CONJUR_AUTHN_JWT_TOKEN", "static-jwt-content")
+
+			config := &Config{}
+			config.mergeEnv()
+
+			assert.Nil(t, config.JWTProvider, "JWTProvider must not be set when a static token is provided")
+		})
+
+		t.Run("does NOT auto-wire JWTProvider when JWT_TOKEN_PATH is set", func(t *testing.T) {
+			e := ClearEnv()
+			defer e.RestoreEnv()
+
+			os.Setenv("SPIFFE_ENDPOINT_SOCKET", "unix:///run/spire/sockets/agent.sock")
+			os.Setenv("CONJUR_AUTHN_JWT_SERVICE_ID", "acme-spiffe-jwt")
+			os.Setenv("JWT_TOKEN_PATH", "/var/run/secrets/token")
+
+			config := &Config{}
+			config.mergeEnv()
+
+			assert.Nil(t, config.JWTProvider, "JWTProvider must not be set when a token file path is provided")
 		})
 	})
 }

@@ -272,16 +272,21 @@ func (c *Client) CertAuthenticate(hostID string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Conjur honors the Accept-Encoding: base64 request header by returning the
-	// access token body base64-encoded and setting Content-Encoding: base64.
-	// Decode the body so the caller always receives raw token bytes.
-	if res.Header.Get("Content-Encoding") == "base64" {
-		// Trim whitespace before decoding: some servers append a trailing
-		// newline to the body, and StdEncoding is strict about non-base64 bytes.
-		decoded, decErr := base64.StdEncoding.DecodeString(strings.TrimSpace(string(body)))
-		if decErr != nil {
-			return nil, fmt.Errorf("decoding base64 authenticate response: %w", decErr)
-		}
+	// Conjur returns the access token base64-encoded when Accept-Encoding: base64
+	// is sent in the request.  Standard Conjur sets Content-Encoding: base64 in
+	// the response.  Conjur Cloud Edge encodes the body but does not set the
+	// Content-Encoding response header.
+	//
+	// Trim whitespace before decoding: some servers append a trailing newline to the
+	// body, and StdEncoding is strict about non-base64 bytes.
+	decoded, decErr := base64.StdEncoding.DecodeString(strings.TrimSpace(string(body)))
+	// When the server explicitly signals base64 encoding, a decode failure is an error.
+	if res.Header.Get("Content-Encoding") == "base64" && decErr != nil {
+		return nil, fmt.Errorf("decoding base64 authenticate response: %w", decErr)
+	}
+	// Accept the decoded result when it looks like a JSON access token (starts
+	// with '{').  This also covers Conjur Cloud Edge, which omits the header.
+	if decErr == nil && len(decoded) > 0 && decoded[0] == '{' {
 		return decoded, nil
 	}
 	return body, nil

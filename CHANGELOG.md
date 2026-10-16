@@ -5,8 +5,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Nothing should go in this section, please add to the latest unreleased version
+  (and update the corresponding date), or add a new version.
+
+## [0.16.2] - 2026-10-15
+
+### Changed
+- `response.ConjurErrorDetails.Details` is now `any` instead of
+  `map[string]interface{}`. It holds the error body's `details` as decoded
+  JSON: an object for not-found and conflict errors, a list for validation
+  errors. (CNJR-15237)
+- `ClientV2.CreateAuthenticator`, `GetAuthenticator`, `UpdateAuthenticator`
+  and `ListAuthenticators` return a nil response with an error, like the other
+  V2 methods. They used to return an empty response alongside an HTTP error.
+  (CNJR-15237)
+
+### Fixed
+- Validation errors now read `<status>. <reason>.`, for example
+  `422 Unprocessable Entity. value is not present.`, instead of the raw JSON
+  response body followed by the reason. The server sends them with `details`
+  as a list, which did not decode into the map `ConjurErrorDetails.Details`
+  used to be. This applies to the V1 and V2 APIs. (CNJR-15237)
+
+## [0.16.1] - 2026-10-14
+
+### Fixed
+- `CertAuthenticate` now decodes the access token response body even when the
+  server omits the `Content-Encoding: base64` response header. Conjur Cloud
+  Edge honours `Accept-Encoding: base64` by encoding the body but does not set
+  the response header; the client now handles both behaviours. (CNJR-15383)
+
+## [0.16.0] - 2026-10-05
 
 ### Added
+- Workloads running alongside a SPIRE agent can now authenticate to Conjur via
+  authn-jwt using a JWT-SVID without a static token file. Set
+  `SPIFFE_ENDPOINT_SOCKET` and `CONJUR_AUTHN_JWT_SERVICE_ID` to enable
+  automatic JWT credential sourcing from the Workload API. (CNJR-14841)
 - `conjurapi/contract` package holding the SDK's compatibility matrix: which
   APIs each platform supports, and from which server version on Self-Hosted.
   An unsupported call fails with `*contract.FeatureNotSupportedError`, and
@@ -53,6 +89,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - Concurrent requests on a shared client no longer race on the cached server
   version, and share one version lookup instead of each making their own.
+- `IsKeyringAvailable()` now returns `false` on Linux and other platforms that
+  use go-keyring's Secret Service backend (FreeBSD+cgo, DragonFly+cgo, NetBSD,
+  OpenBSD) when no D-Bus session is reachable without autolaunching a daemon.
+  It mirrors the godbus discovery order: checks `DBUS_SESSION_BUS_ADDRESS`,
+  then the per-user socket at `/run/user/<uid>/bus` (systemd), then
+  `/run/user/<uid>/dbus-session`. Only when all three are absent does it return
+  `false`, preventing `dbus-daemon` from being autolaunched as an orphan process
+  in headless environments (cron jobs, CI/CD, SSH sessions without a desktop).
+  When credential storage is not explicitly configured, clients that would have
+  selected keyring fall through to file-based storage automatically. When
+  `credential_storage: keyring` is explicitly set and the keyring is
+  unavailable, an error is returned. (CNJR-15474)
 
 ## [0.15.10] - 2026-09-24
 
@@ -609,7 +657,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.15.3...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.16.2...HEAD
+[0.16.2]: https://github.com/cyberark/conjur-api-go/compare/v0.16.1...v0.16.2
+[0.16.1]: https://github.com/cyberark/conjur-api-go/compare/v0.16.0...v0.16.1
+[0.16.0]: https://github.com/cyberark/conjur-api-go/compare/v0.15.10...v0.16.0
+[0.15.10]: https://github.com/cyberark/conjur-api-go/compare/v0.15.9...v0.15.10
+[0.15.9]: https://github.com/cyberark/conjur-api-go/compare/v0.15.8...v0.15.9
+[0.15.8]: https://github.com/cyberark/conjur-api-go/compare/v0.15.7...v0.15.8
+[0.15.7]: https://github.com/cyberark/conjur-api-go/compare/v0.15.6...v0.15.7
+[0.15.6]: https://github.com/cyberark/conjur-api-go/compare/v0.15.5...v0.15.6
+[0.15.5]: https://github.com/cyberark/conjur-api-go/compare/v0.15.4...v0.15.5
+[0.15.4]: https://github.com/cyberark/conjur-api-go/compare/v0.15.3...v0.15.4
 [0.15.3]: https://github.com/cyberark/conjur-api-go/compare/v0.15.2...v0.15.3
 [0.15.2]: https://github.com/cyberark/conjur-api-go/compare/v0.15.1...v0.15.2
 [0.15.1]: https://github.com/cyberark/conjur-api-go/compare/v0.15.0...v0.15.1

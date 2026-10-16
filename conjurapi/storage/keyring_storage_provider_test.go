@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
@@ -11,17 +12,75 @@ import (
 	"github.com/zalando/go-keyring"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIsKeyringAvailable(t *testing.T) {
-	// Simulate an unavailable keyring (e.g. no D-Bus session in a container)
-	// by injecting a mock that returns an error on every operation.
+	// Set DBUS_SESSION_BUS_ADDRESS so the Secret-Service guard does not fire on
+	// Linux/BSD CI runners. This test verifies mock behaviour; guard behaviour
+	// is covered in TestIsKeyringAvailable_HeadlessLinux.
+	t.Setenv("DBUS_SESSION_BUS_ADDRESS", "unix:abstract=/tmp/dbus-test-mock")
+
+	// Mock that errors on every operation → IsKeyringAvailable must return false.
 	keyring.MockInitWithError(errors.New("keyring unavailable"))
 	assert.False(t, IsKeyringAvailable())
 
-	// Switch to a healthy mock — the keyring should now report as available.
+	// Healthy mock → IsKeyringAvailable must return true.
 	keyring.MockInit()
 	assert.True(t, IsKeyringAvailable())
+}
+
+func TestIsKeyringAvailable_HeadlessLinux(t *testing.T) {
+	if !isSecretServicePlatform() {
+		t.Skip("D-Bus guard only applies to Secret Service platforms (Linux and select BSDs)")
+	}
+
+	// Redirect the runtime-dir lookup to an empty temp dir so the socket
+	// discovery path returns false regardless of the host environment.
+	tmpDir := t.TempDir()
+	origRuntimeDir := dbusUserRuntimeDir
+	dbusUserRuntimeDir = func() string { return tmpDir }
+	t.Cleanup(func() { dbusUserRuntimeDir = origRuntimeDir })
+
+	// Install a healthy mock so that if the early return is absent, the
+	// function would return true — making the assertions below real tests.
+	keyring.MockInit()
+	t.Cleanup(func() { keyring.MockInit() })
+
+	// No env var, no socket file → autolaunch would be triggered → guard fires.
+	t.Setenv("DBUS_SESSION_BUS_ADDRESS", "")
+	assert.False(t, IsKeyringAvailable(),
+		"expected false: no DBUS_SESSION_BUS_ADDRESS and no socket file present")
+
+	// DBUS_SESSION_BUS_ADDRESS=autolaunch: is godbus's explicit "please launch"
+	// sentinel — treat it the same as unset.
+	t.Setenv("DBUS_SESSION_BUS_ADDRESS", "autolaunch:")
+	assert.False(t, IsKeyringAvailable(),
+		"expected false: DBUS_SESSION_BUS_ADDRESS=autolaunch: must be treated as unset")
+	t.Setenv("DBUS_SESSION_BUS_ADDRESS", "")
+
+	// Socket at <runtimeDir>/bus (systemd socket-activation) → no autolaunch needed.
+	busSocket := filepath.Join(tmpDir, "bus")
+	f, err := os.Create(busSocket)
+	require.NoError(t, err)
+	f.Close()
+	assert.True(t, IsKeyringAvailable(),
+		"expected true: socket at runtimeDir/bus present (mirrors systemd /run/user/<uid>/bus)")
+	require.NoError(t, os.Remove(busSocket))
+
+	// Session file at <runtimeDir>/dbus-session (Ubuntu 16.04 style) → no autolaunch needed.
+	sessionFile := filepath.Join(tmpDir, "dbus-session")
+	f, err = os.Create(sessionFile)
+	require.NoError(t, err)
+	f.Close()
+	assert.True(t, IsKeyringAvailable(),
+		"expected true: dbus-session file at runtimeDir/dbus-session present (Ubuntu 16.04 style)")
+	require.NoError(t, os.Remove(sessionFile))
+
+	// DBUS_SESSION_BUS_ADDRESS set to a real address → guard must not fire.
+	t.Setenv("DBUS_SESSION_BUS_ADDRESS", "unix:path=/run/user/1000/bus")
+	assert.True(t, IsKeyringAvailable(),
+		"expected true: DBUS_SESSION_BUS_ADDRESS is set to a non-autolaunch address")
 }
 
 func TestKeyringStorageProvider_StoreCredentials(t *testing.T) {

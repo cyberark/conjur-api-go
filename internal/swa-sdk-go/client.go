@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cyberark/conjur-api-go/internal/httputil"
 	"github.com/cyberark/conjur-api-go/internal/swa-sdk-go/swaerrors"
 
 	swaapi "github.com/cyberark/conjur-api-go/internal/swa-sdk-go/internal/gen/swa"
@@ -159,7 +160,7 @@ func (c *Client) Execute(ctx context.Context, idempotent bool, call func(context
 		}
 
 		if idempotent && attempt < attempts-1 && retryableStatus(resp.StatusCode) {
-			DrainClose(resp)
+			httputil.DrainClose(resp)
 			lastErr = &swaerrors.APIError{Op: opRetry, StatusCode: resp.StatusCode}
 			continue
 		}
@@ -179,7 +180,7 @@ func HandleResponse(op swaerrors.Op, resp *http.Response, out any, okStatuses []
 // when the status is one of okStatuses, or converting it into an *swaerrors.APIError
 // using the provided parser otherwise.
 func HandleResponseWithParser(op swaerrors.Op, resp *http.Response, out any, okStatuses []int, parse ErrorParser) error {
-	defer DrainClose(resp)
+	defer httputil.DrainClose(resp)
 	body, readErr := io.ReadAll(resp.Body)
 	requestID := ResponseRequestID(resp)
 
@@ -195,16 +196,6 @@ func HandleResponseWithParser(op swaerrors.Op, resp *http.Response, out any, okS
 		return nil
 	}
 	return parse(op, resp.StatusCode, requestID, body)
-}
-
-// DrainClose drains and closes a response body so the underlying connection can
-// be reused, then closes it.
-func DrainClose(resp *http.Response) {
-	if resp == nil || resp.Body == nil {
-		return
-	}
-	_, _ = io.Copy(io.Discard, resp.Body)
-	_ = resp.Body.Close()
 }
 
 // ResponseRequestID extracts the request id associated with a response,

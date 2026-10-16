@@ -24,6 +24,12 @@ services:
       CONJUR_FEATURE_DYNAMIC_SECRETS_ENABLED: true
     depends_on:
       - postgres
+    # Joined to 'spiffe' so Conjur can reach http://spire-oidc:8085/keys when
+    # validating JWT-SVIDs. The implicit 'default' network is kept for the test
+    # containers to reach the conjur service.
+    networks:
+      - default
+      - spiffe
 
   test-1.27:
     build:
@@ -115,8 +121,7 @@ services:
     restart: unless-stopped
     security_opt:
       # Enterprise appliance needs keyctl for its session keyring; Docker's default seccomp blocks it.
-      # kics-scan ignore-line
-      - seccomp:unconfined
+      - seccomp:unconfined  # kics-scan ignore-line
       - no-new-privileges:true
     environment:
       CONJUR_LOG_LEVEL: debug
@@ -128,6 +133,9 @@ services:
       conjur:
         aliases:
           - conjur-leader-1.mycompany.local
+      # Joined to 'spiffe' so the enterprise leader can reach http://spire-oidc:8085/keys
+      # when validating JWT-SVIDs during TestAuthnSpiffeJWT.
+      spiffe: {}
     profiles:
       - cert
 
@@ -139,6 +147,25 @@ services:
     command: ["-config", "/etc/spire/server/server.conf"]
     volumes:
       - ./bin/spire/server:/etc/spire/server:ro
+      - spire-server-socket:/run/spire/server/private
+    networks:
+      - spiffe
+    profiles:
+      - spiffe
+
+  # SPIRE OIDC Discovery Provider — serves the JWKS endpoint over plain HTTP
+  # on port 8085. Conjur's authn-jwt jwks-uri variable is set to
+  # http://spire-oidc:8085/keys during setup-spiffe.sh. The provider connects
+  # to the SPIRE server via the shared spire-server-socket volume.
+  spire-oidc:
+    image: ghcr.io/spiffe/oidc-discovery-provider:${SPIRE_VERSION:-1.15.2}
+    hostname: spire-oidc
+    entrypoint: ["/opt/spire/bin/oidc-discovery-provider", "-config", "/etc/spire/oidc/oidc-discovery-provider.conf"]
+    volumes:
+      - ./bin/spire/oidc-discovery-provider.conf:/etc/spire/oidc/oidc-discovery-provider.conf:ro
+      - spire-server-socket:/run/spire/server/private:ro
+    depends_on:
+      - spire-server
     networks:
       - spiffe
     profiles:
@@ -192,3 +219,6 @@ volumes:
   # Shared between the SPIRE agent container and the test container (via docker run -v).
   # Provides the SPIFFE Workload API socket at /run/spire/sockets/agent.sock.
   spire-agent-socket:
+  # Shared between the SPIRE server and the OIDC discovery provider containers.
+  # Provides the SPIRE server admin API socket at /run/spire/server/private/api.sock.
+  spire-server-socket:
