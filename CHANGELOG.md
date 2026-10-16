@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   response body followed by the reason. The server sends them with `details`
   as a list, which did not decode into the map `ConjurErrorDetails.Details`
   used to be. This applies to the V1 and V2 APIs. (CNJR-15237)
+- `TokenFileAuthenticator` no longer panics with a nil pointer dereference when
+  the token file is deleted, renamed or becomes unreadable at runtime.
+  `NeedsTokenRefresh` now returns `true` in that case, and `RefreshToken`
+  returns the error if the file cannot be stat'ed after it is read. (CNJR-15712)
 
 ## [0.16.1] - 2026-10-14
 
