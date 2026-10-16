@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
+## [0.16.2] - 2026-10-15
+
+### Changed
+- `response.ConjurErrorDetails.Details` is now `any` instead of
+  `map[string]interface{}`. It holds the error body's `details` as decoded
+  JSON: an object for not-found and conflict errors, a list for validation
+  errors. (CNJR-15237)
+- `ClientV2.CreateAuthenticator`, `GetAuthenticator`, `UpdateAuthenticator`
+  and `ListAuthenticators` return a nil response with an error, like the other
+  V2 methods. They used to return an empty response alongside an HTTP error.
+  (CNJR-15237)
+
+### Fixed
+- Validation errors now read `<status>. <reason>.`, for example
+  `422 Unprocessable Entity. value is not present.`, instead of the raw JSON
+  response body followed by the reason. The server sends them with `details`
+  as a list, which did not decode into the map `ConjurErrorDetails.Details`
+  used to be. This applies to the V1 and V2 APIs. (CNJR-15237)
+
 ## [0.16.1] - 2026-10-14
 
 ### Fixed
@@ -638,7 +657,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial version
 
-[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.16.1...HEAD
+[Unreleased]: https://github.com/cyberark/conjur-api-go/compare/v0.16.2...HEAD
+[0.16.2]: https://github.com/cyberark/conjur-api-go/compare/v0.16.1...v0.16.2
 [0.16.1]: https://github.com/cyberark/conjur-api-go/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/cyberark/conjur-api-go/compare/v0.15.10...v0.16.0
 [0.15.10]: https://github.com/cyberark/conjur-api-go/compare/v0.15.9...v0.15.10

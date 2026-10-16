@@ -41,6 +41,17 @@ func submitAndReadData(c *ClientV2, req *http.Request) ([]byte, error) {
 	return response.DataResponse(resp)
 }
 
+// submitAndEmpty submits req for routes that answer without a body, such as a
+// 204 on delete.
+func submitAndEmpty(c *ClientV2, req *http.Request) error {
+	resp, err := c.SubmitRequest(req)
+	if err != nil {
+		return err
+	}
+
+	return response.EmptyResponse(resp)
+}
+
 // newV2Request builds a bodiless HTTP request for a v2 API route.
 func newV2Request(method, requestURL, acceptHeader string) (*http.Request, error) {
 	request, err := http.NewRequest(method, requestURL, nil)

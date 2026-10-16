@@ -32,7 +32,9 @@ type ConjurErrorDetails struct {
 	Message string
 	Code    string
 	Target  string
-	Details map[string]interface{}
+	// Details holds the error body's "details" as decoded JSON: an object for
+	// not-found and conflict errors, a list for validation errors.
+	Details any
 }
 
 func NewConjurError(resp *http.Response) error {
