@@ -159,3 +159,59 @@ func TestTokenFileAuthenticator_NeedsTokenRefresh(t *testing.T) {
 		assert.True(t, authenticator.NeedsTokenRefresh())
 	})
 }
+
+func TestTokenFileAuthenticator_NeedsTokenRefresh_MissingFile(t *testing.T) {
+	t.Run("Token refresh needed (no panic) after the file is deleted", func(t *testing.T) {
+		token_file_name := path.Join(t.TempDir(), "token")
+		assert.NoError(t, os.WriteFile(token_file_name, []byte("token-from-file-contents"), 0600))
+
+		authenticator := TokenFileAuthenticator{
+			TokenFile:   token_file_name,
+			MaxWaitTime: 1 * time.Second,
+		}
+		_, err := authenticator.RefreshToken()
+		assert.NoError(t, err)
+		assert.False(t, authenticator.NeedsTokenRefresh())
+
+		assert.NoError(t, os.Remove(token_file_name))
+
+		assert.NotPanics(t, func() {
+			assert.True(t, authenticator.NeedsTokenRefresh())
+		})
+	})
+
+	t.Run("Token refresh needed (no panic) when the file never existed", func(t *testing.T) {
+		authenticator := TokenFileAuthenticator{
+			TokenFile:   path.Join(t.TempDir(), "never-created"),
+			MaxWaitTime: 10 * time.Millisecond,
+		}
+
+		assert.NotPanics(t, func() {
+			assert.True(t, authenticator.NeedsTokenRefresh())
+		})
+	})
+}
+
+func TestTokenFileAuthenticator_RefreshToken_StatFails(t *testing.T) {
+	t.Run("Returns an error instead of panicking when the file vanishes after the read", func(t *testing.T) {
+		token_file_name := path.Join(t.TempDir(), "token")
+		assert.NoError(t, os.WriteFile(token_file_name, []byte("token-from-file-contents"), 0600))
+
+		origStat := statFile
+		statFile = func(string) (os.FileInfo, error) { return nil, os.ErrNotExist }
+		defer func() { statFile = origStat }()
+
+		authenticator := TokenFileAuthenticator{
+			TokenFile:   token_file_name,
+			MaxWaitTime: 1 * time.Second,
+		}
+
+		var token []byte
+		var err error
+		assert.NotPanics(t, func() {
+			token, err = authenticator.RefreshToken()
+		})
+		assert.Nil(t, token)
+		assert.ErrorIs(t, err, os.ErrNotExist)
+	})
+}
