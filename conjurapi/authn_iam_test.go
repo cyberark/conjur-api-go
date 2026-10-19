@@ -85,7 +85,8 @@ func TestAuthnIam(t *testing.T) {
 		err = utils.SetupWithAuthenticator("iam", getAuthnIamPolicy(role), getAuthIamRolesPolicy(role))
 		require.NoError(t, err)
 		conjur := utils.Client()
-		conjur.EnableAuthenticator("iam", "prod", true)
+		err = conjur.EnableAuthenticator("iam", "prod", true)
+		require.NoError(t, err)
 
 		err = conjur.AddSecret("data/test/myspace/database/username", "secret")
 		require.NoError(t, err)

@@ -131,6 +131,16 @@ func TestPolicy_LoadPolicy(t *testing.T) {
 	})
 }
 
+// deletedIDs returns the IDs of the resources a dry run would delete. The
+// server doesn't guarantee their order.
+func deletedIDs(resp *DryRunPolicyResponse) []string {
+	ids := make([]string, 0, len(resp.Deleted.Items))
+	for _, item := range resp.Deleted.Items {
+		ids = append(ids, item.Id)
+	}
+	return ids
+}
+
 func TestPolicy_DryRunPolicy(t *testing.T) {
 	config := &Config{}
 	config.mergeEnv()
@@ -361,10 +371,7 @@ func TestPolicy_DryRunPolicy(t *testing.T) {
 
 		// Verify the specific content of the deleted policy resources
 		assert.Len(t, dryRunResp.Deleted.Items, 2)
-		deletedItem1 := dryRunResp.Deleted.Items[0]
-		deletedItem2 := dryRunResp.Deleted.Items[1]
-		assert.Equal(t, deletedItem1.Id, "bob@data-test")
-		assert.Equal(t, deletedItem2.Id, "carol@data-test")
+		assert.ElementsMatch(t, deletedIDs(dryRunResp), []string{"bob@data-test", "carol@data-test"})
 
 		// Check that memberships have been updated appropriately
 		before, bErr := json.Marshal(dryRunResp.Updated.Before.Items)
@@ -452,12 +459,7 @@ func TestPolicy_DryRunPolicy(t *testing.T) {
 
 		// Verify the specific content of the deleted policy resources
 		assert.Len(t, dryRunResp.Deleted.Items, 3)
-		deletedItem1 := dryRunResp.Deleted.Items[0]
-		deletedItem2 := dryRunResp.Deleted.Items[1]
-		deletedItem3 := dryRunResp.Deleted.Items[2]
-		assert.Equal(t, deletedItem1.Id, "fran@data-test")
-		assert.Equal(t, deletedItem2.Id, "ian@data-test")
-		assert.Equal(t, deletedItem3.Id, "jill@data-test")
+		assert.ElementsMatch(t, deletedIDs(dryRunResp), []string{"fran@data-test", "ian@data-test", "jill@data-test"})
 
 		// Check that memberships have been updated appropriately
 		before, bErr := json.Marshal(dryRunResp.Updated.Before.Items)

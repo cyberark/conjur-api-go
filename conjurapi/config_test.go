@@ -1358,6 +1358,7 @@ func TestConfig_SSLCertEnvConflict(t *testing.T) {
 		defer func() { logging.ApiLog.Hooks[logrus.WarnLevel] = origHooks }()
 
 		t.Setenv("CONJUR_CERT_FILE", "/path/to/cert.pem")
+		t.Setenv("CONJUR_SSL_CERTIFICATE", "")
 
 		config := Config{}
 		config.mergeEnv()

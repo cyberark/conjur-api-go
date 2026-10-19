@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/authn"
@@ -16,6 +17,41 @@ func SkipIfCloud(t *testing.T, reason string) {
 	t.Helper()
 	if isConjurCloudURL(os.Getenv("CONJUR_APPLIANCE_URL")) {
 		t.Skipf("Skipping test on Secrets Manager SaaS: %s", reason)
+	}
+}
+
+// enterpriseByURL caches isEnterprise results per appliance URL so the
+// Skip helpers don't probe '/info' on every call.
+var enterpriseByURL sync.Map
+
+// isEnterprise reports whether c talks to Conjur Enterprise, detected by the
+// server answering on the Enterprise-only '/info' endpoint. Only answers from
+// a reachable server are cached, so a transient failure isn't sticky.
+func isEnterprise(c *Client) bool {
+	url := c.config.ApplianceURL
+	if cached, ok := enterpriseByURL.Load(url); ok {
+		return cached.(bool)
+	}
+	reachable, success := c.probeEnterpriseInfoEndpoint()
+	if reachable {
+		enterpriseByURL.Store(url, success)
+	}
+	return success
+}
+
+// SkipIfEnterprise skips the current test when running against Conjur Enterprise.
+func SkipIfEnterprise(t *testing.T, c *Client, reason string) {
+	t.Helper()
+	if isEnterprise(c) {
+		t.Skipf("Skipping test on Conjur Enterprise: %s", reason)
+	}
+}
+
+// SkipIfNotEnterprise skips the current test unless running against Conjur Enterprise.
+func SkipIfNotEnterprise(t *testing.T, c *Client, reason string) {
+	t.Helper()
+	if !isEnterprise(c) {
+		t.Skipf("Skipping test off Conjur Enterprise: %s", reason)
 	}
 }
 

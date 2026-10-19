@@ -106,12 +106,25 @@ func TestEnterpriseServerInfo(t *testing.T) {
 		assert.Regexp(t, versionRegex, info.Services["possum"].Version)
 	})
 
+	t.Run("Enterprise: Gets server info from the '/info' endpoint", func(t *testing.T) {
+		utils, err := NewTestUtils(&Config{})
+		require.NoError(t, err)
+		conjur := utils.Client()
+		SkipIfNotEnterprise(t, conjur, "'/info' is Enterprise-only")
+
+		info, err := conjur.EnterpriseServerInfo()
+		require.NoError(t, err)
+		assert.Regexp(t, versionRegex, info.Version)
+		assert.Contains(t, info.Services, "possum")
+		assert.Regexp(t, versionRegex, info.Services["possum"].Version)
+	})
+
 	t.Run("OSS: Fails to get server info from the '/info' endpoint", func(t *testing.T) {
 		// Use a real Conjur client to test the '/info' endpoint.
-		// TODO: Skip this test on Enterprise
 		utils, err := NewTestUtils(&Config{})
 		assert.NoError(t, err)
 		conjur := utils.Client()
+		SkipIfEnterprise(t, conjur, "'/info' is served by Enterprise")
 
 		info, err := conjur.EnterpriseServerInfo()
 		require.Error(t, err)
@@ -178,6 +191,8 @@ func TestServerVersionFromRoot(t *testing.T) {
 		utils, err := NewTestUtils(&Config{})
 		assert.NoError(t, err)
 		conjur := utils.Client()
+		// Enterprise redirects '/' to the UI; ServerVersion() uses '/info' there instead.
+		SkipIfEnterprise(t, conjur, "root endpoint doesn't report a version")
 
 		version, err := conjur.ServerVersionFromRoot()
 		require.NoError(t, err)

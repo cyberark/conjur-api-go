@@ -1080,6 +1080,7 @@ func TestClient_JwtAuthenticate(t *testing.T) {
 			conjur, err = NewClientFromJwt(Config{
 				Account:      "conjur",
 				ApplianceURL: os.Getenv("CONJUR_APPLIANCE_URL"),
+				SSLCert:      os.Getenv("CONJUR_SSL_CERTIFICATE"),
 				AuthnType:    authnType,
 				ServiceID:    serviceID,
 				JWTContent:   os.Getenv("JWT"),

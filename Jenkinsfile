@@ -43,7 +43,7 @@ pipeline {
   }
 
   parameters {
-    booleanParam(name: 'TEST_CLOUD', defaultValue: false, description: 'Run integration tests against a Conjur Cloud tenant')
+    booleanParam(name: 'TEST_CLOUD', defaultValue: true, description: 'Run integration tests against a Conjur Cloud tenant')
 
     booleanParam(name: 'TEST_AZURE', defaultValue: false, description: 'Run integration tests against Azure')
 
@@ -54,6 +54,8 @@ pipeline {
     booleanParam(name: 'TEST_CERT', defaultValue: true, description: 'Run authn-cert integration tests (requires enterprise appliance)')
 
     booleanParam(name: 'TEST_SPIFFE', defaultValue: true, description: 'Run SPIFFE/SPIRE X.509-SVID integration tests (requires cert-authn appliance)')
+
+    booleanParam(name: 'TEST_ENTERPRISE', defaultValue: true, description: 'Run the integration test suite against the Conjur Enterprise appliance')
   }
 
   stages {
@@ -129,6 +131,9 @@ pipeline {
         INFRAPOOL_TEST_CERT="${params.TEST_CERT}"
         // SPIFFE tests require the cert-authn appliance; guaranteed by TEST_CERT=true above.
         INFRAPOOL_TEST_SPIFFE="${params.TEST_SPIFFE}"
+        // Only the Enterprise stage overrides this; the TEST_ENTERPRISE param
+        // just gates that stage.
+        INFRAPOOL_TEST_ENTERPRISE = "false"
       }
       parallel {
         stage('Golang 1.27') {
@@ -180,6 +185,30 @@ pipeline {
               script { archiveArtifacts artifacts: 'output/1.26/conjur-leader-logs.txt', allowEmptyArchive: true }
               script { archiveArtifacts artifacts: 'output/1.26/spire-server-logs.txt', allowEmptyArchive: true }
               script { archiveArtifacts artifacts: 'output/1.26/spire-agent-logs.txt', allowEmptyArchive: true }
+            }
+          }
+        }
+
+        stage('Golang 1.27 (Enterprise)') {
+          when {
+            expression { params.TEST_ENTERPRISE }
+          }
+          environment {
+            INFRAPOOL_TEST_ENTERPRISE = "true"
+            // Cert, SPIFFE and AWS IAM coverage already comes from the OSS stages.
+            INFRAPOOL_TEST_AWS = "false"
+            INFRAPOOL_TEST_CERT = "false"
+            INFRAPOOL_TEST_SPIFFE = "false"
+          }
+          steps {
+            script {
+              sh "./bin/test.sh 1.27 $REGISTRY_URL"
+            }
+          }
+          post {
+            always {
+              script { archiveArtifacts artifacts: 'output/enterprise-1.27/conjur-leader-logs.txt', allowEmptyArchive: true }
+              junit 'output/enterprise-1.27/junit.xml'
             }
           }
         }
@@ -288,7 +317,9 @@ pipeline {
               if (params.TEST_GCP) {
                 unstash 'token-out'
               }
-              sh "./bin/test.sh"
+              withConjurAwsIamRole {
+                sh "./bin/test.sh"
+              }
               stash name: 'merged-out', includes: 'output/cloud/*.xml'
               unstash 'merged-out'
               recordCoverage(
