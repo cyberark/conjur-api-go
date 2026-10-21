@@ -5,11 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
 ### Changed
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
 ## [0.16.2] - 2026-10-15
+
+### Security
+- Upgraded Go to 1.26.10.
 
 ### Changed
 - `response.ConjurErrorDetails.Details` is now `any` instead of
