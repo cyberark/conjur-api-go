@@ -32,6 +32,7 @@ const (
 	CapabilityIssuerV2               Capability = "Issuer API"
 	CapabilityStaticSecretV2         Capability = "StaticSecret API"
 	CapabilityBatchRetrieveSecretsV2 Capability = "V2 Batch Retrieve Secrets API"
+	CapabilityBranchAnnotationsV2    Capability = "Branch Annotations API"
 )
 
 // SaaSPolicy is a capability's availability on SaaS.
@@ -103,6 +104,8 @@ var capabilityTable = map[Capability]capabilityEntry{
 	CapabilityIssuerV2:               {SaaSPolicy: SaaSOnly},
 	CapabilityStaticSecretV2:         {SaaSPolicy: SaaSOnly},
 	CapabilityBatchRetrieveSecretsV2: {SaaSPolicy: SaaSOnly},
+	// Self-hosted has no branch annotation route; the path would match delete-branch.
+	CapabilityBranchAnnotationsV2: {SaaSPolicy: SaaSOnly},
 }
 
 // platformError refuses cap on the platform, whatever the version.
