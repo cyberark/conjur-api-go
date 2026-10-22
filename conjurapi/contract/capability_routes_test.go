@@ -97,6 +97,10 @@ func TestRouteCapability(t *testing.T) {
 			routed[tc.want] = true
 		}
 		routed[CapabilityPolicyDryRun] = true
+		// Permission paths are also branch and group paths, so the
+		// permission methods and request builders check this capability
+		// themselves.
+		routed[CapabilityPermissionsV2] = true
 		// SWA builds its own client rather than sending requests through
 		// the SDK, so SWA() checks this capability itself.
 		routed[CapabilitySWAManagement] = true

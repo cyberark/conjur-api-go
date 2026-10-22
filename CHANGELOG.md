@@ -12,6 +12,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.17.0] - 2026-10-23
 
+### Added
+- `ClientV2` permission methods for workloads, groups, branches and safes:
+  `GrantPermission`, `UpdatePermission`, `RevokePermission` and
+  `ListPermissions`, with their `*PermissionRequest` builders.
+  `PermissionFilter` pages `ListPermissions`. `SupportedPermissionKinds` and
+  `SupportedPermissionKindNames` list the resource kinds the SDK has routes
+  for; the service validates the privileges and grantee kinds, and its errors
+  are returned as `*response.ConjurError`. `UpdatePermission` creates the grant
+  when the subject has none. Permissions are SaaS-only for every kind;
+  Self-Hosted refuses the methods and the builders with
+  `contract.CapabilityPermissionsV2`.
 ### Changed
 - `ClientV2.UpdateBranch` and `ClientV2.DeleteBranch` return typed results
   (`*Branch` and `error`) instead of raw bytes, and `UpdateBranch` sends the
