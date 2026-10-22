@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 type Owner struct {
@@ -13,15 +14,19 @@ type Owner struct {
 }
 
 type Branch struct {
-	Name        string            `json:"name"`
+	Name string `json:"name"`
+	// Owner is sent on create. Only Self-Hosted returns it and lets
+	// UpdateBranch change it; SaaS answers an owner in an update with a 422.
 	Owner       *Owner            `json:"owner,omitempty"`
 	Branch      string            `json:"branch"`
 	Annotations map[string]string `json:"annotations,omitempty"`
+	// CreatedAt is set by the server. Only SaaS sends it.
+	CreatedAt string `json:"created_at,omitempty"`
 }
 
 type BranchesResponse struct {
 	Branches []Branch `json:"branches,omitempty"`
-	Count    int      `json:"count"`
+	Count    int      `json:"count"` // grand total, not the page size
 }
 
 type BranchFilter struct {
@@ -47,6 +52,8 @@ func (c *ClientV2) ReadBranch(identifier string) (*Branch, error) {
 	return submitAndUnmarshal[Branch](c, req)
 }
 
+// ReadBranches gets a page of branches; filter may be nil. To read them all,
+// advance filter.Offset by the length of each page until it reaches Count.
 func (c *ClientV2) ReadBranches(filter *BranchFilter) (BranchesResponse, error) {
 	req, err := c.ReadBranchesRequest(filter)
 	if err != nil {
@@ -60,22 +67,26 @@ func (c *ClientV2) ReadBranches(filter *BranchFilter) (BranchesResponse, error) 
 	return *branchResp, nil
 }
 
-func (c *ClientV2) UpdateBranch(branch Branch) ([]byte, error) {
-	req, err := c.UpdateBranchRequest(branch.Name, branch.Owner, branch.Annotations)
+// UpdateBranch adds or replaces branch.Annotations on the branch, without
+// removing the others, sets branch.Owner if given, and returns the branch.
+func (c *ClientV2) UpdateBranch(branch Branch) (*Branch, error) {
+	req, err := c.UpdateBranchRequest(branch.identifier(), branch.Owner, branch.Annotations)
 	if err != nil {
 		return nil, err
 	}
 
-	return submitAndReadData(c, req)
+	return submitAndUnmarshal[Branch](c, req)
 }
 
-func (c *ClientV2) DeleteBranch(identifier string) ([]byte, error) {
+// DeleteBranch deletes a branch and everything under it, secrets included. The
+// server doesn't refuse a branch that still holds resources.
+func (c *ClientV2) DeleteBranch(identifier string) error {
 	req, err := c.DeleteBranchRequest(identifier)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return submitAndReadData(c, req)
+	return submitAndEmpty(c, req)
 }
 
 func (c *ClientV2) CreateBranchRequest(branch Branch) (*http.Request, error) {
@@ -92,7 +103,11 @@ func (c *ClientV2) ReadBranchRequest(identifier string) (*http.Request, error) {
 		return nil, fmt.Errorf("Must specify an identifier")
 	}
 
-	return newV2Request(http.MethodGet, c.branchURL(identifier), v2APIHeaderBeta)
+	branchURL, err := c.branchURL(identifier)
+	if err != nil {
+		return nil, err
+	}
+	return newV2Request(http.MethodGet, branchURL, v2APIHeaderBeta)
 }
 
 func (c *ClientV2) ReadBranchesRequest(filter *BranchFilter) (*http.Request, error) {
@@ -116,7 +131,12 @@ func (c *ClientV2) ReadBranchesRequest(filter *BranchFilter) (*http.Request, err
 	return newV2Request(http.MethodGet, requestURL, v2APIHeaderBeta)
 }
 
+// UpdateBranchRequest builds the branch PATCH request. A nil owner is not sent.
 func (c *ClientV2) UpdateBranchRequest(branchName string, owner *Owner, annotations map[string]string) (*http.Request, error) {
+	if branchName == "" {
+		return nil, fmt.Errorf("Must specify an identifier")
+	}
+
 	payload := struct {
 		Owner       *Owner            `json:"owner,omitempty"`
 		Annotations map[string]string `json:"annotations,omitempty"`
@@ -125,7 +145,11 @@ func (c *ClientV2) UpdateBranchRequest(branchName string, owner *Owner, annotati
 		Annotations: annotations,
 	}
 
-	return newV2JSONRequest(http.MethodPatch, c.branchURL(branchName), payload, v2APIHeaderBeta)
+	branchURL, err := c.branchURL(branchName)
+	if err != nil {
+		return nil, err
+	}
+	return newV2JSONRequest(http.MethodPatch, branchURL, payload, v2APIHeaderBeta)
 }
 
 func (c *ClientV2) DeleteBranchRequest(identifier string) (*http.Request, error) {
@@ -133,7 +157,11 @@ func (c *ClientV2) DeleteBranchRequest(identifier string) (*http.Request, error)
 		return nil, fmt.Errorf("Must specify an Identifier")
 	}
 
-	return newV2Request(http.MethodDelete, c.branchURL(identifier), v2APIHeaderBeta)
+	branchURL, err := c.branchURL(identifier)
+	if err != nil {
+		return nil, err
+	}
+	return newV2Request(http.MethodDelete, branchURL, v2APIHeaderBeta)
 }
 
 func (b Branch) Validate() error {
@@ -150,15 +178,33 @@ func (b Branch) Validate() error {
 	return nil
 }
 
-func (c *ClientV2) branchURL(identifier string) string {
+// identifier joins Branch and Name; with no Branch, Name is the full identifier.
+func (b Branch) identifier() string {
+	if b.Branch == "" {
+		return b.Name
+	}
+	return b.Branch + "/" + b.Name
+}
+
+// branchURL escapes each identifier segment, rejecting empty, "." and ".." ones.
+func (c *ClientV2) branchURL(identifier string) (string, error) {
 	account := c.config.Account
 	if c.config.IsSaaS() {
 		account = ""
 	}
 	if identifier == "" {
-		return makeRouterURL(c.config.ApplianceURL, "branches", account).String()
+		return makeRouterURL(c.config.ApplianceURL, "branches", account).String(), nil
 	}
-	return makeRouterURL(c.config.ApplianceURL, "branches", account, identifier).String()
+	escaped, err := escapePathSegments("Branch identifier", strings.Split(identifier, "/"))
+	if err != nil {
+		return "", err
+	}
+	components := []string{"branches"}
+	if account != "" {
+		components = append(components, account)
+	}
+	components = append(components, escaped...)
+	return makeRouterURL(c.config.ApplianceURL, components...).String(), nil
 }
 
 func (c *ClientV2) branchesURL() string {
