@@ -100,6 +100,8 @@ func TestAuthnIam(t *testing.T) {
 			AuthnType:    "iam",
 			ServiceID:    "prod",
 			JWTHostID:    jwtHostID,
+			SSLCert:      conjur.config.SSLCert,
+			SSLCertPath:  conjur.config.SSLCertPath,
 		}
 		iamConjur, err := NewClientFromAWSCredentials(config)
 		require.NoError(t, err)

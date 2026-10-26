@@ -124,6 +124,8 @@ func TestAuthnAzure(t *testing.T) {
 			AuthnType:    "azure",
 			ServiceID:    "prod",
 			JWTHostID:    "data/test/azure-apps/azureVM",
+			SSLCert:      conjur.config.SSLCert,
+			SSLCertPath:  conjur.config.SSLCertPath,
 		}
 		azureConjur, err := NewClientFromAzureCredentials(config)
 		require.NoError(t, err)
@@ -176,6 +178,8 @@ func TestAuthnAzure(t *testing.T) {
 			ServiceID:     "prod",
 			JWTHostID:     "data/test/azure-apps/azureVM",
 			AzureClientID: os.Getenv("USER_ASSIGNED_IDENTITY_CLIENT_ID"),
+			SSLCert:       conjur.config.SSLCert,
+			SSLCertPath:   conjur.config.SSLCertPath,
 		}
 		azureConjur, err := NewClientFromAzureCredentials(config)
 		require.NoError(t, err)
