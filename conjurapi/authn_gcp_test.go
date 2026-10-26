@@ -150,6 +150,8 @@ func TestAuthnGCP(t *testing.T) {
 				AuthnType:    "gcp",
 				JWTHostID:    "data/test/gcp-apps/test-app",
 				JWTContent:   jwtContent,
+				SSLCert:      conjur.config.SSLCert,
+				SSLCertPath:  conjur.config.SSLCertPath,
 			}
 			gcpConjur, err := NewClientFromGCPCredentials(config, gcpURL)
 			require.NoError(t, err)
