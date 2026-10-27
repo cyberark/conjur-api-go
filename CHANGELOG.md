@@ -10,6 +10,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
+## [0.17.0] - 2026-10-23
+
+### Changed
+- `ClientV2.UpdateBranch` and `ClientV2.DeleteBranch` return typed results
+  (`*Branch` and `error`) instead of raw bytes, and `UpdateBranch` sends the
+  full `branch/name` identifier. `Branch` gains `CreatedAt`. Branch
+  identifiers reject `.`, `..` and empty segments, and `UpdateBranchRequest`
+  rejects an empty one instead of sending the update to the branch list.
+  Identifiers such as `data/`, `/data/x` and `data//x`, which have an empty
+  segment, are now rejected before a request is sent.
+
 ## [0.16.2] - 2026-10-15
 
 ### Security
