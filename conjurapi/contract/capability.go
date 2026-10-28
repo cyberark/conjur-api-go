@@ -29,6 +29,7 @@ const (
 	CapabilityPublicKeys             Capability = "Public Keys"
 	CapabilitySWAManagement          Capability = "SWA API"
 	CapabilityWorkloadV2             Capability = "Workload API"
+	CapabilityPermissionsV2          Capability = "Permissions API"
 	CapabilityIssuerV2               Capability = "Issuer API"
 	CapabilityStaticSecretV2         Capability = "StaticSecret API"
 	CapabilityBatchRetrieveSecretsV2 Capability = "V2 Batch Retrieve Secrets API"
@@ -101,6 +102,7 @@ var capabilityTable = map[Capability]capabilityEntry{
 	// SaaS-only APIs, with no self-hosted version to gate on.
 	CapabilitySWAManagement:          {SaaSPolicy: SaaSOnly},
 	CapabilityWorkloadV2:             {SaaSPolicy: SaaSOnly},
+	CapabilityPermissionsV2:          {SaaSPolicy: SaaSOnly},
 	CapabilityIssuerV2:               {SaaSPolicy: SaaSOnly},
 	CapabilityStaticSecretV2:         {SaaSPolicy: SaaSOnly},
 	CapabilityBatchRetrieveSecretsV2: {SaaSPolicy: SaaSOnly},
