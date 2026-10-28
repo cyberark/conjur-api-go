@@ -13,6 +13,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [0.17.0] - 2026-10-23
 
 ### Added
+- `ClientV2.DeleteAnnotation` removes one annotation from a workload, group or
+  branch, and `SupportedAnnotationKinds` and `SupportedAnnotationKindNames` list
+  those kinds. On Self-Hosted only group annotations are supported.
+- `ClientV2.SetAnnotation`, `GetAnnotation` and `ListAnnotations` set, read and
+  list annotations on a workload, group or branch. The V2 API has no routes for
+  them, so they go through the resource: set patches it with only that
+  annotation, which the server merges, and get and list read it. They accept
+  the same kinds and have the same platform support as `DeleteAnnotation`, and
+  a missing annotation is an HTTP 404 `*response.ConjurError`.
+- `SetAnnotation` refuses, before sending, what the server would: an empty or
+  blank value (delete the annotation instead), a name or value holding `<`, `>`
+  or `'`, a name over 128 or a value over 512 characters, and on a workload the
+  names that are workload fields. `SetAnnotation`, `GetAnnotation` and
+  `DeleteAnnotation` refuse the names `.` and `..` and any holding `../` or
+  `..\`, which the server cannot delete safely.
+- `contract.CapabilityBranchAnnotationsV2`, which branch annotations need. It is
+  SaaS-only, and the annotation methods and their request builders check it.
 - `ClientV2` permission methods for workloads, groups, branches and safes:
   `GrantPermission`, `UpdatePermission`, `RevokePermission` and
   `ListPermissions`, with their `*PermissionRequest` builders.

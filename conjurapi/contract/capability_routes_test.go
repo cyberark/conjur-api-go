@@ -104,6 +104,9 @@ func TestRouteCapability(t *testing.T) {
 		// SWA builds its own client rather than sending requests through
 		// the SDK, so SWA() checks this capability itself.
 		routed[CapabilitySWAManagement] = true
+		// A branch annotation path is also a branch identifier, so the
+		// annotation methods and request builders check it.
+		routed[CapabilityBranchAnnotationsV2] = true
 
 		for cap := range capabilityTable {
 			assert.True(t, routed[cap], "%s is never matched by RouteCapability", cap)
