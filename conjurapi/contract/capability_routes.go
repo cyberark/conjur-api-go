@@ -21,6 +21,9 @@ var routeCapabilities = map[string]Capability{
 	"/workloads":  CapabilityWorkloadV2,
 	"/workloads/": CapabilityWorkloadV2,
 
+	"/safes":  CapabilitySafesV2,
+	"/safes/": CapabilitySafesV2,
+
 	// The LDAP login, authenticate and status routes aren't gated.
 	"/authn-ldap/{service_id}/{account}/groups":        CapabilityLdapMappings,
 	"/authn-ldap/{service_id}/{account}/groups/{name}": CapabilityLdapMappings,

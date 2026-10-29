@@ -40,6 +40,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   when the subject has none. Permissions are SaaS-only for every kind;
   Self-Hosted refuses the methods and the builders with
   `contract.CapabilityPermissionsV2`.
+- `ClientV2` safe methods for Secrets Manager SaaS: `CreateSafe`, `GetSafe`,
+  `GetSafeExtended` (with the secret count), `ListSafes`, `UpdateSafe` (PATCH:
+  empty fields are kept and annotations merge), `ReplaceSafe` (PUT: empty
+  fields are cleared) and `DeleteSafe`. `SafeFilter.SafeType` filters
+  `ListSafes` by safe type.
+
 ### Changed
 - `ClientV2.UpdateBranch` and `ClientV2.DeleteBranch` return typed results
   (`*Branch` and `error`) instead of raw bytes, and `UpdateBranch` sends the
