@@ -80,3 +80,16 @@ func newV2JSONRequest(method, requestURL string, payload any, acceptHeader strin
 	request.Header.Add(v2APIOutgoingHeaderID, acceptHeader)
 	return request, nil
 }
+
+// newV2RawRequest builds an HTTP request with a raw body and the given
+// Content-Type for a v2 API route.
+func newV2RawRequest(method, requestURL string, body []byte, contentType, acceptHeader string) (*http.Request, error) {
+	request, err := http.NewRequest(method, requestURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+
+	request.Header.Add("Content-Type", contentType)
+	request.Header.Add(v2APIOutgoingHeaderID, acceptHeader)
+	return request, nil
+}
