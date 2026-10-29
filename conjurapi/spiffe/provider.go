@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -105,7 +106,7 @@ func (p *provider) getCertificate(ctx context.Context) (*tls.Certificate, error)
 // API and re-fetches when the cached token is within jwtExpirySkew of expiry.
 type jwtProvider struct {
 	mu     sync.Mutex // serialises cache reads and writes
-	cached string     // empty until the first successful fetch
+	cached []byte     // empty until the first successful fetch; zeroed when replaced
 	expiry time.Time  // expiry reported by the JWT-SVID
 	fetch  func(ctx context.Context) (string, time.Time, error)
 }
@@ -116,17 +117,22 @@ func (p *jwtProvider) getJWT(ctx context.Context) (string, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	if p.cached != "" && time.Now().Before(p.expiry.Add(-jwtExpirySkew)) {
-		return p.cached, nil
+	if len(p.cached) > 0 && time.Now().Before(p.expiry.Add(-jwtExpirySkew)) {
+		return string(p.cached), nil
 	}
 
 	token, expiry, err := p.fetch(ctx)
 	if err != nil {
 		return "", err
 	}
-	p.cached = token
+	// Zero the expired token's bytes before dropping them (M10, ASM-10). The
+	// string returned to callers is an immutable copy and cannot be zeroed.
+	old := p.cached
+	p.cached = []byte(token)
 	p.expiry = expiry
-	return p.cached, nil
+	clear(old)
+	runtime.KeepAlive(old)
+	return string(p.cached), nil
 }
 
 // validateWorkloadEndpoint checks that SPIFFE_ENDPOINT_SOCKET is acceptable.
@@ -239,6 +245,9 @@ func classifyWorkloadAPIError(err error) error {
 // value or a missing match are errors.
 func selectBySpiffeID(ids []spiffeid.ID, want string) (int, error) {
 	if want == "" {
+		if len(ids) == 0 {
+			return -1, errors.New("Workload API returned no SVIDs")
+		}
 		if len(ids) > 1 {
 			candidates := make([]string, len(ids))
 			for i, id := range ids {
@@ -321,6 +330,12 @@ func buildTLSCert(svid *x509svid.SVID) (*tls.Certificate, time.Time, error) {
 	if err != nil {
 		return nil, time.Time{}, fmt.Errorf("marshaling X.509-SVID: %w", err)
 	}
+	// keyPEM holds the SVID private key. Zero it on every return path once
+	// tls.X509KeyPair has parsed it.
+	defer func() {
+		clear(keyPEM)
+		runtime.KeepAlive(keyPEM)
+	}()
 	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	if err != nil {
 		return nil, time.Time{}, fmt.Errorf("loading X.509-SVID as TLS certificate: %w", err)

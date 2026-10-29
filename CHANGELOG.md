@@ -67,6 +67,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   Identifiers such as `data/`, `/data/x` and `data//x`, which have an empty
   segment, are now rejected before a request is sent.
 
+### Security
+- SPIFFE: zero the X.509-SVID private key PEM after it is parsed, and zero a
+  cached JWT-SVID's bytes when it is replaced on refresh. The
+  `string` returned to callers is an immutable copy and is not zeroed.
+  (CNJR-14674)
+
+### Fixed
+- SPIFFE: `selectBySpiffeID` returns an error instead of index 0 when the
+  Workload API returns no SVIDs and `CONJUR_SPIFFE_ID` is unset. (CNJR-14674)
+
 ## [0.16.2] - 2026-10-15
 
 ### Security
