@@ -34,6 +34,8 @@ func TestRouteCapability(t *testing.T) {
 		{"policy fetch", http.MethodGet, "/policies/conjur/policy/root", CapabilityPolicyFetch},
 		{"workload create", http.MethodPost, "/workloads", CapabilityWorkloadV2},
 		{"workload read", http.MethodGet, "/workloads/data%2Fapp", CapabilityWorkloadV2},
+		{"safe list", http.MethodGet, "/safes", CapabilitySafesV2},
+		{"safe delete", http.MethodDelete, "/safes/static/my-safe", CapabilitySafesV2},
 		{"certificate issue", http.MethodPost, "/issuers/my-issuer/issue", CapabilityIssuerV2},
 		{"certificate sign", http.MethodPost, "/issuers/my-issuer/sign", CapabilityIssuerV2},
 		{"static secret create", http.MethodPost, "/secrets/static", CapabilityStaticSecretV2},
