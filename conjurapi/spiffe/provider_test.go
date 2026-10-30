@@ -210,6 +210,18 @@ func TestValidateWorkloadEndpoint(t *testing.T) {
 			socket: "tcp://localhost:8888",
 		},
 		{
+			name:      "non-IP hostname other than localhost is blocked",
+			socket:    "tcp://spire-agent.example.org:8888",
+			wantErr:   true,
+			errSubstr: "non-loopback",
+		},
+		{
+			name:      "hostname that merely starts with localhost is blocked",
+			socket:    "tcp://localhost.evil.example:8888",
+			wantErr:   true,
+			errSubstr: "non-loopback",
+		},
+		{
 			name:      "non-loopback tcp is blocked",
 			socket:    "tcp://192.168.1.5:8888",
 			wantErr:   true,
@@ -470,6 +482,13 @@ func TestSelectBySpiffeID(t *testing.T) {
 		assert.Equal(t, 0, idx)
 	})
 
+	t.Run("empty want + no SVIDs returns error", func(t *testing.T) {
+		idx, err := selectBySpiffeID(nil, "")
+		require.Error(t, err)
+		assert.Equal(t, -1, idx)
+		assert.Contains(t, err.Error(), "no SVIDs")
+	})
+
 	t.Run("empty want + multiple SVIDs returns error listing candidates", func(t *testing.T) {
 		_, err := selectBySpiffeID([]spiffeid.ID{id1, id2}, "")
 		require.Error(t, err)
@@ -654,4 +673,28 @@ func TestNewJWTProvider_ReadsAudienceAtConstruction(t *testing.T) {
 	// We cannot introspect the closure directly; correctness is verified by the
 	// integration test. Here we just confirm the provider is still callable.
 	assert.NotNil(t, fn)
+}
+
+func TestJWTProvider_ZeroesReplacedToken(t *testing.T) {
+	tokens := []string{"first-token", "second-token"}
+	calls := 0
+
+	p := &jwtProvider{
+		fetch: func(_ context.Context) (string, time.Time, error) {
+			tok := tokens[calls]
+			calls++
+			return tok, time.Now().Add(-time.Second), nil // already expired: forces refresh
+		},
+	}
+
+	first, err := p.getJWT(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "first-token", first)
+	oldBytes := p.cached // retain the slice header to inspect its backing array
+
+	second, err := p.getJWT(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "second-token", second)
+	assert.Equal(t, make([]byte, len(oldBytes)), oldBytes, "replaced token bytes must be zeroed")
+	assert.Equal(t, "first-token", first, "string copy handed to callers is unaffected")
 }
