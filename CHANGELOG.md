@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
+## [0.17.1] - 2026-11-02
+
+### Fixed
+- Name `CONJUR_AUTHN_TOKEN_FILE` (not `CONJUR_AUTHN_TOKEN`) when the token read from
+  that file is invalid. Adds `authn.NewTokenFromSource`. (CNJR-15385)
+
 ## [0.17.0] - 2026-10-29
 
 ### Added
