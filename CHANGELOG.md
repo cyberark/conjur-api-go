@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   that file is invalid. Adds `authn.NewTokenFromSource`. (CNJR-15385)
 - "SPIFFE Workload API still unavailable after N retries" now includes the last
   underlying gRPC error. (CNJR-15385)
+- JWT-SVID fetches from the SPIFFE Workload API are bounded by `CONJUR_SPIFFE_TIMEOUT`
+  (Go duration or seconds, default 15s) instead of waiting forever on an agent that
+  never answers; a timeout reports that the Workload API did not respond. (CNJR-15385)
 
 ## [0.17.0] - 2026-10-29
 

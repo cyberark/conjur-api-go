@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -51,6 +52,9 @@ const (
 	// envConjurSpiffeAllowRemoteEndpoint is an undocumented override that
 	// permits non-loopback tcp: addresses. Most deployments must not set this.
 	envConjurSpiffeAllowRemoteEndpoint = "CONJUR_SPIFFE_ALLOW_REMOTE_ENDPOINT"
+
+	// envConjurSpiffeTimeout bounds a JWT-SVID fetch (Go duration or seconds).
+	envConjurSpiffeTimeout = "CONJUR_SPIFFE_TIMEOUT"
 )
 
 // retryInitial is the delay before the first retry. Declared as a var so tests
@@ -138,6 +142,42 @@ func (p *jwtProvider) getJWT(ctx context.Context) (string, error) {
 	clear(old)
 	runtime.KeepAlive(old)
 	return string(p.cached), nil
+}
+
+// defaultWorkloadAPITimeout bounds a JWT-SVID fetch (including retries) when
+// CONJUR_SPIFFE_TIMEOUT is unset or invalid.
+const defaultWorkloadAPITimeout = 15 * time.Second
+
+// workloadAPITimeout returns the JWT-SVID fetch deadline: CONJUR_SPIFFE_TIMEOUT
+// as a Go duration ("20s") or whole seconds ("20"), else 15s.
+func workloadAPITimeout() time.Duration {
+	v := strings.TrimSpace(os.Getenv(envConjurSpiffeTimeout))
+	if v == "" {
+		return defaultWorkloadAPITimeout
+	}
+	if d, err := time.ParseDuration(v); err == nil && d > 0 {
+		return d
+	}
+	if n, err := strconv.Atoi(v); err == nil && n > 0 {
+		return time.Duration(n) * time.Second
+	}
+	logging.ApiLog.Warnf("Ignoring invalid CONJUR_SPIFFE_TIMEOUT %q; using %s", v, defaultWorkloadAPITimeout)
+	return defaultWorkloadAPITimeout
+}
+
+// isDeadline reports whether err is a context or gRPC deadline expiry.
+func isDeadline(err error) bool {
+	return errors.Is(err, context.DeadlineExceeded) || status.Code(err) == codes.DeadlineExceeded
+}
+
+// deadlineError turns a deadline expiry into a message that says the Workload
+// API did not answer, distinct from "agent unreachable". Other errors pass through.
+func deadlineError(err error) error {
+	if !isDeadline(err) {
+		return err
+	}
+	return fmt.Errorf("SPIFFE Workload API at %q did not respond within the deadline: %w",
+		os.Getenv(envSpiffeEndpointSocket), err)
 }
 
 // validateWorkloadEndpoint checks that SPIFFE_ENDPOINT_SOCKET is acceptable.
@@ -390,6 +430,9 @@ func fetchSVIDsWithRetry(ctx context.Context, fetchSVIDs svidFetcher) ([]*x509sv
 		if err == nil {
 			return svids, nil
 		}
+		if isDeadline(err) {
+			return nil, deadlineError(err)
+		}
 
 		// Classify the failure and decide whether to retry.
 		classified := classifyWorkloadAPIError(err)
@@ -407,7 +450,7 @@ func fetchSVIDsWithRetry(ctx context.Context, fetchSVIDs svidFetcher) ([]*x509sv
 		select {
 		case <-ctx.Done():
 			// Propagate context cancellation immediately instead of sleeping.
-			return nil, ctx.Err()
+			return nil, deadlineError(ctx.Err())
 		case <-time.After(delay):
 		}
 		delay *= 2
@@ -500,6 +543,9 @@ func fetchJWTSVIDFromWorkloadAPI(ctx context.Context, audience string, fetchSVID
 	for attempt := 0; attempt <= retryMax; attempt++ {
 		svids, err := fetchSVIDs(ctx, audience)
 
+		if err != nil && isDeadline(err) {
+			return "", time.Time{}, deadlineError(err)
+		}
 		if err == nil {
 			svid, err := selectJWTSVID(svids)
 			if err != nil {
@@ -521,7 +567,7 @@ func fetchJWTSVIDFromWorkloadAPI(ctx context.Context, audience string, fetchSVID
 			attempt+1, retryMax, delay)
 		select {
 		case <-ctx.Done():
-			return "", time.Time{}, ctx.Err()
+			return "", time.Time{}, deadlineError(ctx.Err())
 		case <-time.After(delay):
 		}
 		delay *= 2
@@ -560,6 +606,11 @@ func NewJWTProvider() func(context.Context) (string, error) {
 	}
 	p := &jwtProvider{
 		fetch: func(ctx context.Context) (string, time.Time, error) {
+			// Bound the whole fetch: RefreshJWT passes context.Background(),
+			// and a Workload API that accepts the RPC but never answers would
+			// otherwise block forever.
+			ctx, cancel := context.WithTimeout(ctx, workloadAPITimeout())
+			defer cancel()
 			return fetchJWTSVIDFromWorkloadAPI(ctx, audience, realFetch)
 		},
 	}
