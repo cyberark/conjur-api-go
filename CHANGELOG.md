@@ -10,6 +10,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
+## [0.17.1] - 2026-11-02
+
+### Fixed
+- Name `CONJUR_AUTHN_TOKEN_FILE` (not `CONJUR_AUTHN_TOKEN`) when the token read from
+  that file is invalid. Adds `authn.NewTokenFromSource`. (CNJR-15385)
+- "SPIFFE Workload API still unavailable after N retries" now includes the last
+  underlying gRPC error. (CNJR-15385)
+- JWT-SVID fetches from the SPIFFE Workload API are bounded by `CONJUR_SPIFFE_TIMEOUT`
+  (Go duration or seconds, default 15s) instead of waiting forever on an agent that
+  never answers; a timeout reports that the Workload API did not respond. (CNJR-15385)
+- When JWT authentication fails with an already-expired JWT (for example a JWT-SVID
+  that expired shortly before use), the error now says the JWT expired and how long
+  ago, and a warning is logged when such an SVID is fetched. (CNJR-15385)
+
 ## [0.17.0] - 2026-10-29
 
 ### Added

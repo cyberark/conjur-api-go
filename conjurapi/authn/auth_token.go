@@ -29,7 +29,23 @@ func hasField(fields map[string]string, name string) (hasField bool) {
 	return
 }
 
+// Environment variables an access token can be read from; used to name the
+// source in token validation errors.
+const (
+	EnvAuthnToken     = "CONJUR_AUTHN_TOKEN"
+	EnvAuthnTokenFile = "CONJUR_AUTHN_TOKEN_FILE"
+)
+
+// NewToken parses a Conjur access token. Errors name CONJUR_AUTHN_TOKEN as the
+// source; use NewTokenFromSource when the token came from somewhere else
+// (e.g. CONJUR_AUTHN_TOKEN_FILE).
 func NewToken(data []byte) (token *AuthnToken, err error) {
+	return NewTokenFromSource(data, EnvAuthnToken)
+}
+
+// NewTokenFromSource is NewToken, but names source (the environment variable
+// the token was read from) in any validation error.
+func NewTokenFromSource(data []byte, source string) (token *AuthnToken, err error) {
 	fields := make(map[string]string)
 	if err = json.Unmarshal(data, &fields); err != nil {
 		// Only hint "base64-encoded" when the decoded bytes actually look like a Conjur token
@@ -39,13 +55,13 @@ func NewToken(data []byte) (token *AuthnToken, err error) {
 			decodedFields := make(map[string]string)
 			if json.Unmarshal(decoded, &decodedFields) == nil &&
 				hasField(decodedFields, "protected") && hasField(decodedFields, "payload") && hasField(decodedFields, "signature") {
-				err = fmt.Errorf("CONJUR_AUTHN_TOKEN appears to be base64-encoded; " +
-					"it should be the raw JSON access token string, not a base64-encoded one")
+				err = fmt.Errorf("%s appears to be base64-encoded; "+
+					"it should be the raw JSON access token string, not a base64-encoded one", source)
 				return
 			}
 		}
-		err = fmt.Errorf("CONJUR_AUTHN_TOKEN is not valid JSON — " +
-			"expected a Conjur access token with 'protected', 'payload', and 'signature' fields: %s", err)
+		err = fmt.Errorf("%s is not valid JSON — "+
+			"expected a Conjur access token with 'protected', 'payload', and 'signature' fields: %s", source, err)
 		return
 	}
 
@@ -53,8 +69,8 @@ func NewToken(data []byte) (token *AuthnToken, err error) {
 		t := &AuthnToken{}
 		token = t
 	} else {
-		err = fmt.Errorf("CONJUR_AUTHN_TOKEN is missing required fields — " +
-			"expected 'protected', 'payload', and 'signature'")
+		err = fmt.Errorf("%s is missing required fields — "+
+			"expected 'protected', 'payload', and 'signature'", source)
 		return
 	}
 

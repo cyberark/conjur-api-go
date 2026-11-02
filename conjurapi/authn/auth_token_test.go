@@ -109,3 +109,10 @@ func TestToken_Parse(t *testing.T) {
 		assert.EqualError(t, err, "Unable to unmarshal access token: invalid character 'i' looking for beginning of value")
 	})
 }
+
+func TestNewTokenFromSource_NamesSource(t *testing.T) {
+	_, err := NewTokenFromSource([]byte("invalid json"), "CONJUR_AUTHN_TOKEN_FILE")
+	assert.ErrorContains(t, err, "CONJUR_AUTHN_TOKEN_FILE is not valid JSON")
+	_, err = NewTokenFromSource([]byte(`{"protected":"x"}`), "CONJUR_AUTHN_TOKEN_FILE")
+	assert.ErrorContains(t, err, "CONJUR_AUTHN_TOKEN_FILE is missing required fields")
+}

@@ -61,8 +61,14 @@ func (c *Client) refreshToken() error {
 		return err
 	}
 
-	// Parse and store the new token in memory
-	token, err := authn.NewToken(tokenBytes)
+	// Parse and store the new token in memory. Name the right variable in
+	// validation errors: a token-file authenticator read it from
+	// CONJUR_AUTHN_TOKEN_FILE, not CONJUR_AUTHN_TOKEN.
+	source := authn.EnvAuthnToken
+	if _, ok := c.authenticator.(*authn.TokenFileAuthenticator); ok {
+		source = authn.EnvAuthnTokenFile
+	}
+	token, err := authn.NewTokenFromSource(tokenBytes, source)
 	if err != nil {
 		return err
 	}

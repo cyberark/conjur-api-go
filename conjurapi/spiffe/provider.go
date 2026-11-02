@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -51,6 +52,9 @@ const (
 	// envConjurSpiffeAllowRemoteEndpoint is an undocumented override that
 	// permits non-loopback tcp: addresses. Most deployments must not set this.
 	envConjurSpiffeAllowRemoteEndpoint = "CONJUR_SPIFFE_ALLOW_REMOTE_ENDPOINT"
+
+	// envConjurSpiffeTimeout bounds a JWT-SVID fetch (Go duration or seconds).
+	envConjurSpiffeTimeout = "CONJUR_SPIFFE_TIMEOUT"
 )
 
 // retryInitial is the delay before the first retry. Declared as a var so tests
@@ -66,6 +70,11 @@ type svidFetcher func(ctx context.Context) ([]*x509svid.SVID, error)
 // SPIFFE Workload API. The production default wraps workloadapi.FetchJWTSVIDs;
 // tests substitute a stub.
 type jwtSVIDFetcher func(ctx context.Context, audience string) ([]*jwtsvid.SVID, error)
+
+// unavailableAfterRetriesFmt is the error format used when the Workload API is
+// still unavailable after retryMax retries; it takes the retry count and the
+// last underlying error.
+const unavailableAfterRetriesFmt = "SPIFFE Workload API still unavailable after %d retries: %w"
 
 // errRetry is returned by classifyWorkloadAPIError when the caller should retry
 // the fetch after a backoff delay.
@@ -133,6 +142,48 @@ func (p *jwtProvider) getJWT(ctx context.Context) (string, error) {
 	clear(old)
 	runtime.KeepAlive(old)
 	return string(p.cached), nil
+}
+
+// defaultWorkloadAPITimeout bounds a JWT-SVID fetch (including retries) when
+// CONJUR_SPIFFE_TIMEOUT is unset or invalid.
+const defaultWorkloadAPITimeout = 15 * time.Second
+
+// workloadAPITimeout returns the JWT-SVID fetch deadline: CONJUR_SPIFFE_TIMEOUT
+// as a Go duration ("20s") or whole seconds ("20"), else 15s.
+func workloadAPITimeout() time.Duration {
+	return durationFromEnv(envConjurSpiffeTimeout, defaultWorkloadAPITimeout)
+}
+
+// durationFromEnv parses name as a positive Go duration or whole seconds.
+// Empty, invalid, zero or negative values yield def.
+func durationFromEnv(name string, def time.Duration) time.Duration {
+	v := strings.TrimSpace(os.Getenv(name))
+	if v == "" {
+		return def
+	}
+	if d, err := time.ParseDuration(v); err == nil && d > 0 {
+		return d
+	}
+	if n, err := strconv.Atoi(v); err == nil && n > 0 {
+		return time.Duration(n) * time.Second
+	}
+	logging.ApiLog.Warnf("Ignoring %s %q (expected a positive duration or whole seconds); using %s", name, v, def)
+	return def
+}
+
+// isDeadline reports whether err is a context or gRPC deadline expiry.
+func isDeadline(err error) bool {
+	return errors.Is(err, context.DeadlineExceeded) || status.Code(err) == codes.DeadlineExceeded
+}
+
+// deadlineError turns a deadline expiry into a message that says the Workload
+// API did not answer, distinct from "agent unreachable". Other errors pass through.
+func deadlineError(err error) error {
+	if !isDeadline(err) {
+		return err
+	}
+	return fmt.Errorf("SPIFFE Workload API at %q did not respond within the deadline: %w",
+		os.Getenv(envSpiffeEndpointSocket), err)
 }
 
 // validateWorkloadEndpoint checks that SPIFFE_ENDPOINT_SOCKET is acceptable.
@@ -385,6 +436,9 @@ func fetchSVIDsWithRetry(ctx context.Context, fetchSVIDs svidFetcher) ([]*x509sv
 		if err == nil {
 			return svids, nil
 		}
+		if isDeadline(err) {
+			return nil, deadlineError(err)
+		}
 
 		// Classify the failure and decide whether to retry.
 		classified := classifyWorkloadAPIError(err)
@@ -392,7 +446,7 @@ func fetchSVIDsWithRetry(ctx context.Context, fetchSVIDs svidFetcher) ([]*x509sv
 			return nil, classified
 		}
 		if attempt >= retryMax {
-			return nil, fmt.Errorf("SPIFFE Workload API still unavailable after %d retries", retryMax)
+			return nil, fmt.Errorf(unavailableAfterRetriesFmt, retryMax, err)
 		}
 
 		// Back off before the next attempt. The delay doubles on each
@@ -402,7 +456,7 @@ func fetchSVIDsWithRetry(ctx context.Context, fetchSVIDs svidFetcher) ([]*x509sv
 		select {
 		case <-ctx.Done():
 			// Propagate context cancellation immediately instead of sleeping.
-			return nil, ctx.Err()
+			return nil, deadlineError(ctx.Err())
 		case <-time.After(delay):
 		}
 		delay *= 2
@@ -495,10 +549,18 @@ func fetchJWTSVIDFromWorkloadAPI(ctx context.Context, audience string, fetchSVID
 	for attempt := 0; attempt <= retryMax; attempt++ {
 		svids, err := fetchSVIDs(ctx, audience)
 
+		if err != nil && isDeadline(err) {
+			return "", time.Time{}, deadlineError(err)
+		}
 		if err == nil {
 			svid, err := selectJWTSVID(svids)
 			if err != nil {
 				return "", time.Time{}, err
+			}
+			if ago := time.Since(svid.Expiry); !svid.Expiry.IsZero() && ago > 0 {
+				logging.ApiLog.Warnf("spiffe: JWT-SVID %s expired %s ago; Conjur will likely reject it with "+
+					"401 Unauthorized. Check that the SPIRE agent is renewing SVIDs and that the system clock is correct",
+					svid.ID, ago.Round(time.Second))
 			}
 			logging.ApiLog.Debugf("spiffe: selected JWT-SVID %s (expires %s)",
 				svid.ID, svid.Expiry.Format(time.RFC3339))
@@ -510,13 +572,13 @@ func fetchJWTSVIDFromWorkloadAPI(ctx context.Context, audience string, fetchSVID
 			return "", time.Time{}, classified
 		}
 		if attempt >= retryMax {
-			return "", time.Time{}, fmt.Errorf("SPIFFE Workload API still unavailable after %d retries", retryMax)
+			return "", time.Time{}, fmt.Errorf(unavailableAfterRetriesFmt, retryMax, err)
 		}
 		logging.ApiLog.Debugf("spiffe: Workload API unavailable (attempt %d/%d); retrying in %s",
 			attempt+1, retryMax, delay)
 		select {
 		case <-ctx.Done():
-			return "", time.Time{}, ctx.Err()
+			return "", time.Time{}, deadlineError(ctx.Err())
 		case <-time.After(delay):
 		}
 		delay *= 2
@@ -555,6 +617,11 @@ func NewJWTProvider() func(context.Context) (string, error) {
 	}
 	p := &jwtProvider{
 		fetch: func(ctx context.Context) (string, time.Time, error) {
+			// Bound the whole fetch: RefreshJWT passes context.Background(),
+			// and a Workload API that accepts the RPC but never answers would
+			// otherwise block forever.
+			ctx, cancel := context.WithTimeout(ctx, workloadAPITimeout())
+			defer cancel()
 			return fetchJWTSVIDFromWorkloadAPI(ctx, audience, realFetch)
 		},
 	}
