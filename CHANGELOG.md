@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - JWT-SVID fetches from the SPIFFE Workload API are bounded by `CONJUR_SPIFFE_TIMEOUT`
   (Go duration or seconds, default 15s) instead of waiting forever on an agent that
   never answers; a timeout reports that the Workload API did not respond. (CNJR-15385)
+- When JWT authentication fails with an already-expired JWT (for example a JWT-SVID
+  that expired shortly before use), the error now says the JWT expired and how long
+  ago, and a warning is logged when such an SVID is fetched. (CNJR-15385)
 
 ## [0.17.0] - 2026-10-29
 

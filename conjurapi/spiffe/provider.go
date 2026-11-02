@@ -151,9 +151,15 @@ const defaultWorkloadAPITimeout = 15 * time.Second
 // workloadAPITimeout returns the JWT-SVID fetch deadline: CONJUR_SPIFFE_TIMEOUT
 // as a Go duration ("20s") or whole seconds ("20"), else 15s.
 func workloadAPITimeout() time.Duration {
-	v := strings.TrimSpace(os.Getenv(envConjurSpiffeTimeout))
+	return durationFromEnv(envConjurSpiffeTimeout, defaultWorkloadAPITimeout)
+}
+
+// durationFromEnv parses name as a positive Go duration or whole seconds.
+// Empty, invalid, zero or negative values yield def.
+func durationFromEnv(name string, def time.Duration) time.Duration {
+	v := strings.TrimSpace(os.Getenv(name))
 	if v == "" {
-		return defaultWorkloadAPITimeout
+		return def
 	}
 	if d, err := time.ParseDuration(v); err == nil && d > 0 {
 		return d
@@ -161,8 +167,8 @@ func workloadAPITimeout() time.Duration {
 	if n, err := strconv.Atoi(v); err == nil && n > 0 {
 		return time.Duration(n) * time.Second
 	}
-	logging.ApiLog.Warnf("Ignoring invalid CONJUR_SPIFFE_TIMEOUT %q; using %s", v, defaultWorkloadAPITimeout)
-	return defaultWorkloadAPITimeout
+	logging.ApiLog.Warnf("Ignoring %s %q (expected a positive duration or whole seconds); using %s", name, v, def)
+	return def
 }
 
 // isDeadline reports whether err is a context or gRPC deadline expiry.
@@ -550,6 +556,11 @@ func fetchJWTSVIDFromWorkloadAPI(ctx context.Context, audience string, fetchSVID
 			svid, err := selectJWTSVID(svids)
 			if err != nil {
 				return "", time.Time{}, err
+			}
+			if ago := time.Since(svid.Expiry); !svid.Expiry.IsZero() && ago > 0 {
+				logging.ApiLog.Warnf("spiffe: JWT-SVID %s expired %s ago; Conjur will likely reject it with "+
+					"401 Unauthorized. Check that the SPIRE agent is renewing SVIDs and that the system clock is correct",
+					svid.ID, ago.Round(time.Second))
 			}
 			logging.ApiLog.Debugf("spiffe: selected JWT-SVID %s (expires %s)",
 				svid.ID, svid.Expiry.Format(time.RFC3339))

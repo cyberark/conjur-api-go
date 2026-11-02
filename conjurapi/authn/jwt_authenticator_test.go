@@ -145,3 +145,20 @@ func TestJWTAuthenticator_RefreshJWT_WithProvider(t *testing.T) {
 		assert.ErrorContains(t, err, "workload API unavailable")
 	})
 }
+
+func TestJWTAuthenticator_RefreshToken_ExplainsExpiredJWT(t *testing.T) {
+	// payload {"exp":1} -> long expired
+	expired := "e30." + "eyJleHAiOjF9" + ".sig"
+	a := JWTAuthenticator{
+		JWT:          expired,
+		Authenticate: func(string, string) ([]byte, error) { return nil, errors.New("401 Unauthorized") },
+	}
+	_, err := a.RefreshToken()
+	assert.ErrorContains(t, err, "401 Unauthorized")
+	assert.ErrorContains(t, err, "the JWT expired")
+
+	// A token without a readable exp gets the plain error.
+	a.JWT = "not-a-jwt"
+	_, err = a.RefreshToken()
+	assert.NotContains(t, err.Error(), "expired")
+}

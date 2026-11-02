@@ -2,8 +2,12 @@ package authn
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/cyberark/conjur-api-go/conjurapi/logging"
 )
@@ -30,7 +34,39 @@ func (a *JWTAuthenticator) RefreshToken() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed to refresh JWT: %v", err)
 	}
-	return a.Authenticate(a.JWT, a.HostID)
+	resp, err := a.Authenticate(a.JWT, a.HostID)
+	if err != nil {
+		if ago, ok := jwtExpiredAgo(a.JWT, time.Now()); ok {
+			// A JWT that expired shortly before use is rejected by Conjur with
+			// a bare 401 that gives no hint about the cause.
+			err = fmt.Errorf("%w (the JWT expired %s ago; check the token source and system clock)",
+				err, ago.Round(time.Second))
+		}
+		return nil, err
+	}
+	return resp, nil
+}
+
+// jwtExpiredAgo reports how long ago the JWT's "exp" claim passed. The
+// signature is not verified; this is only used to explain an authentication
+// failure. ok is false when the token has no readable exp or has not expired.
+func jwtExpiredAgo(token string, now time.Time) (time.Duration, bool) {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return 0, false
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(strings.TrimRight(parts[1], "="))
+	if err != nil {
+		return 0, false
+	}
+	var claims struct {
+		Exp float64 `json:"exp"`
+	}
+	if json.Unmarshal(payload, &claims) != nil || claims.Exp == 0 {
+		return 0, false
+	}
+	ago := now.Sub(time.Unix(int64(claims.Exp), 0))
+	return ago, ago > 0
 }
 
 func (a *JWTAuthenticator) NeedsTokenRefresh() bool {
