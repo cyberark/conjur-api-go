@@ -67,6 +67,11 @@ type svidFetcher func(ctx context.Context) ([]*x509svid.SVID, error)
 // tests substitute a stub.
 type jwtSVIDFetcher func(ctx context.Context, audience string) ([]*jwtsvid.SVID, error)
 
+// unavailableAfterRetriesFmt is the error format used when the Workload API is
+// still unavailable after retryMax retries; it takes the retry count and the
+// last underlying error.
+const unavailableAfterRetriesFmt = "SPIFFE Workload API still unavailable after %d retries: %w"
+
 // errRetry is returned by classifyWorkloadAPIError when the caller should retry
 // the fetch after a backoff delay.
 var errRetry = errors.New("Workload API temporarily unavailable")
@@ -392,7 +397,7 @@ func fetchSVIDsWithRetry(ctx context.Context, fetchSVIDs svidFetcher) ([]*x509sv
 			return nil, classified
 		}
 		if attempt >= retryMax {
-			return nil, fmt.Errorf("SPIFFE Workload API still unavailable after %d retries", retryMax)
+			return nil, fmt.Errorf(unavailableAfterRetriesFmt, retryMax, err)
 		}
 
 		// Back off before the next attempt. The delay doubles on each
@@ -510,7 +515,7 @@ func fetchJWTSVIDFromWorkloadAPI(ctx context.Context, audience string, fetchSVID
 			return "", time.Time{}, classified
 		}
 		if attempt >= retryMax {
-			return "", time.Time{}, fmt.Errorf("SPIFFE Workload API still unavailable after %d retries", retryMax)
+			return "", time.Time{}, fmt.Errorf(unavailableAfterRetriesFmt, retryMax, err)
 		}
 		logging.ApiLog.Debugf("spiffe: Workload API unavailable (attempt %d/%d); retrying in %s",
 			attempt+1, retryMax, delay)

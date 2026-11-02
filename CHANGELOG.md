@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - Name `CONJUR_AUTHN_TOKEN_FILE` (not `CONJUR_AUTHN_TOKEN`) when the token read from
   that file is invalid. Adds `authn.NewTokenFromSource`. (CNJR-15385)
+- "SPIFFE Workload API still unavailable after N retries" now includes the last
+  underlying gRPC error. (CNJR-15385)
 
 ## [0.17.0] - 2026-10-29
 
