@@ -32,15 +32,6 @@ type GroupsResponse struct {
 	Count int `json:"count"`
 }
 
-// HasMore reports whether more groups exist beyond the page returned for filter.
-func (r GroupsResponse) HasMore(filter *GroupFilter) bool {
-	offset := 0
-	if filter != nil {
-		offset = filter.Offset
-	}
-	return offset+len(r.Groups) < r.Count
-}
-
 // GroupFilter carries pagination parameters, following the BranchFilter pattern.
 type GroupFilter struct {
 	Limit  int
@@ -52,15 +43,6 @@ type GroupMembersResponse struct {
 	Members []GroupMember `json:"members"`
 	// Count is the grand total of members, a reliable termination signal.
 	Count int `json:"count"`
-}
-
-// HasMore reports whether more members exist beyond the page returned for filter.
-func (r GroupMembersResponse) HasMore(filter *GroupFilter) bool {
-	offset := 0
-	if filter != nil {
-		offset = filter.Offset
-	}
-	return offset+len(r.Members) < r.Count
 }
 
 // identifier returns the group's full path identifier (e.g. "data/my-group"),
@@ -109,7 +91,8 @@ func (c *ClientV2) ReadGroup(identifier string) (*Group, error) {
 }
 
 // ReadGroups returns a page of groups. filter may be nil for the server default
-// page. Use GroupsResponse.HasMore to drive auto-pagination.
+// page. To read them all, advance filter.Offset by the length of each page
+// until it reaches Count.
 func (c *ClientV2) ReadGroups(filter *GroupFilter) (GroupsResponse, error) {
 	req, err := c.ReadGroupsRequest(filter)
 	if err != nil {
@@ -159,7 +142,8 @@ func (c *ClientV2) DeleteGroupAnnotation(identifier, key string) error {
 }
 
 // ListGroupMembers returns a page of a group's members. filter may be nil for
-// the server default page. Use GroupMembersResponse.HasMore for auto-pagination.
+// the server default page. To read them all, advance filter.Offset by the
+// length of each page until it reaches Count.
 func (c *ClientV2) ListGroupMembers(groupID string, filter *GroupFilter) (GroupMembersResponse, error) {
 	req, err := c.ListGroupMembersRequest(groupID, filter)
 	if err != nil {

@@ -141,19 +141,6 @@ func TestDeleteGroupAnnotationRequest(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestGroupsResponse_HasMore(t *testing.T) {
-	page := func(n int) []Group { return make([]Group, n) }
-	assert.True(t, GroupsResponse{Groups: page(10), Count: 25}.HasMore(&GroupFilter{Limit: 10, Offset: 0}))
-	assert.False(t, GroupsResponse{Groups: page(5), Count: 25}.HasMore(&GroupFilter{Limit: 10, Offset: 20}))
-	assert.False(t, GroupsResponse{Groups: page(3), Count: 3}.HasMore(nil))
-}
-
-func TestGroupMembersResponse_HasMore(t *testing.T) {
-	mk := func(n int) []GroupMember { return make([]GroupMember, n) }
-	assert.True(t, GroupMembersResponse{Members: mk(10), Count: 12}.HasMore(&GroupFilter{Limit: 10, Offset: 0}))
-	assert.False(t, GroupMembersResponse{Members: mk(2), Count: 12}.HasMore(&GroupFilter{Limit: 10, Offset: 10}))
-}
-
 func TestListGroupMembersRequest_PathAndPagination(t *testing.T) {
 	c := newLocalGroupClient("localhost")
 
@@ -288,7 +275,6 @@ func TestGroupExecutors_TypedResponses(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 5, list.Count)
 	assert.Len(t, list.Groups, 2)
-	assert.True(t, list.HasMore(&GroupFilter{Limit: 2, Offset: 0}))
 
 	members, err := c.V2().ListGroupMembers("data/my-group", nil)
 	assert.NoError(t, err)
