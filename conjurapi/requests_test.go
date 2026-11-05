@@ -276,3 +276,25 @@ func TestClient_CertAuthenticateRequest(t *testing.T) {
 		assert.Equal(t, "base64", req.Header.Get("Accept-Encoding"))
 	})
 }
+
+func TestRequests_SpaceInIDEncodedAsPercent20(t *testing.T) {
+	c := &Client{config: Config{Account: "acct", ApplianceURL: "https://conjur.example.com"}}
+	id := "acct:group:Vault/LOB 101/SCIM Config/consumers+x"
+	want := "/group/Vault%2FLOB%20101%2FSCIM%20Config%2Fconsumers+x"
+
+	reqs := map[string]func() (*http.Request, error){
+		"role":        func() (*http.Request, error) { return c.RoleRequest(id) },
+		"members":     func() (*http.Request, error) { return c.RoleMembersRequest(id) },
+		"memberships": func() (*http.Request, error) { return c.RoleMembershipsRequest(id) },
+		"resource":    func() (*http.Request, error) { return c.ResourceRequest(id) },
+		"check":       func() (*http.Request, error) { return c.CheckPermissionRequest(id, "read") },
+		"permitted":   func() (*http.Request, error) { return c.PermittedRolesRequest(id, "read") },
+	}
+	for name, f := range reqs {
+		t.Run(name, func(t *testing.T) {
+			req, err := f()
+			require.NoError(t, err)
+			assert.Contains(t, req.URL.EscapedPath(), want)
+		})
+	}
+}

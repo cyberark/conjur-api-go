@@ -366,7 +366,7 @@ func (c *Client) CheckPermissionRequest(resourceID, privilege string) (*http.Req
 
 	query := fmt.Sprintf("check=true&privilege=%s", url.QueryEscape(privilege))
 
-	checkURL := makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id)).withQuery(query).String()
+	checkURL := makeRouterURL(c.resourcesURL(account), kind, url.PathEscape(id)).withQuery(query).String()
 
 	return http.NewRequest(
 		http.MethodGet,
@@ -391,7 +391,7 @@ func (c *Client) CheckPermissionForRoleRequest(resourceID, roleID, privilege str
 
 	query := fmt.Sprintf("check=true&privilege=%s&role=%s", url.QueryEscape(privilege), url.QueryEscape(fullyQualifiedRoleID))
 
-	checkURL := makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id)).withQuery(query).String()
+	checkURL := makeRouterURL(c.resourcesURL(account), kind, url.PathEscape(id)).withQuery(query).String()
 
 	return http.NewRequest(
 		http.MethodGet,
@@ -406,7 +406,7 @@ func (c *Client) ResourceRequest(resourceID string) (*http.Request, error) {
 		return nil, err
 	}
 
-	requestURL := makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id))
+	requestURL := makeRouterURL(c.resourcesURL(account), kind, url.PathEscape(id))
 
 	return http.NewRequest(
 		http.MethodGet,
@@ -463,7 +463,7 @@ func (c *Client) PermittedRolesRequest(resourceID string, privilege string) (*ht
 	if err != nil {
 		return nil, err
 	}
-	permittedRolesURL := makeRouterURL(c.resourcesURL(account), kind, url.QueryEscape(id)).withFormattedQuery("permitted_roles=true&privilege=%s", url.QueryEscape(privilege)).String()
+	permittedRolesURL := makeRouterURL(c.resourcesURL(account), kind, url.PathEscape(id)).withFormattedQuery("permitted_roles=true&privilege=%s", url.QueryEscape(privilege)).String()
 
 	return http.NewRequest(
 		http.MethodGet,
@@ -477,7 +477,7 @@ func (c *Client) RoleRequest(roleID string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	roleURL := makeRouterURL(c.rolesURL(account), kind, url.QueryEscape(id))
+	roleURL := makeRouterURL(c.rolesURL(account), kind, url.PathEscape(id))
 
 	return http.NewRequest(
 		http.MethodGet,
@@ -491,7 +491,7 @@ func (c *Client) RoleMembersRequest(roleID string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	roleMembersURL := makeRouterURL(c.rolesURL(account), kind, url.QueryEscape(id)).withFormattedQuery("members")
+	roleMembersURL := makeRouterURL(c.rolesURL(account), kind, url.PathEscape(id)).withFormattedQuery("members")
 
 	return http.NewRequest(
 		http.MethodGet,
@@ -517,7 +517,7 @@ func (c *Client) RoleMembershipsRequestWithOptions(roleID string, includeAll boo
 		query = "all"
 	}
 
-	roleMembershipsURL := makeRouterURL(c.rolesURL(account), kind, url.QueryEscape(id)).withQuery(query)
+	roleMembershipsURL := makeRouterURL(c.rolesURL(account), kind, url.PathEscape(id)).withQuery(query)
 
 	return http.NewRequest(
 		http.MethodGet,
@@ -537,7 +537,7 @@ func (c *Client) LoadPolicyRequest(mode PolicyMode, policyID string, policy io.R
 	routerUrl := makeRouterURL(
 		c.policiesURL(account),
 		kind,
-		url.QueryEscape(id),
+		url.PathEscape(id),
 	)
 
 	if validate {
@@ -576,7 +576,7 @@ func (c *Client) fetchPolicyRequest(policyID string, returnJSON bool, policyTree
 	routerUrl := makeRouterURL(
 		c.policiesURL(account),
 		kind,
-		url.QueryEscape(id),
+		url.PathEscape(id),
 	)
 
 	routerUrl = routerUrl.withFormattedQuery(
