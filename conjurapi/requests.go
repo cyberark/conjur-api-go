@@ -145,7 +145,7 @@ func (c *Client) LoginRequest(login string, password string) (*http.Request, err
 }
 
 func (c *Client) AuthenticateRequest(loginPair authn.LoginPair) (*http.Request, error) {
-	authenticateURL := makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), url.QueryEscape(loginPair.Login), "authenticate").String()
+	authenticateURL := makeRouterURL(c.authnURL(c.config.AuthnType, c.config.ServiceID), url.PathEscape(loginPair.Login), "authenticate").String()
 
 	req, err := http.NewRequest(http.MethodPost, authenticateURL, strings.NewReader(loginPair.APIKey))
 	if err != nil {
@@ -245,7 +245,7 @@ func (c *Client) OidcTokenAuthenticateRequest(token string) (*http.Request, erro
 }
 
 func (c *Client) IAMAuthenticateRequest(signedHeaders []byte) (*http.Request, error) {
-	authenticateURL := makeRouterURL(c.authnURL("iam", c.config.ServiceID), url.QueryEscape(ensureHostPrefix(c.config.JWTHostID)), "authenticate").String()
+	authenticateURL := makeRouterURL(c.authnURL("iam", c.config.ServiceID), url.PathEscape(ensureHostPrefix(c.config.JWTHostID)), "authenticate").String()
 
 	body, contentType := createJWTRequestBodyForAuthenticator(c.config.AuthnType, string(signedHeaders))
 	req, err := http.NewRequest("POST", authenticateURL, body)

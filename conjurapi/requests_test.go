@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/cyberark/conjur-api-go/conjurapi/authn"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -295,6 +297,30 @@ func TestRequests_SpaceInIDEncodedAsPercent20(t *testing.T) {
 			req, err := f()
 			require.NoError(t, err)
 			assert.Contains(t, req.URL.EscapedPath(), want)
+		})
+	}
+}
+
+func TestRequests_SpaceInLoginAndIssuerEncodedAsPercent20(t *testing.T) {
+	c := &Client{config: Config{Account: "acct", ApplianceURL: "https://conjur.example.com", JWTHostID: "my host"}}
+
+	reqs := map[string]struct {
+		f    func() (*http.Request, error)
+		want string
+	}{
+		"authenticate": {func() (*http.Request, error) {
+			return c.AuthenticateRequest(authn.LoginPair{Login: "host/my app", APIKey: "k"})
+		}, "/host%2Fmy%20app/authenticate"},
+		"iam":           {func() (*http.Request, error) { return c.IAMAuthenticateRequest([]byte("{}")) }, "/host%2Fmy%20host/authenticate"},
+		"issuer":        {func() (*http.Request, error) { return c.issuerRequest("my issuer") }, "/issuers/acct/my%20issuer"},
+		"issuer-delete": {func() (*http.Request, error) { return c.deleteIssuerRequest("my issuer", false) }, "/issuers/acct/my%20issuer"},
+		"issuer-update": {func() (*http.Request, error) { return c.updateIssuerRequest("my issuer", IssuerUpdate{}) }, "/issuers/acct/my%20issuer"},
+	}
+	for name, tc := range reqs {
+		t.Run(name, func(t *testing.T) {
+			req, err := tc.f()
+			require.NoError(t, err)
+			assert.Contains(t, req.URL.EscapedPath(), tc.want)
 		})
 	}
 }
