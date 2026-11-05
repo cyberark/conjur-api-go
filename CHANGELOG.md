@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
+## [0.18.1] - 2026-11-05
+
+### Fixed
+- Resource, role and policy IDs containing a space are now sent with `%20`
+  instead of `+` in the URL path, so lookups such as `conjur role exists` no
+  longer return 404 for IDs like `SCIM Config`. (CNJR-16227)
+- The same applies to authenticate URLs (login, IAM host ID) and issuer IDs,
+  which also encoded a space as `+`. (CNJR-16227)
+
 ## [0.18.0] - 2026-11-03
 
 ### Removed

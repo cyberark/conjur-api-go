@@ -165,7 +165,7 @@ func (c *Client) createIssuerRequest(issuer Issuer) (*http.Request, error) {
 func (c *Client) deleteIssuerRequest(issuerID string, keepSecrets bool) (*http.Request, error) {
 	issuerURL := makeRouterURL(
 		c.issuersURL(c.config.Account),
-		url.QueryEscape(issuerID),
+		url.PathEscape(issuerID),
 	).withFormattedQuery("keep_secrets=%t", keepSecrets)
 
 	req, err := http.NewRequest("DELETE", issuerURL.String(), nil)
@@ -180,7 +180,7 @@ func (c *Client) deleteIssuerRequest(issuerID string, keepSecrets bool) (*http.R
 func (c *Client) issuerRequest(issuerID string) (*http.Request, error) {
 	issuerURL := makeRouterURL(
 		c.issuersURL(c.config.Account),
-		url.QueryEscape(issuerID),
+		url.PathEscape(issuerID),
 	)
 
 	req, err := http.NewRequest("GET", issuerURL.String(), nil)
@@ -207,7 +207,7 @@ func (c *Client) issuersRequest() (*http.Request, error) {
 func (c *Client) updateIssuerRequest(issuerID string, issuerUpdate IssuerUpdate) (*http.Request, error) {
 	issuerURL := makeRouterURL(
 		c.issuersURL(c.config.Account),
-		url.QueryEscape(issuerID),
+		url.PathEscape(issuerID),
 	)
 
 	issuerUpdateJSON, err := json.Marshal(issuerUpdate)
