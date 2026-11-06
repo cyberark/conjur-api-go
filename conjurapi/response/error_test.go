@@ -69,7 +69,31 @@ func TestNewConjurError(t *testing.T) {
 			},
 			expected: &ConjurError{
 				Code:    403,
-				Message: "Forbidden",
+				Message: "not json",
+			},
+		},
+		{
+			name: "v2 error with string code",
+			resp: &http.Response{
+				StatusCode: 422,
+				Status:     "Unprocessable Entity",
+				Body:       io.NopCloser(strings.NewReader(`{"code":"422","message":"Missing required parameter: enabled"}`)),
+			},
+			expected: &ConjurError{
+				Code:    422,
+				Message: "Missing required parameter: enabled",
+			},
+		},
+		{
+			name: "body code never overrides the HTTP status",
+			resp: &http.Response{
+				StatusCode: 404,
+				Status:     "Not Found",
+				Body:       io.NopCloser(strings.NewReader(`{"code":500,"message":"Resource not found"}`)),
+			},
+			expected: &ConjurError{
+				Code:    404,
+				Message: "Resource not found",
 			},
 		},
 	}
@@ -83,6 +107,8 @@ func TestNewConjurError(t *testing.T) {
 			require.True(t, ok, "expected error to be a *ConjurError, got %T", err)
 
 			assert.EqualValues(t, tc.expected.Code, cerr.Code)
+			assert.Equal(t, tc.expected.Message, cerr.Message)
+			assert.Equal(t, tc.expected.Details, cerr.Details)
 		})
 	}
 
@@ -211,7 +237,7 @@ func TestNewConjurError_BodyShapes(t *testing.T) {
 			status:    "404 Not Found",
 			code:      404,
 			body:      `{"code":"404","message":"Branch 'data/b' not found"}`,
-			wantError: `{"code":"404","message":"Branch 'data/b' not found"}`,
+			wantError: "Branch 'data/b' not found",
 		},
 		{
 			name:      "string error",

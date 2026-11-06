@@ -65,93 +65,34 @@ func (c *Client) EnableAuthenticator(authenticatorType string, serviceID string,
 	return nil
 }
 
-// Bool is a helper function to create a pointer to a boolean value.
-func Bool(v bool) *bool { return &v }
-
-type AuthenticatorBase struct {
-	Type        string                 `json:"type"`
-	Subtype     *string                `json:"subtype,omitempty"`
-	Name        string                 `json:"name"`
-	Enabled     *bool                  `json:"enabled,omitempty"`
-	Owner       *AuthOwner             `json:"owner,omitempty"`
-	Data        map[string]interface{} `json:"data,omitempty"`
-	Annotations map[string]string      `json:"annotations,omitempty"`
-}
-
-type AuthenticatorResponse struct {
-	AuthenticatorBase
-	Branch string `json:"branch"`
-}
-
-type AuthOwner struct {
-	ID   string `json:"id"`
-	Kind string `json:"kind"`
-}
-
-type AuthenticatorListResponse struct {
-	Authenticators []AuthenticatorResponse `json:"authenticators"`
-	Count          int                     `json:"count"`
-}
-
-const AuthenticatorsMinVersion = MinVersion
-
-// CreateAuthenticator creates a new authenticator instance using the V2 API.
-//
-// The authenticated user must have create privileges on the conjur/authn-<type> policy.
-func (c *ClientV2) CreateAuthenticator(authenticator *AuthenticatorBase) (*AuthenticatorResponse, error) {
-	req, err := c.CreateAuthenticatorRequest(authenticator)
-	if err != nil {
-		return nil, err
-	}
-
-	return submitAndUnmarshal[AuthenticatorResponse](c, req)
-}
-
-// GetAuthenticator gets an existing authenticator instance using the V2 API.
-//
-// The authenticated user must have read privileges on the authenticator.
-func (c *ClientV2) GetAuthenticator(authenticatorType string, authenticatorName string) (*AuthenticatorResponse, error) {
-	req, err := c.GetAuthenticatorRequest(authenticatorType, authenticatorName)
-	if err != nil {
-		return nil, err
-	}
-
-	return submitAndUnmarshal[AuthenticatorResponse](c, req)
-}
-
-// UpdateAuthenticator updates an existing authenticator instance using the V2 API.
-// It currently only supports enabling/disabling an authenticator.
-//
-// The authenticated user must have update privileges on the authenticator.
-func (c *ClientV2) UpdateAuthenticator(authenticatorType string, authenticatorName string, enabled bool) (*AuthenticatorResponse, error) {
-	req, err := c.UpdateAuthenticatorRequest(authenticatorType, authenticatorName, enabled)
-	if err != nil {
-		return nil, err
-	}
-
-	return submitAndUnmarshal[AuthenticatorResponse](c, req)
-}
-
-// DeleteAuthenticator deletes an existing authenticator instance using the V2 API.
-//
-// The authenticated user must have update privileges on the authenticator.
-func (c *ClientV2) DeleteAuthenticator(authenticatorType string, authenticatorName string) error {
-	req, err := c.DeleteAuthenticatorRequest(authenticatorType, authenticatorName)
+// SetAuthenticatorEnabled enables or disables the authenticator with the
+// combined "authn-<type>/<name>" id. Config.Environment picks the API, V2 on
+// SaaS and v1 on Self-Hosted; it isn't checked against the server. With a SaaS
+// Environment, a Self-Hosted server answers this and the ClientV2
+// authenticator calls with a 404. With a Self-Hosted Environment, SaaS still
+// serves this call over v1, but the ClientV2 calls fail the version check.
+func (c *Client) SetAuthenticatorEnabled(id string, enabled bool) error {
+	authenticatorType, name, err := ParseAuthenticatorID(id)
 	if err != nil {
 		return err
 	}
 
-	return submitAndEmpty(c, req)
-}
-
-// ListAuthenticators gets a list of existing authenticators using the V2 API.
-//
-// The authenticated user must have read privileges on the authenticators.
-func (c *ClientV2) ListAuthenticators() (*AuthenticatorListResponse, error) {
-	req, err := c.ListAuthenticatorsRequest()
-	if err != nil {
-		return nil, err
+	if c.config.IsSaaS() {
+		_, err := c.V2().SetAuthenticatorEnabledV2(authenticatorType, name, enabled)
+		return err
 	}
 
-	return submitAndUnmarshal[AuthenticatorListResponse](c, req)
+	return c.EnableAuthenticator(v1AuthenticatorType(authenticatorType), name, enabled)
+}
+
+// v1AuthenticatorType maps a V2 type back to the v1 short form ("iam", "cert").
+func v1AuthenticatorType(v2AuthenticatorType string) string {
+	switch v2AuthenticatorType {
+	case "aws_iam":
+		return "iam"
+	case "certificate":
+		return "cert"
+	default:
+		return v2AuthenticatorType
+	}
 }

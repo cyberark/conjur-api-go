@@ -69,12 +69,12 @@ func TestV2Authenticators_ValidationErrorWithDetailsList(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, want, err.Error())
 
-	updated, err := c.UpdateAuthenticator("jwt", "a", false)
+	updated, err := c.UpdateAuthenticator("jwt", "a", &AuthenticatorPatch{Enabled: Bool(false)})
 	assert.Nil(t, updated)
 	require.Error(t, err)
 	assert.Equal(t, want, err.Error())
 
-	list, err := c.ListAuthenticators()
+	list, err := c.ListAuthenticators(nil)
 	assert.Nil(t, list)
 	require.Error(t, err)
 	assert.Equal(t, want, err.Error())

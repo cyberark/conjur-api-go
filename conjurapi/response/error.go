@@ -46,9 +46,18 @@ func NewConjurError(resp *http.Response) error {
 
 	cerr := ConjurError{}
 	cerr.Code = resp.StatusCode
-	err = json.Unmarshal(body, &cerr)
+
+	// Code keeps the HTTP status; V2 bodies send their own "code" as a string.
+	var parsed struct {
+		Message string              `json:"message"`
+		Details *ConjurErrorDetails `json:"error"`
+	}
+	err = json.Unmarshal(body, &parsed)
 	if err != nil {
 		cerr.Message = strings.TrimSpace(string(body))
+	} else {
+		cerr.Message = parsed.Message
+		cerr.Details = parsed.Details
 	}
 
 	// If the body's empty, use the HTTP status as the message

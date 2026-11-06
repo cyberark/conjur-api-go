@@ -742,9 +742,14 @@ func (c *Client) EnableAuthenticatorRequest(authenticatorType string, serviceID 
 	body := url.Values{}
 	body.Set("enabled", strconv.FormatBool(enabled))
 
+	authnURL, err := c.authenticatorManagementURL(authenticatorType, serviceID)
+	if err != nil {
+		return nil, err
+	}
+
 	request, err := http.NewRequest(
 		http.MethodPatch,
-		c.authnURL(authenticatorType, serviceID),
+		authnURL,
 		strings.NewReader(body.Encode()),
 	)
 	if err != nil {
@@ -756,8 +761,23 @@ func (c *Client) EnableAuthenticatorRequest(authenticatorType string, serviceID 
 }
 
 func (c *Client) AuthenticatorStatusRequest(authenticatorType string, serviceID string) (*http.Request, error) {
-	statusURL := makeRouterURL(c.authnURL(authenticatorType, serviceID), "status").String()
+	authnURL, err := c.authenticatorManagementURL(authenticatorType, serviceID)
+	if err != nil {
+		return nil, err
+	}
+
+	statusURL := makeRouterURL(authnURL, "status").String()
 	return http.NewRequest(http.MethodGet, statusURL, nil)
+}
+
+// authenticatorManagementURL is authnURL with the type and service ID escaped.
+// authnURL stays unescaped for login and authenticate.
+func (c *Client) authenticatorManagementURL(authenticatorType string, serviceID string) (string, error) {
+	escapedType, escapedServiceID, err := escapeAuthenticatorPath(authenticatorType, serviceID)
+	if err != nil {
+		return "", err
+	}
+	return c.authnURL(escapedType, escapedServiceID), nil
 }
 
 func (c *Client) createTokenURL() string {
