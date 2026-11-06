@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 // AuthnDescriptor describes an authenticator for a workload. Data is a
@@ -38,10 +39,11 @@ type Workload struct {
 	CreatedAt            string `json:"created_at,omitempty"`
 }
 
-// WorkloadFields is the PATCH request body. Unset attributes are unchanged
-// on the server.
+// WorkloadFields is the request body for UpdateWorkload (PATCH) and
+// ReplaceWorkload (PUT). On PATCH, unset attributes are unchanged on the
+// server. On PUT, they are cleared, and so are the annotations left out.
 //
-// The server's update semantics are not the same for every attribute, and not
+// The server's PATCH semantics are not the same for every attribute, and not
 // what the shared endpoint suggests:
 //
 //   - AuthnDescriptors replaces the whole array, and each descriptor's Data with
@@ -65,6 +67,18 @@ type WorkloadFields struct {
 	RestrictedTo *[]string `json:"restricted_to,omitempty"`
 
 	AuthenticationSource string `json:"authentication_source,omitempty"`
+}
+
+// WorkloadListResponse is the paginated list envelope returned by GET /workloads.
+type WorkloadListResponse struct {
+	Workloads []Workload `json:"workloads"`
+	Count     int        `json:"count"` // grand total, not the page size
+}
+
+// WorkloadFilter carries pagination parameters for ListWorkloads.
+type WorkloadFilter struct {
+	Limit  int
+	Offset int
 }
 
 func (c *ClientV2) CreateWorkload(workload Workload) ([]byte, error) {
@@ -152,6 +166,35 @@ func (c *ClientV2) GetWorkloadRequest(identifier string) (*http.Request, error) 
 	return newV2Request(http.MethodGet, reqURL, v2APIHeader)
 }
 
+// ListWorkloads returns a page of workloads; filter may be nil for the default page.
+func (c *ClientV2) ListWorkloads(filter *WorkloadFilter) (*WorkloadListResponse, error) {
+	req, err := c.ListWorkloadsRequest(filter)
+	if err != nil {
+		return nil, err
+	}
+
+	return submitAndUnmarshal[WorkloadListResponse](c, req)
+}
+
+// ListWorkloadsRequest builds a request to list workloads.
+func (c *ClientV2) ListWorkloadsRequest(filter *WorkloadFilter) (*http.Request, error) {
+	requestURL := c.workloadsURL()
+	query := url.Values{}
+	if filter != nil {
+		if filter.Limit > 0 {
+			query.Add("limit", fmt.Sprintf("%d", filter.Limit))
+		}
+		if filter.Offset > 0 {
+			query.Add("offset", fmt.Sprintf("%d", filter.Offset))
+		}
+	}
+	if encoded := query.Encode(); encoded != "" {
+		requestURL = fmt.Sprintf("%s?%s", requestURL, encoded)
+	}
+
+	return newV2Request(http.MethodGet, requestURL, v2APIHeader)
+}
+
 // UpdateWorkload patches attributes; unset ones remain unchanged.
 func (c *ClientV2) UpdateWorkload(identifier string, update WorkloadFields) (*Workload, error) {
 	req, err := c.UpdateWorkloadRequest(identifier, update)
@@ -174,6 +217,34 @@ func (c *ClientV2) UpdateWorkloadRequest(identifier string, update WorkloadField
 		return nil, err
 	}
 	return newV2JSONRequest(http.MethodPatch, reqURL, update, v2APIHeader)
+}
+
+// ReplaceWorkload replaces a workload's mutable fields (PUT); fields omitted from update are cleared.
+func (c *ClientV2) ReplaceWorkload(identifier string, update WorkloadFields) (*Workload, error) {
+	req, err := c.ReplaceWorkloadRequest(identifier, update)
+	if err != nil {
+		return nil, err
+	}
+
+	return submitAndUnmarshal[Workload](c, req)
+}
+
+// ReplaceWorkloadRequest builds a request to replace a workload. A PUT
+// replaces the descriptors too, so like CreateWorkloadRequest it needs at
+// least one.
+func (c *ClientV2) ReplaceWorkloadRequest(identifier string, update WorkloadFields) (*http.Request, error) {
+	if len(update.AuthnDescriptors) == 0 {
+		return nil, fmt.Errorf("Must specify at least one authenticator in authn_descriptors")
+	}
+	if err := validateAuthnDescriptors(update.AuthnDescriptors); err != nil {
+		return nil, err
+	}
+
+	reqURL, err := c.workloadURL(identifier)
+	if err != nil {
+		return nil, err
+	}
+	return newV2JSONRequest(http.MethodPut, reqURL, update, v2APIHeader)
 }
 
 // authnDescriptorResponse is the response envelope for
@@ -216,6 +287,34 @@ func (c *ClientV2) UpdateAuthnDescriptorRequest(identifier string, descriptor Au
 	return newV2JSONRequest(http.MethodPatch, reqURL, descriptor.Data, v2APIHeader)
 }
 
+// DeleteAuthnDescriptor removes one authn descriptor, addressed by Type and ServiceID, from a workload.
+func (c *ClientV2) DeleteAuthnDescriptor(identifier string, descriptor AuthnDescriptor) error {
+	req, err := c.DeleteAuthnDescriptorRequest(identifier, descriptor)
+	if err != nil {
+		return err
+	}
+
+	return submitAndEmpty(c, req)
+}
+
+// DeleteAuthnDescriptorRequest builds a request to delete one authn descriptor.
+func (c *ClientV2) DeleteAuthnDescriptorRequest(identifier string, descriptor AuthnDescriptor) (*http.Request, error) {
+	if err := descriptor.validateAsDeleteTarget(); err != nil {
+		return nil, err
+	}
+
+	// api_key has no service_id, so the segment is left out rather than empty.
+	extra := []string{"authn_descriptors", descriptor.Type}
+	if descriptor.ServiceID != "" {
+		extra = append(extra, descriptor.ServiceID)
+	}
+	reqURL, err := c.workloadURL(identifier, extra...)
+	if err != nil {
+		return nil, err
+	}
+	return newV2Request(http.MethodDelete, reqURL, v2APIHeader)
+}
+
 func (w Workload) Validate() error {
 	var errs []error
 	if w.Branch == "" {
@@ -242,6 +341,23 @@ func (d AuthnDescriptor) validateAsUpdateTarget() error {
 	// descriptor's data, so accepting it here would mislead callers.
 	if len(d.Data) == 0 {
 		errs = append(errs, fmt.Errorf("Must specify authn descriptor data"))
+	}
+	return errors.Join(errs...)
+}
+
+// validateAsDeleteTarget requires Type, and ServiceID for every type but
+// api_key. api_key has no ServiceID, so one set there is rejected rather than
+// sent as an extra URL segment.
+func (d AuthnDescriptor) validateAsDeleteTarget() error {
+	var errs []error
+	if d.Type == "" {
+		errs = append(errs, fmt.Errorf("Must specify an authn descriptor type"))
+	}
+	if d.Type != "api_key" && d.ServiceID == "" {
+		errs = append(errs, fmt.Errorf("Must specify an authn descriptor service ID"))
+	}
+	if d.Type == "api_key" && d.ServiceID != "" {
+		errs = append(errs, fmt.Errorf("Must not specify a service ID for an api_key authn descriptor"))
 	}
 	return errors.Join(errs...)
 }
