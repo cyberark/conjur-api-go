@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   it for now and returns its whole list, at most 1000 authenticators.
 - `AuthenticatorPatch` for partial V2 authenticator updates.
 - `AuthenticatorResponse.CreatedAt`, which SaaS sends.
+- `ClientV2.BatchRetrieveSecretsSafe` and `BatchRetrieveSecretsSafeRequest`
+  retrieve a batch of secrets with binary values too. They ask the server to
+  base64-encode the values (`encode_values`) and return them decoded, where
+  `BatchRetrieveSecrets` gets a per-secret 406 for a value that isn't valid
+  UTF-8. (CNJR-15241)
 
 ### Changed
 - `ClientV2.UpdateAuthenticator` takes an `*AuthenticatorPatch` instead of
