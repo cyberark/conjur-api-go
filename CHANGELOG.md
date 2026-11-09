@@ -10,6 +10,42 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
+## [0.19.0] - 2026-11-09
+
+### Added
+- `Client.SetAuthenticatorEnabled` enables or disables an authenticator by its
+  `authn-<type>/<name>` id, using the V2 API on SaaS and v1 on Self-Hosted.
+- `ParseAuthenticatorID` splits an `authn-<type>/<name>` id into a V2 type and
+  name, mapping `iam` to `aws_iam` and `cert` to `certificate`.
+- `AuthenticatorFilter` for paging `ClientV2.ListAuthenticators`. SaaS ignores
+  it for now and returns its whole list, at most 1000 authenticators.
+- `AuthenticatorPatch` for partial V2 authenticator updates.
+- `AuthenticatorResponse.CreatedAt`, which SaaS sends.
+
+### Changed
+- `ClientV2.UpdateAuthenticator` takes an `*AuthenticatorPatch` instead of
+  `enabled bool`. `ClientV2.SetAuthenticatorEnabledV2` keeps the old behaviour.
+- `ClientV2.ListAuthenticators` takes an `*AuthenticatorFilter`; pass `nil` for
+  the server's default page.
+- On Self-Hosted, `ClientV2.UpdateAuthenticator` refuses a patch that sets
+  annotations or data, or doesn't set enabled, before sending it. The
+  Self-Hosted V2 `PATCH` only changes enabled, and answered such a patch with a
+  422 "Missing required parameter: enabled."
+
+### Fixed
+- `ConjurError` parses V2 error bodies, so `Error()` returns the server's
+  message instead of the raw JSON. `Code` stays the HTTP status.
+- Authenticator management requests escape the type and name in the URL path
+  and reject `.`, `..` and empty segments before sending, so a name can no
+  longer address a different resource.
+- `AuthenticatorResponse` leaves `branch` out of its JSON when it's empty, as
+  SaaS responses do, instead of adding `"branch": ""`.
+- The V2 authenticator calls address the GCP authenticator as `gcp/default`,
+  as both servers route it, instead of `gcp`, which got a 404.
+- Correction to the 0.16.0 `server_version` entry: a saved version that rules
+  out a call is not re-checked with the server. After an upgrade, remove
+  `server_version` from `.conjurrc` if a call is still refused.
+
 ## [0.18.1] - 2026-11-05
 
 ### Fixed

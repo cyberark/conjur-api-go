@@ -118,7 +118,10 @@ func TestTokenFileAuthenticator_RefreshToken(t *testing.T) {
 			// Wait some time before writing the file
 			time.Sleep(500 * time.Millisecond)
 			token_file_contents := "token-from-file-contents"
-			os.WriteFile(token_file_name, []byte(token_file_contents), 0600)
+			// Write then rename so the reader never sees the file created but still empty.
+			tmp_file_name := token_file_name + ".tmp"
+			os.WriteFile(tmp_file_name, []byte(token_file_contents), 0600)
+			os.Rename(tmp_file_name, token_file_name)
 		}()
 
 		authenticator := TokenFileAuthenticator{

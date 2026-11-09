@@ -296,10 +296,20 @@ func TestClient_AuthenticatorCRUD(t *testing.T) {
 			// Test CREATE
 			authenticatorResponse, err := conjur.V2().CreateAuthenticator(tc.authenticator)
 			require.NoError(t, err)
+			deleted := false
+			t.Cleanup(func() {
+				// The DELETE step removes it, unless the test fails first.
+				if !deleted {
+					assert.NoError(t, conjur.V2().DeleteAuthenticator("jwt", tc.authenticator.Name))
+				}
+			})
 			assert.EqualValues(t, normalize(tc.expectedResponse), normalize(authenticatorResponse))
+			if conjur.config.IsSaaS() {
+				assert.NotEmpty(t, authenticatorResponse.CreatedAt)
+			}
 
 			// Test LIST (expect at least two authenticators from test setup + CREATE)
-			authenticatorsList, err := conjur.V2().ListAuthenticators()
+			authenticatorsList, err := conjur.V2().ListAuthenticators(nil)
 			require.NoError(t, err)
 			assert.GreaterOrEqual(t, authenticatorsList.Count, 2)
 			assert.GreaterOrEqual(t, len(authenticatorsList.Authenticators), 2)
@@ -310,13 +320,14 @@ func TestClient_AuthenticatorCRUD(t *testing.T) {
 			assert.EqualValues(t, normalize(tc.expectedResponse), normalize(authenticatorResponse))
 
 			// Test UPDATE (disable the authenticator)
-			authenticatorResponse, err = conjur.V2().UpdateAuthenticator("jwt", tc.authenticator.Name, false)
+			authenticatorResponse, err = conjur.V2().UpdateAuthenticator("jwt", tc.authenticator.Name, &AuthenticatorPatch{Enabled: Bool(false)})
 			require.NoError(t, err)
 			assert.EqualValues(t, false, normalize(authenticatorResponse).Enabled)
 
 			// Test DELETE
 			err = conjur.V2().DeleteAuthenticator("jwt", tc.authenticator.Name)
 			require.NoError(t, err)
+			deleted = true
 		})
 	}
 }
