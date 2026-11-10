@@ -1,12 +1,16 @@
 package conjurapi
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 )
 
 type BatchSecretRequest struct {
 	IDs []string `json:"ids"`
+	// EncodeValues, when "base64", makes the server base64-encode every value
+	// so binary (non-UTF-8) values come back instead of a per-secret 406.
+	EncodeValues string `json:"encode_values,omitempty"`
 }
 
 // SecretValue is one entry in a batch response. Status is the PER-SECRET HTTP
@@ -31,6 +35,8 @@ type BatchSecretResponse struct {
 // MAX_SECRETS_IN_SINGLE_BATCH.
 const MaxSecretsInSingleBatch = 250
 
+const batchEncodeBase64 = "base64"
+
 func (c *ClientV2) BatchRetrieveSecrets(identifiers []string) (*BatchSecretResponse, error) {
 	req, err := c.BatchRetrieveSecretsRequest(identifiers)
 	if err != nil {
@@ -40,15 +46,56 @@ func (c *ClientV2) BatchRetrieveSecrets(identifiers []string) (*BatchSecretRespo
 	return submitAndUnmarshal[BatchSecretResponse](c, req)
 }
 
+// BatchRetrieveSecretsSafe is BatchRetrieveSecrets, except the server
+// base64-encodes every value, allowing the retrieval of binary values (which
+// BatchRetrieveSecrets gets as a per-secret 406). Values are NOT base64
+// encoded in the returned response. If one value can't be decoded, the whole
+// call fails and returns no values.
+func (c *ClientV2) BatchRetrieveSecretsSafe(identifiers []string) (*BatchSecretResponse, error) {
+	req, err := c.BatchRetrieveSecretsSafeRequest(identifiers)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := submitAndUnmarshal[BatchSecretResponse](c, req)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, secret := range resp.Secrets {
+		if secret.Status != http.StatusOK {
+			continue
+		}
+		decoded, err := base64.StdEncoding.DecodeString(secret.Value)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode the value of %s: %w", secret.ID, err)
+		}
+		resp.Secrets[i].Value = string(decoded)
+	}
+	return resp, nil
+}
+
 func (c *ClientV2) BatchRetrieveSecretsRequest(identifiers []string) (*http.Request, error) {
+	return c.batchRetrieveSecretsRequest(identifiers, "", v2APIHeaderBeta)
+}
+
+// BatchRetrieveSecretsSafeRequest builds the BatchRetrieveSecretsSafe request,
+// which asks the server to base64-encode every value. It sends the v2 Accept
+// header: the endpoint is final, and the server logs the beta one as
+// deprecated there.
+func (c *ClientV2) BatchRetrieveSecretsSafeRequest(identifiers []string) (*http.Request, error) {
+	return c.batchRetrieveSecretsRequest(identifiers, batchEncodeBase64, v2APIHeader)
+}
+
+func (c *ClientV2) batchRetrieveSecretsRequest(identifiers []string, encodeValues string, accept string) (*http.Request, error) {
 	validatedIDs, err := ValidateSecretIdentifiers(identifiers)
 	if err != nil {
 		return nil, err
 	}
 
-	batchRequest := BatchSecretRequest{IDs: validatedIDs}
+	batchRequest := BatchSecretRequest{IDs: validatedIDs, EncodeValues: encodeValues}
 
-	req, err := newV2JSONRequest(http.MethodPost, c.batchSecretsURL(), batchRequest, v2APIHeaderBeta)
+	req, err := newV2JSONRequest(http.MethodPost, c.batchSecretsURL(), batchRequest, accept)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create batch retrieve secrets request: %w", err)
 	}
