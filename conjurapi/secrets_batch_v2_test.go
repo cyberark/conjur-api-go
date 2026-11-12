@@ -234,14 +234,19 @@ func TestClientV2_BatchRetrieveSecrets_EnvironmentGuard(t *testing.T) {
 				Account:      "myacct",
 			}}}
 
-			_, err := c.BatchRetrieveSecrets([]string{"data/test/secret1"})
-			require.Error(t, err)
-			if tt.expectBlocked {
-				assert.Contains(t, err.Error(), "V2 Batch Retrieve Secrets API is not supported in Idira Secrets Manager/Conjur OSS")
-			} else {
-				// Past the guard, the call fails for an unrelated reason (no live
-				// server/token), but must not be blocked as unsupported.
-				assert.NotContains(t, err.Error(), "V2 Batch Retrieve Secrets API is not supported in Idira Secrets Manager/Conjur OSS")
+			for name, retrieve := range map[string]func([]string) (*BatchSecretResponse, error){
+				"BatchRetrieveSecrets":     c.BatchRetrieveSecrets,
+				"BatchRetrieveSecretsSafe": c.BatchRetrieveSecretsSafe,
+			} {
+				_, err := retrieve([]string{"data/test/secret1"})
+				require.Error(t, err, name)
+				if tt.expectBlocked {
+					assert.Contains(t, err.Error(), "V2 Batch Retrieve Secrets API is not supported in Idira Secrets Manager/Conjur OSS", name)
+				} else {
+					// Past the guard, the call fails for an unrelated reason (no live
+					// server/token), but must not be blocked as unsupported.
+					assert.NotContains(t, err.Error(), "V2 Batch Retrieve Secrets API is not supported in Idira Secrets Manager/Conjur OSS", name)
+				}
 			}
 		})
 	}
@@ -423,4 +428,84 @@ func TestValidateSecretIdentifiers_OversizedNamesCountAndLimit(t *testing.T) {
 	_, err := ValidateSecretIdentifiers(ids)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), fmt.Sprintf("%d", MaxSecretsInSingleBatch+1))
+}
+
+func TestClientV2_BatchRetrieveSecretsRequest_EncodeValues(t *testing.T) {
+	client, err := NewClientFromJwt(GetConfigForTest("localhost"))
+	require.NoError(t, err)
+
+	readBody := func(t *testing.T, req *http.Request) map[string]any {
+		t.Helper()
+		body, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		var parsed map[string]any
+		require.NoError(t, json.Unmarshal(body, &parsed))
+		return parsed
+	}
+
+	t.Run("BatchRetrieveSecretsRequest leaves encode_values out", func(t *testing.T) {
+		req, err := client.V2().BatchRetrieveSecretsRequest([]string{"data/test/secret1"})
+		require.NoError(t, err)
+		assert.NotContains(t, readBody(t, req), "encode_values")
+	})
+
+	t.Run("BatchRetrieveSecretsSafeRequest asks for base64", func(t *testing.T) {
+		req, err := client.V2().BatchRetrieveSecretsSafeRequest([]string{"data/test/secret1"})
+		require.NoError(t, err)
+		assert.Equal(t, http.MethodPost, req.Method)
+		assert.Equal(t, "localhost/secrets/account/values", req.URL.Path)
+		assert.Equal(t, v2APIHeader, req.Header.Get(v2APIOutgoingHeaderID))
+		body := readBody(t, req)
+		assert.Equal(t, "base64", body["encode_values"])
+		assert.Equal(t, []any{"data/test/secret1"}, body["ids"])
+	})
+
+	t.Run("BatchRetrieveSecretsSafeRequest validates the identifiers", func(t *testing.T) {
+		_, err := client.V2().BatchRetrieveSecretsSafeRequest([]string{""})
+		assert.ErrorContains(t, err, "Must specify at least one secret identifier")
+	})
+}
+
+// TestBatchRetrieveSecretsSafe_DecodesValues checks that only 200 values are
+// base64-decoded (binary ones included), and that empty and failed entries
+// are passed through as they came.
+func TestBatchRetrieveSecretsSafe_DecodesValues(t *testing.T) {
+	var gotEncodeValues any
+	ts, c := newSaaSBatchServer(t, func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		gotEncodeValues = body["encode_values"]
+		w.WriteHeader(http.StatusMultiStatus)
+		w.Write([]byte(`{"secrets":[
+			{"id":"data/text","value":"czNjcjN0","status":200},
+			{"id":"data/binary","value":"AP/+","status":200},
+			{"id":"data/empty","value":"","status":204},
+			{"id":"data/missing","status":404,"description":"Not Found"}
+		]}`))
+	})
+	defer ts.Close()
+
+	resp, err := c.V2().BatchRetrieveSecretsSafe([]string{"data/text", "data/binary", "data/empty", "data/missing"})
+	require.NoError(t, err)
+	assert.Equal(t, "base64", gotEncodeValues)
+	assert.Equal(t, []SecretValue{
+		{ID: "data/text", Value: "s3cr3t", Status: 200},
+		{ID: "data/binary", Value: "\x00\xff\xfe", Status: 200},
+		{ID: "data/empty", Value: "", Status: 204},
+		{ID: "data/missing", Status: 404, Description: "Not Found"},
+	}, resp.Secrets)
+}
+
+func TestBatchRetrieveSecretsSafe_InvalidBase64(t *testing.T) {
+	ts, c := newSaaSBatchServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusMultiStatus)
+		w.Write([]byte(`{"secrets":[{"id":"data/text","value":"not base64!","status":200}]}`))
+	})
+	defer ts.Close()
+
+	_, err := c.V2().BatchRetrieveSecretsSafe([]string{"data/text"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to decode the value of data/text")
+	// The undecodable value must not leak into the error.
+	assert.NotContains(t, err.Error(), "not base64!")
 }
