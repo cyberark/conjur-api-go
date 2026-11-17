@@ -218,10 +218,13 @@ func TestClientV2_Annotations_WorkloadReservedNames(t *testing.T) {
 		assert.Equal(t, http.StatusUnprocessableEntity, conjurErr.Code)
 		assert.Contains(t, err.Error(), "Cannot delete protected annotation")
 
+		descriptors, err := conjur.ListAuthnDescriptors(id)
+		require.NoError(t, err)
+		require.Len(t, descriptors.AuthnDescriptors, 1)
+		assert.Equal(t, "api_key", descriptors.AuthnDescriptors[0].Type)
+
 		workload, err := conjur.GetWorkload(id)
 		require.NoError(t, err)
-		require.Len(t, workload.AuthnDescriptors, 1)
-		assert.Equal(t, "api_key", workload.AuthnDescriptors[0].Type)
 		assert.Equal(t, map[string]string{"TYPE": "v"}, workload.Annotations)
 	})
 }

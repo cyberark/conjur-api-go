@@ -155,7 +155,7 @@ func TestClientV2_Safes_CRUD(t *testing.T) {
 	conjur := newTestSafeClient(t)
 	name := newTestSafeName()
 
-	for _, safeType := range []string{"static", "dynamic", "managed"} {
+	for _, safeType := range []string{"dynamic", "managed"} {
 		t.Run(safeType, func(t *testing.T) {
 			annotations := map[string]string{"team": "sdk-tests"}
 			created := newLiveSafe(t, conjur, Safe{Type: safeType, Name: name, Environment: "test", Description: "SDK test safe", Annotations: annotations})
@@ -224,8 +224,8 @@ func TestClientV2_Safes_CreateRejected(t *testing.T) {
 	name := newTestSafeName()
 
 	t.Run("duplicate", func(t *testing.T) {
-		newLiveSafe(t, conjur, Safe{Type: "static", Name: name})
-		_, err := conjur.CreateSafe(Safe{Type: "static", Name: name})
+		newLiveSafe(t, conjur, Safe{Type: "managed", Name: name})
+		_, err := conjur.CreateSafe(Safe{Type: "managed", Name: name})
 		requireSafeStatus(t, err, http.StatusConflict, "conflict")
 		assert.ErrorContains(t, err, "already exists")
 	})
@@ -238,19 +238,19 @@ func TestClientV2_Safes_CreateRejected(t *testing.T) {
 		text  string
 	}{
 		{"unknown type", Safe{Type: "bogus", Name: name + "-type"}, "is not allowed"},
-		{"empty segment", Safe{Type: "static", Name: name + "//b"}, "Invalid 'name'"},
-		{"leading slash", Safe{Type: "static", Name: "/" + name}, "Invalid 'name'"},
-		{"trailing slash", Safe{Type: "static", Name: name + "/"}, "Invalid 'name'"},
-		{"space", Safe{Type: "static", Name: name + " b"}, "Invalid 'name'"},
-		{"dot", Safe{Type: "static", Name: name + ".b"}, "Invalid 'name'"},
-		{"non-ASCII letter", Safe{Type: "static", Name: name + "ü"}, "Invalid 'name'"},
-		{"257 characters", Safe{Type: "static", Name: name + strings.Repeat("a", 257-len(name))}, "maximum length of 256"},
-		{"secrets segment", Safe{Type: "static", Name: name + "/secrets"}, "cannot include 'secrets'"},
-		{"delegation at the end", Safe{Type: "static", Name: name + "/delegation"}, "cannot end with '/delegation'"},
-		{"129-character description", Safe{Type: "static", Name: name + "-desc", Description: strings.Repeat("d", 129)}, "length exceeded"},
-		{"markup in the description", Safe{Type: "static", Name: name + "-markup", Description: "<b>"}, "Invalid 'description'"},
-		{"empty annotation value", Safe{Type: "static", Name: name + "-value", Annotations: map[string]string{"k": ""}}, "annotation value"},
-		{"empty annotation name", Safe{Type: "static", Name: name + "-key", Annotations: map[string]string{"": "v"}}, "annotation name"},
+		{"empty segment", Safe{Type: "managed", Name: name + "//b"}, "Invalid 'name'"},
+		{"leading slash", Safe{Type: "managed", Name: "/" + name}, "Invalid 'name'"},
+		{"trailing slash", Safe{Type: "managed", Name: name + "/"}, "Invalid 'name'"},
+		{"space", Safe{Type: "managed", Name: name + " b"}, "Invalid 'name'"},
+		{"dot", Safe{Type: "managed", Name: name + ".b"}, "Invalid 'name'"},
+		{"non-ASCII letter", Safe{Type: "managed", Name: name + "ü"}, "Invalid 'name'"},
+		{"257 characters", Safe{Type: "managed", Name: name + strings.Repeat("a", 257-len(name))}, "maximum length of 256"},
+		{"secrets segment", Safe{Type: "managed", Name: name + "/secrets"}, "cannot include 'secrets'"},
+		{"delegation at the end", Safe{Type: "managed", Name: name + "/delegation"}, "cannot end with '/delegation'"},
+		{"129-character description", Safe{Type: "managed", Name: name + "-desc", Description: strings.Repeat("d", 129)}, "length exceeded"},
+		{"markup in the description", Safe{Type: "managed", Name: name + "-markup", Description: "<b>"}, "Invalid 'description'"},
+		{"empty annotation value", Safe{Type: "managed", Name: name + "-value", Annotations: map[string]string{"k": ""}}, "annotation value"},
+		{"empty annotation name", Safe{Type: "managed", Name: name + "-key", Annotations: map[string]string{"": "v"}}, "annotation name"},
 	} {
 		t.Run(tc.label, func(t *testing.T) {
 			_, err := conjur.CreateSafe(tc.safe)
@@ -265,12 +265,12 @@ func TestClientV2_Safes_CreateRejected(t *testing.T) {
 	}
 
 	t.Run("256 characters", func(t *testing.T) {
-		newLiveSafe(t, conjur, Safe{Type: "static", Name: name + strings.Repeat("a", 256-len(name))})
+		newLiveSafe(t, conjur, Safe{Type: "managed", Name: name + strings.Repeat("a", 256-len(name))})
 	})
 
 	t.Run("checked before sending", func(t *testing.T) {
 		var conjurErr *response.ConjurError
-		_, err := conjur.CreateSafe(Safe{Type: "static"})
+		_, err := conjur.CreateSafe(Safe{Type: "managed"})
 		require.Error(t, err)
 		assert.False(t, errors.As(err, &conjurErr), "the SDK refuses an empty name itself")
 		_, err = conjur.CreateSafe(Safe{Name: name + "-no-type"})
@@ -281,7 +281,7 @@ func TestClientV2_Safes_CreateRejected(t *testing.T) {
 	t.Run("markup after the first line", func(t *testing.T) {
 		// The service checks the description line by line, so this is
 		// accepted. This pins today's behaviour.
-		created := newLiveSafe(t, conjur, Safe{Type: "static", Name: name + "-lines", Description: "ok\n<b>x</b>"})
+		created := newLiveSafe(t, conjur, Safe{Type: "managed", Name: name + "-lines", Description: "ok\n<b>x</b>"})
 		assert.Equal(t, "ok\n<b>x</b>", created.Description)
 	})
 }
@@ -289,10 +289,10 @@ func TestClientV2_Safes_CreateRejected(t *testing.T) {
 func TestClientV2_Safes_NotFound(t *testing.T) {
 	conjur := newTestSafeClient(t)
 	name := newTestSafeName()
-	newLiveSafe(t, conjur, Safe{Type: "static", Name: name})
+	newLiveSafe(t, conjur, Safe{Type: "managed", Name: name})
 
 	for _, tc := range []struct{ label, safeType, name string }{
-		{"missing name", "static", name + "-missing"},
+		{"missing name", "managed", name + "-missing"},
 		{"existing name, other type", "dynamic", name},
 	} {
 		t.Run(tc.label, func(t *testing.T) {
@@ -308,16 +308,16 @@ func TestClientV2_Safes_NotFound(t *testing.T) {
 		})
 	}
 
-	_, err := conjur.GetSafe("static", name)
-	assert.NoError(t, err, "the static safe is still there")
+	_, err := conjur.GetSafe("managed", name)
+	assert.NoError(t, err, "the managed safe is still there")
 }
 
 func TestClientV2_Safes_List(t *testing.T) {
 	conjur := newTestSafeClient(t)
 	name := newTestSafeName()
 	for _, safe := range []Safe{
-		{Type: "static", Name: name + "-1"},
-		{Type: "static", Name: name + "-2"},
+		{Type: "managed", Name: name + "-1"},
+		{Type: "managed", Name: name + "-2"},
 		{Type: "dynamic", Name: name + "-3"},
 	} {
 		newLiveSafe(t, conjur, safe)
@@ -333,11 +333,11 @@ func TestClientV2_Safes_List(t *testing.T) {
 		}
 		return found
 	}
-	static := []string{"static/" + name + "-1", "static/" + name + "-2"}
+	managed := []string{"managed/" + name + "-1", "managed/" + name + "-2"}
 	dynamic := []string{"dynamic/" + name + "-3"}
 
 	t.Run("all", func(t *testing.T) {
-		assert.ElementsMatch(t, append(static, dynamic...), ours(listAllSafes(t, conjur, SafeFilter{})))
+		assert.ElementsMatch(t, append(managed, dynamic...), ours(listAllSafes(t, conjur, SafeFilter{})))
 	})
 
 	t.Run("paging", func(t *testing.T) {
@@ -355,14 +355,14 @@ func TestClientV2_Safes_List(t *testing.T) {
 
 	t.Run("extended", func(t *testing.T) {
 		all := listAllSafes(t, conjur, SafeFilter{Extended: true})
-		assert.ElementsMatch(t, append(static, dynamic...), ours(all))
+		assert.ElementsMatch(t, append(managed, dynamic...), ours(all))
 		for _, safe := range all {
 			assert.NotNil(t, safe.SecretsCount, "secrets_count of %s/%s", safe.Type, safe.Name)
 		}
 	})
 
 	t.Run("safe type", func(t *testing.T) {
-		for safeType, want := range map[string][]string{"static": static, "dynamic": dynamic} {
+		for safeType, want := range map[string][]string{"managed": managed, "dynamic": dynamic} {
 			all := listAllSafes(t, conjur, SafeFilter{SafeType: safeType})
 			assert.ElementsMatch(t, want, ours(all), "ours in the %s list", safeType)
 			for _, safe := range all {
@@ -387,7 +387,6 @@ func TestClientV2_Safes_Branches(t *testing.T) {
 
 	// The same name works in each type, because each type has its own branch.
 	for _, tc := range []struct{ safeType, parent string }{
-		{"static", "data/static"},
 		{"dynamic", "data/dynamic"},
 		{"managed", "data/vault"},
 	} {
@@ -401,17 +400,17 @@ func TestClientV2_Safes_Branches(t *testing.T) {
 	requireSafeStatus(t, err, http.StatusNotFound, "not_found")
 
 	// The safe's branch is protected.
-	err = conjur.DeleteBranch("data/static/" + name)
+	err = conjur.DeleteBranch("data/vault/" + name)
 	requireSafeStatus(t, err, http.StatusForbidden, "forbidden")
 	assert.ErrorContains(t, err, "protected branch")
-	_, err = conjur.GetSafe("static", name)
+	_, err = conjur.GetSafe("managed", name)
 	assert.NoError(t, err, "the safe is still there")
 }
 
 func TestClientV2_Safes_NestedNames(t *testing.T) {
 	conjur := newTestSafeClient(t)
 	name := newTestSafeName()
-	parent := Safe{Type: "static", Name: name}
+	parent := Safe{Type: "managed", Name: name}
 	newLiveSafe(t, conjur, parent)
 
 	t.Run("route clash", func(t *testing.T) {
@@ -428,10 +427,10 @@ func TestClientV2_Safes_NestedNames(t *testing.T) {
 		before := grants()
 
 		for _, last := range []string{"permissions", "components"} {
-			clash := Safe{Type: "static", Name: name + "/" + last}
+			clash := Safe{Type: "managed", Name: name + "/" + last}
 			newLiveSafe(t, conjur, clash)
 			listed := false
-			for _, safe := range listAllSafes(t, conjur, SafeFilter{SafeType: "static"}) {
+			for _, safe := range listAllSafes(t, conjur, SafeFilter{SafeType: "managed"}) {
 				listed = listed || safe.Name == clash.Name
 			}
 			assert.True(t, listed, "%s is listed", clash.Name)
@@ -462,12 +461,12 @@ func TestClientV2_Safes_NestedNames(t *testing.T) {
 	t.Run("nested safe", func(t *testing.T) {
 		// A nested name is a safe of its own, with its own branch, and
 		// deleting the parent keeps it.
-		nested := Safe{Type: "static", Name: name + "/sub"}
+		nested := Safe{Type: "managed", Name: name + "/sub"}
 		newLiveSafe(t, conjur, nested)
-		branch, err := conjur.ReadBranch("data/static/" + nested.Name)
+		branch, err := conjur.ReadBranch("data/vault/" + nested.Name)
 		require.NoError(t, err)
 		assert.Equal(t, nested.Name, branch.Name)
-		assert.Equal(t, "data/static", branch.Branch)
+		assert.Equal(t, "data/vault", branch.Branch)
 
 		require.NoError(t, conjur.DeleteSafe(parent.Type, parent.Name))
 		_, err = conjur.GetSafe(nested.Type, nested.Name)
@@ -478,12 +477,12 @@ func TestClientV2_Safes_NestedNames(t *testing.T) {
 func TestClientV2_Safes_DeleteWithSecrets(t *testing.T) {
 	conjur := newTestSafeClient(t)
 	name := newTestSafeName()
-	newLiveSafe(t, conjur, Safe{Type: "static", Name: name})
-	branch := "data/static/" + name
+	newLiveSafe(t, conjur, Safe{Type: "managed", Name: name})
+	branch := "data/vault/" + name
 	_, err := conjur.CreateStaticSecret(StaticSecret{Branch: branch, Name: "s1", Value: "test-sdk-safe-value"})
 	require.NoError(t, err, "create the secret s1")
 
-	safe, err := conjur.GetSafeExtended("static", name)
+	safe, err := conjur.GetSafeExtended("managed", name)
 	require.NoError(t, err)
 	require.NotNil(t, safe.SecretsCount)
 	assert.Equal(t, 1, *safe.SecretsCount)
@@ -491,8 +490,8 @@ func TestClientV2_Safes_DeleteWithSecrets(t *testing.T) {
 	// The ticket asks for an error when the safe holds secrets, but the
 	// service deletes the safe and its secrets. This pins today's behaviour;
 	// change it if the service starts refusing.
-	require.NoError(t, conjur.DeleteSafe("static", name))
-	_, err = conjur.GetSafe("static", name)
+	require.NoError(t, conjur.DeleteSafe("managed", name))
+	_, err = conjur.GetSafe("managed", name)
 	requireSafeStatus(t, err, http.StatusNotFound, "not_found", "the safe is gone")
 	_, err = conjur.GetStaticSecretDetails(branch + "/s1")
 	requireSafeStatus(t, err, http.StatusNotFound, "not_found", "the secret is gone")
@@ -528,9 +527,9 @@ func TestClientV2_Safes_ConsumerAccess(t *testing.T) {
 		ignoreSafeNotFound(t, err, "remove wl-reader from readers")
 	})
 
-	safe := Safe{Type: "static", Name: name}
+	safe := Safe{Type: "managed", Name: name}
 	newLiveSafe(t, conjur, safe)
-	safeBranch := "data/static/" + name
+	safeBranch := "data/vault/" + name
 	createSafeScopedSecret(t, conjur, safe, "s1", "test-sdk-safe-value-1")
 	_, err = conjur.CreateStaticSecret(StaticSecret{Branch: safeBranch, Name: "s2", Value: "test-sdk-safe-value-2"})
 	require.NoError(t, err, "create the secret s2")

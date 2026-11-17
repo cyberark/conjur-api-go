@@ -480,6 +480,9 @@ func workloadRequestBuilders(c *Client) map[string]func(string) (*http.Request, 
 				Type: "jwt", ServiceID: "svc", Data: map[string]any{"claim": "value"},
 			})
 		},
+		"ListAuthnDescriptorsRequest": func(id string) (*http.Request, error) {
+			return c.V2().ListAuthnDescriptorsRequest(id)
+		},
 	}
 }
 
@@ -527,7 +530,7 @@ func TestWorkloadRequests_FlattenTraversalIdentifiers(t *testing.T) {
 				}
 				want := "/workloads/" + url.PathEscape(identifier)
 				got := req.URL.EscapedPath()
-				// UpdateAuthnDescriptorRequest appends its own real segments.
+				// The descriptor builders append their own real segments.
 				if !strings.HasPrefix(got, want) {
 					t.Errorf("%s(%q): escaped path %q does not start with %q",
 						name, identifier, got, want)
@@ -684,6 +687,9 @@ func TestNewWorkloadEndpoints_AcceptHeader(t *testing.T) {
 				Type: "jwt", ServiceID: "jwt_service", Data: map[string]any{"jenkins_pronoun": "CC"},
 			})
 		}},
+		{"ListAuthnDescriptorsRequest", func() (*http.Request, error) {
+			return c.V2().ListAuthnDescriptorsRequest(identifier)
+		}},
 	}
 
 	for _, tc := range cases {
@@ -810,7 +816,7 @@ func TestUpdateAuthnDescriptorRequest_EndpointAndBody(t *testing.T) {
 	if req.Method != http.MethodPatch {
 		t.Errorf("Expected PATCH, got %s", req.Method)
 	}
-	wantPath := "/workloads/data/us-east1/test/new-client/authn_descriptors/jwt/Test"
+	wantPath := "/workloads/data/us-east1/test/new-client/authn-descriptors/jwt/Test"
 	if req.URL.Path != wantPath {
 		t.Errorf("Unexpected path: %s, want %s", req.URL.Path, wantPath)
 	}
@@ -820,7 +826,7 @@ func TestUpdateAuthnDescriptorRequest_EndpointAndBody(t *testing.T) {
 
 // TestUpdateAuthnDescriptorRequest_RejectsDotDotTargets asserts that a ".."
 // (or ".") authn type or service ID is rejected before path.Join can resolve
-// it past the "/authn_descriptors" prefix onto an unrelated path. The
+// it past the "/authn-descriptors" prefix onto an unrelated path. The
 // identifier equivalent is covered by
 // TestWorkloadRequests_RejectInvalidIdentifiers.
 func TestUpdateAuthnDescriptorRequest_RejectsDotDotTargets(t *testing.T) {
@@ -1183,29 +1189,37 @@ func TestUpdateWorkload_InvalidResponseBodyError(t *testing.T) {
 	}
 }
 
-// TestUpdateAuthnDescriptor_EndToEnd mocks the actual response shape the
-// server returns for this endpoint - {"authn_descriptor": {...}}, a single
-// descriptor, not a Workload.
+// TestUpdateAuthnDescriptor_EndToEnd mocks both response shapes: the updated
+// descriptor itself, as the server sends it now, and the {"authn_descriptor":
+// {...}} envelope of servers from before the descriptors moved to their own
+// sub-resource.
 func TestUpdateAuthnDescriptor_EndToEnd(t *testing.T) {
-	c := newWorkloadMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPatch {
-			t.Errorf("Expected PATCH, got %s", r.Method)
-		}
-		wantPath := "/workloads/data/w/authn_descriptors/jwt/Test"
-		if r.URL.Path != wantPath {
-			t.Errorf("Unexpected path: %s, want %s", r.URL.Path, wantPath)
-		}
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"authn_descriptor":{"type":"jwt","service_id":"Test","data":{"jenkins_pronoun":"CC"}}}`))
-	})
+	for name, body := range map[string]string{
+		"descriptor": `{"type":"jwt","service_id":"Test","data":{"jenkins_pronoun":"CC"}}`,
+		"wrapped":    `{"authn_descriptor":{"type":"jwt","service_id":"Test","data":{"jenkins_pronoun":"CC"}}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := newWorkloadMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPatch {
+					t.Errorf("Expected PATCH, got %s", r.Method)
+				}
+				wantPath := "/workloads/data/w/authn-descriptors/jwt/Test"
+				if r.URL.Path != wantPath {
+					t.Errorf("Unexpected path: %s, want %s", r.URL.Path, wantPath)
+				}
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(body))
+			})
 
-	descriptor, err := c.V2().UpdateAuthnDescriptor("data/w", AuthnDescriptor{
-		Type: "jwt", ServiceID: "Test", Data: map[string]any{"jenkins_pronoun": "CC"},
-	})
-	require.NoError(t, err)
-	assert.Equal(t, "jwt", descriptor.Type)
-	assert.Equal(t, "Test", descriptor.ServiceID)
-	assert.Equal(t, "CC", descriptor.Data["jenkins_pronoun"])
+			descriptor, err := c.V2().UpdateAuthnDescriptor("data/w", AuthnDescriptor{
+				Type: "jwt", ServiceID: "Test", Data: map[string]any{"jenkins_pronoun": "CC"},
+			})
+			require.NoError(t, err)
+			assert.Equal(t, "jwt", descriptor.Type)
+			assert.Equal(t, "Test", descriptor.ServiceID)
+			assert.Equal(t, "CC", descriptor.Data["jenkins_pronoun"])
+		})
+	}
 }
 
 // TestWorkloadWrapperMethods_RejectNonSaaS asserts that every new top-level
@@ -1235,6 +1249,7 @@ func TestWorkloadWrapperMethods_RejectNonSaaS(t *testing.T) {
 		{"DeleteAuthnDescriptor", func() error {
 			return c.V2().DeleteAuthnDescriptor("data/w", AuthnDescriptor{Type: "jwt", ServiceID: "svc"})
 		}},
+		{"ListAuthnDescriptors", func() error { _, err := c.V2().ListAuthnDescriptors("data/w"); return err }},
 	}
 
 	for _, tc := range cases {
@@ -1435,7 +1450,7 @@ func TestDeleteAuthnDescriptorRequest_Endpoint(t *testing.T) {
 	assert.Equal(t, http.MethodDelete, req.Method)
 	// identifier is one escaped segment; the descriptor type/service_id are
 	// separate real segments.
-	assert.Equal(t, "/workloads/data%2Fapps%2Fmy-workload/authn_descriptors/jwt/prod", req.URL.EscapedPath())
+	assert.Equal(t, "/workloads/data%2Fapps%2Fmy-workload/authn-descriptors/jwt/prod", req.URL.EscapedPath())
 	assert.Equal(t, v2APIHeader, req.Header.Get(v2APIOutgoingHeaderID))
 }
 
@@ -1466,9 +1481,9 @@ func TestDeleteAuthnDescriptorRequest_ApiKey(t *testing.T) {
 	req, err := c.V2().DeleteAuthnDescriptorRequest("data/apps/my-workload", AuthnDescriptor{Type: "api_key"})
 	require.NoError(t, err)
 	assert.Equal(t, http.MethodDelete, req.Method)
-	assert.Equal(t, "/workloads/data%2Fapps%2Fmy-workload/authn_descriptors/api_key", req.URL.EscapedPath())
+	assert.Equal(t, "/workloads/data%2Fapps%2Fmy-workload/authn-descriptors/api_key", req.URL.EscapedPath())
 
-	// The server answers 422 to /authn_descriptors/api_key/<service_id>, so
+	// The server answers 422 to /authn-descriptors/api_key/<service_id>, so
 	// it fails before it is sent.
 	_, err = c.V2().DeleteAuthnDescriptorRequest("data/apps/my-workload", AuthnDescriptor{Type: "api_key", ServiceID: "leftover"})
 	assert.ErrorContains(t, err, "Must not specify a service ID for an api_key")
@@ -1546,7 +1561,7 @@ func TestDeleteAuthnDescriptor_EndToEnd(t *testing.T) {
 		if r.Method != http.MethodDelete {
 			t.Errorf("Expected DELETE, got %s", r.Method)
 		}
-		wantPath := "/workloads/data/w/authn_descriptors/jwt/prod"
+		wantPath := "/workloads/data/w/authn-descriptors/jwt/prod"
 		if r.URL.Path != wantPath {
 			t.Errorf("Unexpected path: %s, want %s", r.URL.Path, wantPath)
 		}
@@ -1555,6 +1570,48 @@ func TestDeleteAuthnDescriptor_EndToEnd(t *testing.T) {
 
 	err := c.V2().DeleteAuthnDescriptor("data/w", AuthnDescriptor{Type: "jwt", ServiceID: "prod"})
 	require.NoError(t, err)
+}
+
+func TestListAuthnDescriptorsRequest_Endpoint(t *testing.T) {
+	c := newTestClient("http://conjur.test")
+
+	req, err := c.V2().ListAuthnDescriptorsRequest("data/apps/my-workload")
+	require.NoError(t, err)
+	assert.Equal(t, http.MethodGet, req.Method)
+	assert.Equal(t, "/workloads/data%2Fapps%2Fmy-workload/authn-descriptors", req.URL.EscapedPath())
+	assert.Nil(t, req.Body)
+}
+
+func TestListAuthnDescriptors_EndToEnd(t *testing.T) {
+	c := newWorkloadMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("Expected GET, got %s", r.Method)
+		}
+		wantPath := "/workloads/data/w/authn-descriptors"
+		if r.URL.Path != wantPath {
+			t.Errorf("Unexpected path: %s, want %s", r.URL.Path, wantPath)
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"authn_descriptors":[{"type":"api_key"},{"type":"jwt","service_id":"prod","data":{"sub":"app"}}],"count":2}`))
+	})
+
+	list, err := c.V2().ListAuthnDescriptors("data/w")
+	require.NoError(t, err)
+	assert.Equal(t, 2, list.Count)
+	assert.Equal(t, []AuthnDescriptor{
+		{Type: "api_key"},
+		{Type: "jwt", ServiceID: "prod", Data: map[string]any{"sub": "app"}},
+	}, list.AuthnDescriptors)
+}
+
+func TestListAuthnDescriptors_NotFound404(t *testing.T) {
+	c := newWorkloadMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	list, err := c.V2().ListAuthnDescriptors("data/test/no-such-workload")
+	requireWorkloadStatus(t, err, http.StatusNotFound)
+	assert.Nil(t, list)
 }
 
 func TestDeleteAuthnDescriptor_ErrorResponse(t *testing.T) {

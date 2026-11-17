@@ -19,7 +19,7 @@ func requireWorkloadStatus(t *testing.T, err error, status int, msgAndArgs ...an
 }
 
 // TestClientV2_WorkloadListReplaceAndDescriptorDelete covers ListWorkloads,
-// ReplaceWorkload and DeleteAuthnDescriptor against a real Conjur Cloud
+// ReplaceWorkload, DeleteAuthnDescriptor and ListAuthnDescriptors against a real Conjur Cloud
 // (SaaS) instance. Like TestClientV2_WorkloadLifecycle, it uses only api_key
 // descriptors.
 func TestClientV2_WorkloadListReplaceAndDescriptorDelete(t *testing.T) {
@@ -101,9 +101,10 @@ func TestClientV2_WorkloadListReplaceAndDescriptorDelete(t *testing.T) {
 	t.Run("delete the api_key descriptor", func(t *testing.T) {
 		require.NoError(t, conjur.DeleteAuthnDescriptor(identifier, AuthnDescriptor{Type: "api_key"}))
 
-		read, err := conjur.GetWorkload(identifier)
+		descriptors, err := conjur.ListAuthnDescriptors(identifier)
 		require.NoError(t, err)
-		assert.Empty(t, read.AuthnDescriptors)
+		assert.Empty(t, descriptors.AuthnDescriptors)
+		assert.Zero(t, descriptors.Count)
 	})
 
 	t.Run("delete a missing descriptor is not found", func(t *testing.T) {

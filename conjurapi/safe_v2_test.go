@@ -63,28 +63,28 @@ func TestSafeValidate(t *testing.T) {
 func TestSafeURLBuilders(t *testing.T) {
 	c := newLocalSafeClient("localhost")
 
-	create, err := c.CreateSafeRequest(Safe{Type: "static", Name: "my-safe", Environment: "prod"})
+	create, err := c.CreateSafeRequest(Safe{Type: "managed", Name: "my-safe", Environment: "prod"})
 	require.NoError(t, err)
 	assert.Equal(t, http.MethodPost, create.Method)
 	assert.Equal(t, "localhost/safes", create.URL.Path)
 
-	get, err := c.GetSafeRequest("static", "my-safe", false)
+	get, err := c.GetSafeRequest("managed", "my-safe", false)
 	require.NoError(t, err)
-	assert.Equal(t, "localhost/safes/static/my-safe", get.URL.Path)
+	assert.Equal(t, "localhost/safes/managed/my-safe", get.URL.Path)
 	assert.Equal(t, "", get.URL.RawQuery)
 
-	getExt, err := c.GetSafeRequest("static", "my-safe", true)
+	getExt, err := c.GetSafeRequest("managed", "my-safe", true)
 	require.NoError(t, err)
 	assert.Equal(t, "projection=extended", getExt.URL.RawQuery)
 
-	del, err := c.DeleteSafeRequest("static", "my-safe")
+	del, err := c.DeleteSafeRequest("managed", "my-safe")
 	require.NoError(t, err)
 	assert.Equal(t, http.MethodDelete, del.Method)
-	assert.Equal(t, "localhost/safes/static/my-safe", del.URL.Path)
+	assert.Equal(t, "localhost/safes/managed/my-safe", del.URL.Path)
 
 	_, err = c.GetSafeRequest("", "n", false)
 	assert.Error(t, err)
-	_, err = c.GetSafeRequest("static", "", false)
+	_, err = c.GetSafeRequest("managed", "", false)
 	assert.Error(t, err)
 }
 
@@ -94,24 +94,24 @@ func TestSafeURLBuilders_NameIsOneSegment(t *testing.T) {
 	// With literal slashes these would reach the permission and secret routes
 	// of safe A.
 	for name, want := range map[string]string{
-		"A/sub":                 "localhost/safes/static/A%2Fsub",
-		"A/permissions/group/g": "localhost/safes/static/A%2Fpermissions%2Fgroup%2Fg",
-		"A/secrets/s1":          "localhost/safes/static/A%2Fsecrets%2Fs1",
-		"a b?c#d%e":             "localhost/safes/static/a%20b%3Fc%23d%25e",
+		"A/sub":                 "localhost/safes/managed/A%2Fsub",
+		"A/permissions/group/g": "localhost/safes/managed/A%2Fpermissions%2Fgroup%2Fg",
+		"A/secrets/s1":          "localhost/safes/managed/A%2Fsecrets%2Fs1",
+		"a b?c#d%e":             "localhost/safes/managed/a%20b%3Fc%23d%25e",
 	} {
-		get, err := c.GetSafeRequest("static", name, false)
+		get, err := c.GetSafeRequest("managed", name, false)
 		require.NoError(t, err)
 		assert.Equal(t, want, get.URL.EscapedPath(), "get %q", name)
 
-		del, err := c.DeleteSafeRequest("static", name)
+		del, err := c.DeleteSafeRequest("managed", name)
 		require.NoError(t, err)
 		assert.Equal(t, want, del.URL.EscapedPath(), "delete %q", name)
 
-		update, err := c.UpdateSafeRequest(Safe{Type: "static", Name: name})
+		update, err := c.UpdateSafeRequest(Safe{Type: "managed", Name: name})
 		require.NoError(t, err)
 		assert.Equal(t, want, update.URL.EscapedPath(), "update %q", name)
 
-		replace, err := c.ReplaceSafeRequest(Safe{Type: "static", Name: name})
+		replace, err := c.ReplaceSafeRequest(Safe{Type: "managed", Name: name})
 		require.NoError(t, err)
 		assert.Equal(t, want, replace.URL.EscapedPath(), "replace %q", name)
 	}
@@ -121,16 +121,16 @@ func TestSafeName_RejectsTraversal(t *testing.T) {
 	c := newLocalSafeClient("localhost")
 
 	for _, bad := range []string{"data/../admin", "..", "data/./x", "data//x"} {
-		_, err := c.GetSafeRequest("static", bad, false)
+		_, err := c.GetSafeRequest("managed", bad, false)
 		assert.Errorf(t, err, "GetSafeRequest name %q must be rejected", bad)
 
-		_, err = c.DeleteSafeRequest("static", bad)
+		_, err = c.DeleteSafeRequest("managed", bad)
 		assert.Errorf(t, err, "DeleteSafeRequest name %q must be rejected", bad)
 
-		_, err = c.UpdateSafeRequest(Safe{Type: "static", Name: bad})
+		_, err = c.UpdateSafeRequest(Safe{Type: "managed", Name: bad})
 		assert.Errorf(t, err, "UpdateSafeRequest name %q must be rejected", bad)
 
-		_, err = c.ReplaceSafeRequest(Safe{Type: "static", Name: bad})
+		_, err = c.ReplaceSafeRequest(Safe{Type: "managed", Name: bad})
 		assert.Errorf(t, err, "ReplaceSafeRequest name %q must be rejected", bad)
 	}
 
@@ -162,9 +162,9 @@ func TestListSafesRequest_SafeTypeFilter(t *testing.T) {
 	assert.Equal(t, "safe_type eq managed", req.URL.Query().Get("filter"))
 	assert.Empty(t, req.URL.Query().Get("type"), "the safe type is not the internal type parameter")
 
-	req, err = c.ListSafesRequest(&SafeFilter{Limit: 5, SafeType: "static", Extended: true})
+	req, err = c.ListSafesRequest(&SafeFilter{Limit: 5, SafeType: "managed", Extended: true})
 	require.NoError(t, err)
-	assert.Equal(t, "safe_type eq static", req.URL.Query().Get("filter"))
+	assert.Equal(t, "safe_type eq managed", req.URL.Query().Get("filter"))
 	assert.Equal(t, "5", req.URL.Query().Get("limit"))
 	assert.Equal(t, safeExtendedProjection, req.URL.Query().Get("projection"))
 
@@ -177,21 +177,21 @@ func TestListSafesRequest_SafeTypeFilter(t *testing.T) {
 func TestCreateSafeRequest_NoServerSetFieldsInBody(t *testing.T) {
 	c := newLocalSafeClient("localhost")
 	count, replicated := 3, true
-	req, err := c.CreateSafeRequest(Safe{Type: "static", Name: "my-safe", Environment: "prod", Description: "d", Annotations: map[string]string{"k": "v"}, CreatedAt: "2026-01-02T03:04:05Z", SecretsCount: &count, Replicated: &replicated})
+	req, err := c.CreateSafeRequest(Safe{Type: "managed", Name: "my-safe", Environment: "prod", Description: "d", Annotations: map[string]string{"k": "v"}, CreatedAt: "2026-01-02T03:04:05Z", SecretsCount: &count, Replicated: &replicated})
 	require.NoError(t, err)
 
 	body, _ := io.ReadAll(req.Body)
 	var sent map[string]interface{}
 	require.NoError(t, json.Unmarshal(body, &sent))
-	assert.Equal(t, map[string]interface{}{"type": "static", "name": "my-safe", "environment": "prod", "description": "d", "annotations": map[string]interface{}{"k": "v"}}, sent)
+	assert.Equal(t, map[string]interface{}{"type": "managed", "name": "my-safe", "environment": "prod", "description": "d", "annotations": map[string]interface{}{"k": "v"}}, sent)
 }
 
 func TestUpdateSafeRequest_SendsOnlySetFields(t *testing.T) {
 	c := newLocalSafeClient("localhost")
-	req, err := c.UpdateSafeRequest(Safe{Type: "static", Name: "my-safe", Description: "d"})
+	req, err := c.UpdateSafeRequest(Safe{Type: "managed", Name: "my-safe", Description: "d"})
 	require.NoError(t, err)
 	assert.Equal(t, http.MethodPatch, req.Method)
-	assert.Equal(t, "localhost/safes/static/my-safe", req.URL.Path)
+	assert.Equal(t, "localhost/safes/managed/my-safe", req.URL.Path)
 
 	body, _ := io.ReadAll(req.Body)
 	var sent map[string]interface{}
@@ -203,10 +203,10 @@ func TestUpdateSafeRequest_SendsOnlySetFields(t *testing.T) {
 
 func TestReplaceSafeRequest_NoNameOrTypeInBody(t *testing.T) {
 	c := newLocalSafeClient("localhost")
-	req, err := c.ReplaceSafeRequest(Safe{Type: "static", Name: "my-safe", Description: "d", Environment: "prod"})
+	req, err := c.ReplaceSafeRequest(Safe{Type: "managed", Name: "my-safe", Description: "d", Environment: "prod"})
 	require.NoError(t, err)
 	assert.Equal(t, http.MethodPut, req.Method)
-	assert.Equal(t, "localhost/safes/static/my-safe", req.URL.Path)
+	assert.Equal(t, "localhost/safes/managed/my-safe", req.URL.Path)
 
 	body, _ := io.ReadAll(req.Body)
 	var sent map[string]interface{}
@@ -222,25 +222,25 @@ func TestSafeExecutors_CRUD(t *testing.T) {
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/safes":
 			w.WriteHeader(http.StatusCreated)
-			w.Write([]byte(`{"type":"static","name":"my-safe","environment":"prod","replicated":false,"created_at":"2026-01-02T03:04:05Z"}`))
+			w.Write([]byte(`{"type":"managed","name":"my-safe","environment":"prod","replicated":false,"created_at":"2026-01-02T03:04:05Z"}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/safes":
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"safes":[{"type":"static","name":"s1"},{"type":"static","name":"s2"}],"count":5}`))
-		case r.Method == http.MethodGet && r.URL.Path == "/safes/static/my-safe":
+			w.Write([]byte(`{"safes":[{"type":"managed","name":"s1"},{"type":"managed","name":"s2"}],"count":5}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/safes/managed/my-safe":
 			w.WriteHeader(http.StatusOK)
 			// The server only returns secrets_count under the extended projection.
 			if r.URL.Query().Get("projection") == "extended" {
-				w.Write([]byte(`{"type":"static","name":"my-safe","secrets_count":3}`))
+				w.Write([]byte(`{"type":"managed","name":"my-safe","secrets_count":3}`))
 			} else {
-				w.Write([]byte(`{"type":"static","name":"my-safe"}`))
+				w.Write([]byte(`{"type":"managed","name":"my-safe"}`))
 			}
-		case r.Method == http.MethodPatch && r.URL.Path == "/safes/static/my-safe":
+		case r.Method == http.MethodPatch && r.URL.Path == "/safes/managed/my-safe":
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"type":"static","name":"my-safe","environment":"prod","description":"patched"}`))
-		case r.Method == http.MethodPut && r.URL.Path == "/safes/static/my-safe":
+			w.Write([]byte(`{"type":"managed","name":"my-safe","environment":"prod","description":"patched"}`))
+		case r.Method == http.MethodPut && r.URL.Path == "/safes/managed/my-safe":
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"type":"static","name":"my-safe","description":"updated"}`))
-		case r.Method == http.MethodDelete && r.URL.Path == "/safes/static/my-safe":
+			w.Write([]byte(`{"type":"managed","name":"my-safe","description":"updated"}`))
+		case r.Method == http.MethodDelete && r.URL.Path == "/safes/managed/my-safe":
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -249,7 +249,7 @@ func TestSafeExecutors_CRUD(t *testing.T) {
 	})
 	defer ts.Close()
 
-	created, err := c.V2().CreateSafe(Safe{Type: "static", Name: "my-safe", Environment: "prod"})
+	created, err := c.V2().CreateSafe(Safe{Type: "managed", Name: "my-safe", Environment: "prod"})
 	require.NoError(t, err)
 	assert.Equal(t, "my-safe", created.Name)
 	assert.Equal(t, "2026-01-02T03:04:05Z", created.CreatedAt)
@@ -259,25 +259,25 @@ func TestSafeExecutors_CRUD(t *testing.T) {
 	assert.Equal(t, 5, list.Count)
 	assert.Len(t, list.Safes, 2)
 
-	got, err := c.V2().GetSafe("static", "my-safe")
+	got, err := c.V2().GetSafe("managed", "my-safe")
 	require.NoError(t, err)
 	assert.Nil(t, got.SecretsCount)
 
-	gotExt, err := c.V2().GetSafeExtended("static", "my-safe")
+	gotExt, err := c.V2().GetSafeExtended("managed", "my-safe")
 	require.NoError(t, err)
 	require.NotNil(t, gotExt.SecretsCount)
 	assert.Equal(t, 3, *gotExt.SecretsCount)
 
-	updated, err := c.V2().UpdateSafe(Safe{Type: "static", Name: "my-safe", Description: "patched"})
+	updated, err := c.V2().UpdateSafe(Safe{Type: "managed", Name: "my-safe", Description: "patched"})
 	require.NoError(t, err)
 	assert.Equal(t, "patched", updated.Description)
 	assert.Equal(t, "prod", updated.Environment)
 
-	replaced, err := c.V2().ReplaceSafe(Safe{Type: "static", Name: "my-safe", Description: "updated"})
+	replaced, err := c.V2().ReplaceSafe(Safe{Type: "managed", Name: "my-safe", Description: "updated"})
 	require.NoError(t, err)
 	assert.Equal(t, "updated", replaced.Description)
 
-	assert.NoError(t, c.V2().DeleteSafe("static", "my-safe"))
+	assert.NoError(t, c.V2().DeleteSafe("managed", "my-safe"))
 }
 
 func TestSafe_DuplicateCreateConflicts(t *testing.T) {
@@ -287,7 +287,7 @@ func TestSafe_DuplicateCreateConflicts(t *testing.T) {
 	})
 	defer ts.Close()
 
-	_, err := c.V2().CreateSafe(Safe{Type: "static", Name: "dup"})
+	_, err := c.V2().CreateSafe(Safe{Type: "managed", Name: "dup"})
 	var conflictErr *response.ConjurError
 	require.ErrorAs(t, err, &conflictErr)
 	assert.Equal(t, http.StatusConflict, conflictErr.Code)
@@ -314,7 +314,7 @@ func TestSafe_SelfHostedGate(t *testing.T) {
 	c := newLocalSafeClient("https://conjur.example.com")
 	c.config.Environment = EnvironmentSH
 
-	_, err := c.CreateSafe(Safe{Type: "static", Name: "n"})
+	_, err := c.CreateSafe(Safe{Type: "managed", Name: "n"})
 	require.Error(t, err)
 	var notSupported *contract.FeatureNotSupportedError
 	require.ErrorAs(t, err, &notSupported)

@@ -10,6 +10,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
+## [0.20.0] - 2026-11-17
+
+### Added
+- `ClientV2.ListAuthnDescriptors` lists a workload's authn descriptors
+  (`GET /workloads/<id>/authn-descriptors`). SaaS no longer returns them with
+  the workload, so `GetWorkload` and `ListWorkloads` leave
+  `Workload.AuthnDescriptors` empty.
+
+### Fixed
+- `ClientV2.UpdateAuthnDescriptor` and `DeleteAuthnDescriptor` use the workload's
+  `authn-descriptors` sub-resource. The server moved the descriptor `PATCH` and
+  `DELETE` there from `authn_descriptors`, and answered the old path with a 404.
+  `UpdateAuthnDescriptor` reads the updated descriptor whether or not the
+  response wraps it in `authn_descriptor`.
+
 ## [0.19.0] - 2026-11-09
 
 ### Added

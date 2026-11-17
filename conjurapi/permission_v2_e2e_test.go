@@ -37,7 +37,7 @@ func newTestPermissionClient(t *testing.T) *ClientV2 {
 
 // newTestPermissionTargets creates a throwaway branch holding the groups
 // target, grantee1, grantee2 and grantee3 and the workloads wl-target and
-// wl-grantee, plus a static safe, and returns one target per kind. Everything
+// wl-grantee, plus a managed safe, and returns one target per kind. Everything
 // is deleted when the test ends.
 func newTestPermissionTargets(t *testing.T) (conjur *ClientV2, branch string, targets map[PermissionKind]PermissionTarget) {
 	t.Helper()
@@ -69,7 +69,7 @@ func newTestPermissionTargets(t *testing.T) (conjur *ClientV2, branch string, ta
 	targets = map[PermissionKind]PermissionTarget{
 		PermissionKindBranch:   {Kind: PermissionKindBranch, Identifier: branch},
 		PermissionKindGroup:    {Kind: PermissionKindGroup, Identifier: branch + "/target"},
-		PermissionKindSafe:     {Kind: PermissionKindSafe, Identifier: "static/" + name},
+		PermissionKindSafe:     {Kind: PermissionKindSafe, Identifier: "managed/" + name},
 		PermissionKindWorkload: {Kind: PermissionKindWorkload, Identifier: branch + "/wl-target"},
 	}
 	for _, kind := range SupportedPermissionKinds() {
@@ -79,7 +79,7 @@ func newTestPermissionTargets(t *testing.T) (conjur *ClientV2, branch string, ta
 	return conjur, branch, targets
 }
 
-// createTestSafe creates a static safe and deletes it when the test ends. It
+// createTestSafe creates a managed safe and deletes it when the test ends. It
 // sends the request itself because this branch has no CreateSafe; switch to
 // CreateSafe and DeleteSafe once they land.
 func createTestSafe(t *testing.T, conjur *ClientV2, name string) {
@@ -91,23 +91,23 @@ func createTestSafe(t *testing.T, conjur *ClientV2, name string) {
 	req, err := newV2JSONRequest(
 		http.MethodPost,
 		makeRouterURL(conjur.config.ApplianceURL, "safes").String(),
-		map[string]string{"type": "static", "name": name},
+		map[string]string{"type": "managed", "name": name},
 		v2APIHeaderBeta,
 	)
 	require.NoError(t, err)
 	_, err = submitAndReadData(conjur, req)
-	require.NoError(t, err, "create the test safe static/%s", name)
+	require.NoError(t, err, "create the test safe managed/%s", name)
 }
 
 func deleteTestSafe(t *testing.T, conjur *ClientV2, name string) {
 	t.Helper()
 	req, err := newV2Request(
 		http.MethodDelete,
-		makeRouterURL(conjur.config.ApplianceURL, "safes", "static", name).String(),
+		makeRouterURL(conjur.config.ApplianceURL, "safes", "managed", name).String(),
 		v2APIHeaderBeta,
 	)
 	require.NoError(t, err)
-	assertDeletedOrMissing(t, submitAndEmpty(conjur, req), "delete the test safe static/%s", name)
+	assertDeletedOrMissing(t, submitAndEmpty(conjur, req), "delete the test safe managed/%s", name)
 }
 
 // assertDeletedOrMissing accepts a cleanup delete that worked or found
