@@ -35,6 +35,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   `UpdateAuthnDescriptor` reads the updated descriptor whether or not the
   response wraps it in `authn_descriptor`.
 
+### Security
+- Upgraded `github.com/oapi-codegen/runtime` to v1.9.0 (from v1.7.0), in both
+  the main module and the internal `swafake` module. (CP-29248)
+- Removed the `replace` pins for `github.com/klauspost/compress` and
+  `github.com/labstack/echo/v4` from `go.mod`. They only existed to override
+  versions pulled in by `oapi-codegen/runtime` v1.7.0, which v1.9.0 no longer
+  requires.
+- Upgraded `golang.org/x/net` to v0.60.0 in the internal `swafake` module.
+- Bumped the Go version of the internal `swafake` module to 1.26.10.
+
 ## [0.19.0] - 2026-11-09
 
 ### Added

@@ -10,7 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.33.6
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.6
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d
-	github.com/oapi-codegen/runtime v1.7.0
+	github.com/oapi-codegen/runtime v1.9.0
 	github.com/sirupsen/logrus v1.10.2
 	github.com/spiffe/go-spiffe/v2 v2.8.2
 	github.com/stretchr/testify v1.12.1
@@ -43,12 +43,3 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260928230214-8a89bd6388cc // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 )
-
-// These modules are pulled into the module graph only as unused,
-// example/test-only dependencies of github.com/oapi-codegen/runtime (via its
-// own go.mod); conjur-api-go never imports them. The replaces pin them past
-// known CVEs anyway, since some SCA scanners flag the full module graph
-// regardless of whether a version is actually reachable/built.
-replace github.com/labstack/echo/v4 => github.com/labstack/echo/v4 v4.16.0
-
-replace github.com/klauspost/compress => github.com/klauspost/compress v1.20.1
