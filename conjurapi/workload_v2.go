@@ -7,6 +7,11 @@ import (
 	"net/url"
 )
 
+// authnDescriptorsSegment is the workload sub-resource that holds its authn
+// descriptors. The server moved it from "authn_descriptors" to
+// "authn-descriptors" and no longer answers the old path.
+const authnDescriptorsSegment = "authn-descriptors"
+
 // AuthnDescriptor describes an authenticator for a workload. Data is a
 // raw map (structure varies by Type) sent flat to the server without
 // a wrapper key: {"type": "jwt", "data": {"claim": "value"}}.
@@ -79,6 +84,30 @@ type WorkloadListResponse struct {
 type WorkloadFilter struct {
 	Limit  int
 	Offset int
+}
+
+// authnDescriptorResponse is the response to
+// PATCH /workloads/<identifier>/authn-descriptors/<type>/<serviceID>: the
+// updated descriptor. Servers from before the descriptors moved to their own
+// sub-resource wrap it in {"authn_descriptor": {...}}, which is read too.
+type authnDescriptorResponse struct {
+	AuthnDescriptor
+	Wrapped *AuthnDescriptor `json:"authn_descriptor,omitempty"`
+}
+
+func (r authnDescriptorResponse) descriptor() *AuthnDescriptor {
+	if r.Wrapped != nil {
+		return r.Wrapped
+	}
+	return &r.AuthnDescriptor
+}
+
+// AuthnDescriptorListResponse is the list returned by
+// GET /workloads/<identifier>/authn-descriptors. The server caps how many
+// descriptors a workload can have, so it isn't paged.
+type AuthnDescriptorListResponse struct {
+	AuthnDescriptors []AuthnDescriptor `json:"authn_descriptors"`
+	Count            int               `json:"count"`
 }
 
 func (c *ClientV2) CreateWorkload(workload Workload) ([]byte, error) {
@@ -247,11 +276,26 @@ func (c *ClientV2) ReplaceWorkloadRequest(identifier string, update WorkloadFiel
 	return newV2JSONRequest(http.MethodPut, reqURL, update, v2APIHeader)
 }
 
-// authnDescriptorResponse is the response envelope for
-// PATCH /workloads/<identifier>/authn_descriptors/<type>/<serviceID>, which
-// returns the single updated descriptor rather than the whole workload.
-type authnDescriptorResponse struct {
-	AuthnDescriptor AuthnDescriptor `json:"authn_descriptor"`
+// ListAuthnDescriptors returns a workload's authn descriptors. The server no
+// longer returns them with the workload, so GetWorkload and ListWorkloads leave
+// Workload.AuthnDescriptors empty. An api_key descriptor never carries the key.
+func (c *ClientV2) ListAuthnDescriptors(identifier string) (*AuthnDescriptorListResponse, error) {
+	req, err := c.ListAuthnDescriptorsRequest(identifier)
+	if err != nil {
+		return nil, err
+	}
+
+	return submitAndUnmarshal[AuthnDescriptorListResponse](c, req)
+}
+
+// ListAuthnDescriptorsRequest builds a request to list a workload's authn
+// descriptors (GET /workloads/<identifier>/authn-descriptors).
+func (c *ClientV2) ListAuthnDescriptorsRequest(identifier string) (*http.Request, error) {
+	reqURL, err := c.workloadURL(identifier, authnDescriptorsSegment)
+	if err != nil {
+		return nil, err
+	}
+	return newV2Request(http.MethodGet, reqURL, v2APIHeader)
 }
 
 // UpdateAuthnDescriptor updates the data of a single authn descriptor on a
@@ -269,18 +313,18 @@ func (c *ClientV2) UpdateAuthnDescriptor(identifier string, descriptor AuthnDesc
 	if err != nil {
 		return nil, err
 	}
-	return &resp.AuthnDescriptor, nil
+	return resp.descriptor(), nil
 }
 
 // UpdateAuthnDescriptorRequest builds a request to update a single authn
-// descriptor's data (PATCH /workloads/<identifier>/authn_descriptors/<type>/<serviceID>).
+// descriptor's data (PATCH /workloads/<identifier>/authn-descriptors/<type>/<serviceID>).
 // The server merges data into the existing map rather than replacing it.
 func (c *ClientV2) UpdateAuthnDescriptorRequest(identifier string, descriptor AuthnDescriptor) (*http.Request, error) {
 	if err := descriptor.validateAsUpdateTarget(); err != nil {
 		return nil, err
 	}
 
-	reqURL, err := c.workloadURL(identifier, "authn_descriptors", descriptor.Type, descriptor.ServiceID)
+	reqURL, err := c.workloadURL(identifier, authnDescriptorsSegment, descriptor.Type, descriptor.ServiceID)
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +348,7 @@ func (c *ClientV2) DeleteAuthnDescriptorRequest(identifier string, descriptor Au
 	}
 
 	// api_key has no service_id, so the segment is left out rather than empty.
-	extra := []string{"authn_descriptors", descriptor.Type}
+	extra := []string{authnDescriptorsSegment, descriptor.Type}
 	if descriptor.ServiceID != "" {
 		extra = append(extra, descriptor.ServiceID)
 	}
