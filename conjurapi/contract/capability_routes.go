@@ -8,7 +8,9 @@ import (
 // routeCapabilities maps gated routes, as http.ServeMux patterns relative to
 // the API base URL, to their Capability. Unlisted routes aren't gated.
 var routeCapabilities = map[string]Capability{
-	// The v1 GET /authenticators listing isn't gated.
+	// SaaS drops the account from the path, so its list and create are
+	// "/authenticators" itself.
+	"/authenticators":                     CapabilityAuthenticatorsV2,
 	"/authenticators/{account}":           CapabilityAuthenticatorsV2,
 	"/authenticators/{account}/{rest...}": CapabilityAuthenticatorsV2,
 

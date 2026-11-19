@@ -1,7 +1,6 @@
 package conjurapi
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,11 +10,6 @@ import (
 func resetDefaultCredentialStorageModeForTests() {
 	callerDefaultCredentialStorageMode = ""
 	callerDefaultCredentialStorageModeSet = false
-}
-
-func TestMain(m *testing.M) {
-	resetDefaultCredentialStorageModeForTests()
-	os.Exit(m.Run())
 }
 
 func TestCredentialStorageModeConstants(t *testing.T) {

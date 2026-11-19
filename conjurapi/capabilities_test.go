@@ -1,6 +1,7 @@
 package conjurapi
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -195,4 +196,42 @@ func TestSWA_Capability(t *testing.T) {
 	_, err := m.client.SWA()
 	assert.EqualError(t, err, "SWA API is not supported in Idira Secrets Manager/Conjur OSS")
 	assert.Equal(t, int32(0), m.infoHits.Load())
+}
+
+func TestSubmitRequest_UnreleasedV2(t *testing.T) {
+	t.Setenv(contract.UnreleasedOverrideEnvVar, "")
+
+	t.Run("refused on SaaS and self-hosted before sending", func(t *testing.T) {
+		for _, env := range []EnvironmentType{EnvironmentSaaS, EnvironmentSH} {
+			m := newCapabilityMockServer(t, env, "1.29.0")
+
+			_, err := m.client.ReadBranch("data/apps")
+			var target *contract.FeatureNotSupportedError
+			require.ErrorAs(t, err, &target)
+			assert.True(t, target.Unreleased)
+
+			_, err = m.client.GetAuthenticator("jwt", "svc")
+			require.ErrorAs(t, err, &target)
+			assert.True(t, target.Unreleased)
+
+			assert.Equal(t, int32(0), m.apiHits.Load(), "a refused request must never reach the server")
+		}
+	})
+
+	t.Run("override sends the request", func(t *testing.T) {
+		t.Setenv(contract.UnreleasedOverrideEnvVar, "true")
+		m := newCapabilityMockServer(t, EnvironmentSaaS, "")
+
+		_, err := m.client.ReadBranch("data/apps")
+		require.NoError(t, err)
+		assert.Equal(t, int32(1), m.apiHits.Load())
+	})
+
+	t.Run("SWA is not gated", func(t *testing.T) {
+		m := newCapabilityMockServer(t, EnvironmentSaaS, "")
+
+		_, err := m.client.SWA()
+		var target *contract.FeatureNotSupportedError
+		assert.False(t, errors.As(err, &target))
+	})
 }

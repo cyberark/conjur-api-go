@@ -4,6 +4,9 @@
 package contract
 
 import (
+	"os"
+	"strings"
+
 	semver "github.com/Masterminds/semver/v3"
 )
 
@@ -37,6 +40,16 @@ const (
 	CapabilityBranchAnnotationsV2    Capability = "Branch Annotations API"
 )
 
+// UnreleasedOverrideEnvVar, set to "true", enables the capabilities still
+// marked Unreleased in the registry.
+const UnreleasedOverrideEnvVar = "CONJUR_ENABLE_UNRELEASED_V2"
+
+// unreleasedEnabled reports whether the override is set. It reads the
+// environment on every call, so tests can change it with t.Setenv.
+func unreleasedEnabled() bool {
+	return strings.EqualFold(os.Getenv(UnreleasedOverrideEnvVar), "true")
+}
+
 // SaaSPolicy is a capability's availability on SaaS.
 type SaaSPolicy int
 
@@ -61,9 +74,12 @@ type capabilityRange struct {
 }
 
 // capabilityEntry is one registry row. Ranges is ascending by fromVersion.
+// Unreleased capabilities are refused on every platform and version
+// unless UnreleasedOverrideEnvVar is set.
 type capabilityEntry struct {
 	SaaSPolicy SaaSPolicy
 	Ranges     []capabilityRange
+	Unreleased bool
 }
 
 // capabilityTable holds every platform and version requirement the SDK
@@ -72,6 +88,7 @@ var capabilityTable = map[Capability]capabilityEntry{
 	CapabilityAuthenticatorsV2: {
 		SaaSPolicy: SaaSAlwaysSupported,
 		Ranges:     []capabilityRange{{fromVersion: V2MinVersion}},
+		Unreleased: true,
 	},
 	CapabilityLdapMappings: {
 		SaaSPolicy: SaaSUnsupported,
@@ -80,10 +97,12 @@ var capabilityTable = map[Capability]capabilityEntry{
 	CapabilityBranchesV2: {
 		SaaSPolicy: SaaSAlwaysSupported,
 		Ranges:     []capabilityRange{{fromVersion: V2MinVersion}},
+		Unreleased: true,
 	},
 	CapabilityGroupsV2: {
 		SaaSPolicy: SaaSAlwaysSupported,
 		Ranges:     []capabilityRange{{fromVersion: V2MinVersion}},
+		Unreleased: true,
 	},
 	CapabilityPolicyDryRun: {
 		SaaSPolicy: SaaSUnsupported,
@@ -102,14 +121,22 @@ var capabilityTable = map[Capability]capabilityEntry{
 	},
 	// SaaS-only APIs, with no self-hosted version to gate on.
 	CapabilitySWAManagement:          {SaaSPolicy: SaaSOnly},
-	CapabilityWorkloadV2:             {SaaSPolicy: SaaSOnly},
-	CapabilityPermissionsV2:          {SaaSPolicy: SaaSOnly},
-	CapabilityIssuerV2:               {SaaSPolicy: SaaSOnly},
-	CapabilityStaticSecretV2:         {SaaSPolicy: SaaSOnly},
-	CapabilityBatchRetrieveSecretsV2: {SaaSPolicy: SaaSOnly},
-	CapabilitySafesV2:                {SaaSPolicy: SaaSOnly},
+	CapabilityWorkloadV2:             {SaaSPolicy: SaaSOnly, Unreleased: true},
+	CapabilityPermissionsV2:          {SaaSPolicy: SaaSOnly, Unreleased: true},
+	CapabilityIssuerV2:               {SaaSPolicy: SaaSOnly, Unreleased: true},
+	CapabilityStaticSecretV2:         {SaaSPolicy: SaaSOnly, Unreleased: true},
+	CapabilityBatchRetrieveSecretsV2: {SaaSPolicy: SaaSOnly, Unreleased: true},
+	CapabilitySafesV2:                {SaaSPolicy: SaaSOnly, Unreleased: true},
 	// Self-hosted has no branch annotation route; the path would match delete-branch.
-	CapabilityBranchAnnotationsV2: {SaaSPolicy: SaaSOnly},
+	CapabilityBranchAnnotationsV2: {SaaSPolicy: SaaSOnly, Unreleased: true},
+}
+
+// unreleasedError refuses an Unreleased cap unless the override is set.
+func (e capabilityEntry) unreleasedError(cap Capability) *FeatureNotSupportedError {
+	if e.Unreleased && !unreleasedEnabled() {
+		return &FeatureNotSupportedError{FeatureName: string(cap), Unreleased: true}
+	}
+	return nil
 }
 
 // platformError refuses cap on the platform, whatever the version.
@@ -183,6 +210,9 @@ func CheckCapability(cap Capability, isSaaS bool, backendVersion func() (string,
 		return nil
 	}
 
+	if err := entry.unreleasedError(cap); err != nil {
+		return err
+	}
 	if err := entry.platformError(cap, isSaaS); err != nil {
 		return err
 	}
@@ -216,7 +246,7 @@ func Status(cap Capability, isSaaS bool, backendVersion func() (string, error)) 
 		return StatusSupported
 	}
 
-	if entry.platformError(cap, isSaaS) != nil {
+	if entry.unreleasedError(cap) != nil || entry.platformError(cap, isSaaS) != nil {
 		return StatusUnsupported
 	}
 	if !entry.needsVersion(isSaaS) {

@@ -10,13 +10,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
-## [0.20.0] - 2026-11-17
+## [0.20.0] - 2026-11-19
 
 ### Added
 - `ClientV2.ListAuthnDescriptors` lists a workload's authn descriptors
   (`GET /workloads/<id>/authn-descriptors`). SaaS no longer returns them with
   the workload, so `GetWorkload` and `ListWorkloads` leave
   `Workload.AuthnDescriptors` empty.
+
+### Changed
+- The V2 APIs that aren't released yet are refused, on SaaS and Self-Hosted,
+  with a `contract.FeatureNotSupportedError` (`Unreleased` set) before any
+  request is sent: authenticators, branches, groups and group membership,
+  annotations, workloads, permissions, safes and safe secrets, static secrets,
+  V2 batch secret retrieval, and issuer issue/sign. `SetAuthenticatorEnabled`
+  on SaaS is refused too, as it calls the V2 authenticators API. SWA and
+  authentication are unchanged. Set `CONJUR_ENABLE_UNRELEASED_V2=true` to use
+  them anyway. (CNJR-15913)
 
 ### Fixed
 - `ClientV2.UpdateAuthnDescriptor` and `DeleteAuthnDescriptor` use the workload's

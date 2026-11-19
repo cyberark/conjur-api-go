@@ -237,3 +237,47 @@ func TestVersionAtLeast(t *testing.T) {
 	assert.False(t, versionAtLeast("", "1.23.0"))
 	assert.False(t, versionAtLeast("not-a-version", "1.23.0"))
 }
+
+func TestUnreleased(t *testing.T) {
+	unreleased := []Capability{
+		CapabilityAuthenticatorsV2, CapabilityBranchesV2, CapabilityGroupsV2,
+		CapabilityWorkloadV2, CapabilityPermissionsV2, CapabilityIssuerV2,
+		CapabilityStaticSecretV2, CapabilityBatchRetrieveSecretsV2,
+		CapabilitySafesV2, CapabilityBranchAnnotationsV2,
+	}
+
+	t.Run("refused on both platforms without a version lookup", func(t *testing.T) {
+		t.Setenv(UnreleasedOverrideEnvVar, "")
+		for _, cap := range unreleased {
+			for _, isSaaS := range []bool{true, false} {
+				target := requireNotSupported(t, CheckCapability(cap, isSaaS, versionNotNeeded(t)))
+				assert.True(t, target.Unreleased, "%s, SaaS=%v", cap, isSaaS)
+				assert.Equal(t, StatusUnsupported, Status(cap, isSaaS, versionNotNeeded(t)))
+			}
+		}
+	})
+
+	t.Run("message", func(t *testing.T) {
+		t.Setenv(UnreleasedOverrideEnvVar, "")
+		err := CheckCapability(CapabilityBranchesV2, true, versionNotNeeded(t))
+		assert.EqualError(t, err, "Branch API is not yet available in this SDK release (set CONJUR_ENABLE_UNRELEASED_V2=true to enable)")
+	})
+
+	t.Run("override re-enables, case-insensitively", func(t *testing.T) {
+		for _, v := range []string{"true", "TRUE"} {
+			t.Setenv(UnreleasedOverrideEnvVar, v)
+			assert.NoError(t, CheckCapability(CapabilityBranchesV2, false, knownVersion("1.29.0")))
+			assert.NoError(t, CheckCapability(CapabilityWorkloadV2, true, versionNotNeeded(t)))
+		}
+	})
+
+	t.Run("other values don't enable", func(t *testing.T) {
+		t.Setenv(UnreleasedOverrideEnvVar, "1")
+		requireNotSupported(t, CheckCapability(CapabilityWorkloadV2, true, versionNotNeeded(t)))
+	})
+
+	t.Run("SWA is not gated", func(t *testing.T) {
+		t.Setenv(UnreleasedOverrideEnvVar, "")
+		assert.NoError(t, CheckCapability(CapabilitySWAManagement, true, versionNotNeeded(t)))
+	})
+}
