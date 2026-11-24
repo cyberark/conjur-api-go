@@ -16,7 +16,9 @@ func TestRouteCapability(t *testing.T) {
 		want   Capability // "" means ungated
 	}{
 		// V2 APIs gated by version.
-		{"authenticators list", http.MethodGet, "/authenticators/conjur", CapabilityAuthenticatorsV2},
+		{"authenticators list, SaaS", http.MethodGet, "/authenticators", CapabilityAuthenticatorsV2},
+		{"authenticator create, SaaS", http.MethodPost, "/authenticators", CapabilityAuthenticatorsV2},
+		{"authenticators list, self-hosted", http.MethodGet, "/authenticators/conjur", CapabilityAuthenticatorsV2},
 		{"authenticator update", http.MethodPatch, "/authenticators/conjur/authn-jwt/svc", CapabilityAuthenticatorsV2},
 		{"branch create", http.MethodPost, "/branches/conjur", CapabilityBranchesV2},
 		{"branch read, SaaS (no account)", http.MethodGet, "/branches/data/apps", CapabilityBranchesV2},
@@ -45,7 +47,6 @@ func TestRouteCapability(t *testing.T) {
 		{"batch secrets, self-hosted", http.MethodPost, "/secrets/conjur/values", CapabilityBatchRetrieveSecretsV2},
 		// Ungated routes, including ones whose identifiers contain a gated
 		// route's name.
-		{"v1 authenticators listing", http.MethodGet, "/authenticators", ""},
 		{"plain policy load", http.MethodPost, "/policies/conjur/policy/root", ""},
 		{"v1 secret under data/workloads", http.MethodGet, "/secrets/conjur/variable/data%2Fworkloads%2Fdb", ""},
 		{"v1 secret under data/branches", http.MethodGet, "/secrets/conjur/variable/data%2Fbranches%2Fx", ""},

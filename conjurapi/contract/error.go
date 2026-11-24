@@ -3,17 +3,21 @@ package contract
 import "fmt"
 
 // FeatureNotSupportedError is returned client-side when the backend doesn't
-// offer a capability. At most one of MinVersion, RemovedInVersion or Platform
-// is set. Err, returned by Unwrap, is set when the version couldn't be retrieved.
+// offer a capability. At most one of MinVersion, RemovedInVersion, Platform or
+// Unreleased is set. Err, returned by Unwrap, is set when the version couldn't be retrieved.
 type FeatureNotSupportedError struct {
 	FeatureName      string
 	MinVersion       string
 	RemovedInVersion string
 	Platform         string
+	Unreleased       bool
 	Err              error
 }
 
 func (e *FeatureNotSupportedError) Error() string {
+	if e.Unreleased {
+		return fmt.Sprintf("%s is not yet available in this SDK release (set %s=true to enable)", e.FeatureName, UnreleasedOverrideEnvVar)
+	}
 	if e.Platform != "" {
 		return fmt.Sprintf("%s is not supported in %s", e.FeatureName, e.Platform)
 	}

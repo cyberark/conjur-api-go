@@ -109,6 +109,10 @@ Connecting to Idira Secrets Manager requires two steps:
 1. **Configuration** - Specify the Idira Secrets Manager endpoint and connection security settings
 2. **Authentication** - Provide credentials for authentication
 
+### Unreleased V2 APIs
+
+The V2 APIs that aren't released yet (authenticators, branches, groups, workloads, permissions, safes, static secrets, V2 batch retrieval and issuer issue/sign) return a `FeatureNotSupportedError` without sending a request. Logging in (authentication) and SWA aren't affected. The Authenticators API is affected, and so is `SetAuthenticatorEnabled` on SaaS. To use them anyway, set the `CONJUR_ENABLE_UNRELEASED_V2` environment variable to `true`.
+
 ### Credential Storage
 
 The Conjur Go API supports three credential storage backends, configurable via the `CredentialStorage` field in the `Config` struct:
