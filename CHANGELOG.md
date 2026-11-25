@@ -10,13 +10,28 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
-## [0.20.0] - 2026-11-19
+## [0.20.0] - 2026-11-25
 
 ### Added
 - `ClientV2.ListAuthnDescriptors` lists a workload's authn descriptors
   (`GET /workloads/<id>/authn-descriptors`). SaaS no longer returns them with
   the workload, so `GetWorkload` and `ListWorkloads` leave
   `Workload.AuthnDescriptors` empty.
+- `Client.SetAuthenticatorEnabled` enables or disables an authenticator by its
+  `authn-<type>/<name>` id, using the V2 API on SaaS and v1 on Self-Hosted.
+- `ParseAuthenticatorID` splits an `authn-<type>/<name>` id into a V2 type and
+  name, mapping `iam` to `aws_iam` and `cert` to `certificate`.
+- `AuthenticatorFilter` for paging `ClientV2.ListAuthenticators`. SaaS ignores
+  it for now and returns its whole list, at most 1000 authenticators.
+- `AuthenticatorPatch` for partial V2 authenticator updates.
+- `AuthenticatorResponse.CreatedAt`, which SaaS sends.
+- `ClientV2.ListWorkloads` (paged with `WorkloadFilter`), `ReplaceWorkload`
+  and `DeleteAuthnDescriptor` for Secrets Manager SaaS.
+- `ClientV2.BatchRetrieveSecretsSafe` and `BatchRetrieveSecretsSafeRequest`
+  retrieve a batch of secrets with binary values too. They ask the server to
+  base64-encode the values (`encode_values`) and return them decoded, where
+  `BatchRetrieveSecrets` gets a per-secret 406 for a value that isn't valid
+  UTF-8. (CNJR-15241)
 
 ### Changed
 - The V2 APIs that aren't released yet are refused, on SaaS and Self-Hosted,
@@ -27,6 +42,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   on SaaS is refused too, as it calls the V2 authenticators API. SWA and
   authentication are unchanged. Set `CONJUR_ENABLE_UNRELEASED_V2=true` to use
   them anyway. (CNJR-15913)
+- `ClientV2.UpdateAuthenticator` takes an `*AuthenticatorPatch` instead of
+  `enabled bool`. `ClientV2.SetAuthenticatorEnabledV2` keeps the old behaviour.
+- `ClientV2.ListAuthenticators` takes an `*AuthenticatorFilter`; pass `nil` for
+  the server's default page.
+- On Self-Hosted, `ClientV2.UpdateAuthenticator` refuses a patch that sets
+  annotations or data, or doesn't set enabled, before sending it. The
+  Self-Hosted V2 `PATCH` only changes enabled, and answered such a patch with a
+  422 "Missing required parameter: enabled."
 
 ### Fixed
 - `ClientV2.UpdateAuthnDescriptor` and `DeleteAuthnDescriptor` use the workload's
@@ -34,6 +57,33 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   `DELETE` there from `authn_descriptors`, and answered the old path with a 404.
   `UpdateAuthnDescriptor` reads the updated descriptor whether or not the
   response wraps it in `authn_descriptor`.
+- Resource, role and policy IDs containing a space are now sent with `%20`
+  instead of `+` in the URL path, so lookups such as `conjur role exists` no
+  longer return 404 for IDs like `SCIM Config`. (CNJR-16227)
+- The same applies to authenticate URLs (login, IAM host ID) and issuer IDs,
+  which also encoded a space as `+`. (CNJR-16227)
+- `ConjurError` parses V2 error bodies, so `Error()` returns the server's
+  message instead of the raw JSON. `Code` stays the HTTP status.
+- Authenticator management requests escape the type and name in the URL path
+  and reject `.`, `..` and empty segments before sending, so a name can no
+  longer address a different resource.
+- `AuthenticatorResponse` leaves `branch` out of its JSON when it's empty, as
+  SaaS responses do, instead of adding `"branch": ""`.
+- The V2 authenticator calls address the GCP authenticator as `gcp/default`,
+  as both servers route it, instead of `gcp`, which got a 404.
+- Correction to the 0.16.0 `server_version` entry: a saved version that rules
+  out a call is not re-checked with the server. After an upgrade, remove
+  `server_version` from `.conjurrc` if a call is still refused.
+
+### Security
+- Upgraded `github.com/oapi-codegen/runtime` to v1.9.0 (from v1.7.0), in both
+  the main module and the internal `swafake` module. (CP-29248)
+- Removed the `replace` pins for `github.com/klauspost/compress` and
+  `github.com/labstack/echo/v4` from `go.mod`. They only existed to override
+  versions pulled in by `oapi-codegen/runtime` v1.7.0, which v1.9.0 no longer
+  requires.
+- Upgraded `golang.org/x/net` to v0.60.0 in the internal `swafake` module.
+- Bumped the Go version of the internal `swafake` module to 1.26.10.
 
 ## [0.19.0] - 2026-11-09
 
